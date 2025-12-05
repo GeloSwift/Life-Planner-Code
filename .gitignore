@@ -1,0 +1,24 @@
+# Node / Next
+node_modules/
+.next/
+.out/
+.vercel/
+*.log
+npm-debug.log*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+.venv*/
+.pytest_cache/
+.mypy_cache/
+
+# Mac/IDE
+.DS_Store
+.idea/
+.vscode/
