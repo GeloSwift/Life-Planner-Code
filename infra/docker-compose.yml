@@ -87,8 +87,8 @@ services:
     profiles:
       - tools  # Ne se lance que si on fait: docker compose --profile tools up
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@lifeplanner.local}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-angelo.nichele@icloud.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-password}
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:
       - "5050:80"
