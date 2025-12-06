@@ -18,8 +18,7 @@ on:
       - dev
     paths:
       - 'app/back/**'
-      - 'infra/Dockerfile.api'
-      - 'infra/docker-bake.hcl'
+      - 'docker-bake.hcl'
       - '.github/workflows/api.yml'
   pull_request:
     branches:
@@ -27,8 +26,7 @@ on:
       - dev
     paths:
       - 'app/back/**'
-      - 'infra/Dockerfile.api'
-      - 'infra/docker-bake.hcl'
+      - 'docker-bake.hcl'
       - '.github/workflows/api.yml'
 
 env:
@@ -126,7 +124,7 @@ jobs:
         uses: docker/bake-action@v5
         with:
           files: |
-            ./infra/docker-bake.hcl
+            ./docker-bake.hcl
           targets: api
           push: ${{ github.event_name != 'pull_request' }}
           set: |

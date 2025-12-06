@@ -1,15 +1,15 @@
 # =============================================================================
 # DOCKER COMPOSE - LOCAL DEVELOPMENT
 # =============================================================================
-# Usage:
-#   COMPOSE_BAKE=true docker compose up --build   # Build avec Bake (plus rapide)
+# Usage (depuis le dossier infra/):
+#   COMPOSE_BAKE=true docker compose up --build   # Build avec Bake
 #   docker compose up -d                          # Lance en arrière-plan
 #   docker compose down                           # Arrête tous les services
 #   docker compose down -v                        # Reset DB (supprime volumes)
 #   docker compose logs -f api                    # Logs de l'API
 #   docker compose exec db psql -U postgres       # Accès PostgreSQL
 #
-# Pour VS Code Database extension, connexion:
+# VS Code Database extension:
 #   Host: localhost | Port: 5432 | User: postgres | Password: postgres | DB: lifeplanner
 # =============================================================================
 
@@ -26,7 +26,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-lifeplanner}
     ports:
-      # Expose le port pour accès depuis l'hôte (VS Code Database extension, DBeaver, etc.)
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -44,8 +43,8 @@ services:
   # ---------------------------------------------------------------------------
   api:
     build:
-      context: ..
-      dockerfile: infra/Dockerfile.api
+      context: ../app/back
+      dockerfile: Dockerfile
       target: development
     container_name: lifeplanner-api
     restart: unless-stopped
@@ -62,7 +61,6 @@ services:
     volumes:
       - ../app/back:/app
       - /app/.venv
-      - /app/__pycache__
     depends_on:
       db:
         condition: service_healthy

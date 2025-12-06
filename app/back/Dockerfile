@@ -1,7 +1,7 @@
 # =============================================================================
 # DOCKERFILE FOR FASTAPI APPLICATION
 # =============================================================================
-# Build: docker build -f infra/Dockerfile.api -t lifeplanner-api ./app/back
+# Build: docker build -t lifeplanner-api ./app/back
 # Run:   docker run -p 8000:8000 lifeplanner-api
 #
 # Documentation: https://fastapi.tiangolo.com/deployment/docker/
@@ -10,22 +10,14 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Base image
 # -----------------------------------------------------------------------------
-# python:3.11-slim est recommandé:
-# - Plus léger que l'image complète (~150MB vs ~900MB)
-# - Contient tout le nécessaire pour FastAPI
-# - Basé sur Debian (compatible avec psycopg2-binary)
 FROM python:3.11-slim AS base
 
-# Empêche Python de créer des fichiers .pyc
 ENV PYTHONDONTWRITEBYTECODE=1
-# Désactive le buffering pour voir les logs en temps réel
 ENV PYTHONUNBUFFERED=1
 
-# Crée un utilisateur non-root pour la sécurité
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --gid 1001 appuser
 
-# Répertoire de travail
 WORKDIR /app
 
 # -----------------------------------------------------------------------------
@@ -33,58 +25,41 @@ WORKDIR /app
 # -----------------------------------------------------------------------------
 FROM base AS dependencies
 
-# Installe les dépendances système nécessaires pour psycopg2
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copie uniquement requirements.txt d'abord (pour le cache Docker)
-# Context = racine du projet, donc on copie depuis app/back/
-COPY app/back/requirements.txt .
+COPY requirements.txt .
 
-# Installe les dépendances Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------------------------------------------------------
-# Stage 3: Production image
+# Stage 3: Production
 # -----------------------------------------------------------------------------
 FROM dependencies AS production
 
-# Copie le code de l'application depuis app/back/
-COPY app/back/ .
+COPY . .
 
-# Change le propriétaire des fichiers vers l'utilisateur non-root
 RUN chown -R appuser:appgroup /app
 
-# Utilise l'utilisateur non-root
 USER appuser
 
-# Port exposé (documentation, n'ouvre pas réellement le port)
 EXPOSE 8000
 
-# Health check pour Docker et orchestrateurs
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Commande de démarrage
-# - host 0.0.0.0: écoute sur toutes les interfaces (nécessaire dans Docker)
-# - port 8000: port standard pour l'API
-# - workers: nombre de processus (1 par container, scaling via orchestrateur)
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # -----------------------------------------------------------------------------
-# Stage 4: Development image (optionnel, pour hot-reload)
+# Stage 4: Development (hot-reload)
 # -----------------------------------------------------------------------------
 FROM dependencies AS development
-
-# En dev, on monte le code en volume, pas besoin de le copier
-# Le hot-reload est activé via --reload
 
 USER appuser
 
 EXPOSE 8000
 
-# Commande de développement avec hot-reload
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 

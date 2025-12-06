@@ -7,8 +7,8 @@
 # - Meilleure gestion des dépendances
 #
 # Usage:
-#   COMPOSE_BAKE=true docker compose up --build   # Via Compose
-#   docker buildx bake -f infra/docker-bake.hcl   # Directement
+#   COMPOSE_BAKE=true docker compose -f infra/docker-compose.yml up --build
+#   docker buildx bake                              # Depuis la racine
 #
 # Documentation: https://docs.docker.com/build/bake/
 # =============================================================================
@@ -27,7 +27,7 @@ variable "TAG" {
 }
 
 # =============================================================================
-# Groups - permet de builder plusieurs targets en une commande
+# Groups
 # =============================================================================
 group "default" {
   targets = ["api"]
@@ -40,12 +40,9 @@ group "all" {
 # =============================================================================
 # Target: API Production
 # =============================================================================
-# Note: Exécuter depuis la racine du repo: docker buildx bake -f infra/docker-bake.hcl
-# Pour docker compose local, utiliser: COMPOSE_BAKE=true docker compose up --build
 target "api" {
-  # Context = racine du repo, le Dockerfile utilise COPY depuis app/back
-  context    = "."
-  dockerfile = "infra/Dockerfile.api"
+  context    = "./app/back"
+  dockerfile = "Dockerfile"
   target     = "production"
   
   tags = [
@@ -62,11 +59,11 @@ target "api" {
 }
 
 # =============================================================================
-# Target: API Development (avec hot-reload)
+# Target: API Development
 # =============================================================================
 target "api-dev" {
-  context    = "."
-  dockerfile = "infra/Dockerfile.api"
+  context    = "./app/back"
+  dockerfile = "Dockerfile"
   target     = "development"
   
   tags = [
