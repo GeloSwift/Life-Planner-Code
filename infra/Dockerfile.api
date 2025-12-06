@@ -34,17 +34,15 @@ WORKDIR /app
 FROM base AS dependencies
 
 # Installe les dépendances système nécessaires pour psycopg2
-# (même avec psycopg2-binary, certaines libs sont nécessaires)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie uniquement requirements.txt d'abord (pour le cache Docker)
-COPY requirements.txt .
+# Context = racine du projet, donc on copie depuis app/back/
+COPY app/back/requirements.txt .
 
 # Installe les dépendances Python
-# --no-cache-dir: réduit la taille de l'image
-# --upgrade: assure d'avoir pip à jour
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
@@ -53,8 +51,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # -----------------------------------------------------------------------------
 FROM dependencies AS production
 
-# Copie le code de l'application
-COPY . .
+# Copie le code de l'application depuis app/back/
+COPY app/back/ .
 
 # Change le propriétaire des fichiers vers l'utilisateur non-root
 RUN chown -R appuser:appgroup /app

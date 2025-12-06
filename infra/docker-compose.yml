@@ -44,8 +44,8 @@ services:
   # ---------------------------------------------------------------------------
   api:
     build:
-      context: ../app/back
-      dockerfile: ../../infra/Dockerfile.api
+      context: ..
+      dockerfile: infra/Dockerfile.api
       target: development
     container_name: lifeplanner-api
     restart: unless-stopped
@@ -62,6 +62,7 @@ services:
     volumes:
       - ../app/back:/app
       - /app/.venv
+      - /app/__pycache__
     depends_on:
       db:
         condition: service_healthy

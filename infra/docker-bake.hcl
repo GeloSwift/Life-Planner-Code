@@ -40,12 +40,12 @@ group "all" {
 # =============================================================================
 # Target: API Production
 # =============================================================================
-# Note: Les chemins sont relatifs à la racine du repo (pour GitHub Actions)
-# Pour un usage local avec docker compose, utiliser COMPOSE_BAKE=true qui génère
-# automatiquement la config bake depuis docker-compose.yml
+# Note: Exécuter depuis la racine du repo: docker buildx bake -f infra/docker-bake.hcl
+# Pour docker compose local, utiliser: COMPOSE_BAKE=true docker compose up --build
 target "api" {
-  context    = "./app/back"
-  dockerfile = "../../infra/Dockerfile.api"
+  # Context = racine du repo, le Dockerfile utilise COPY depuis app/back
+  context    = "."
+  dockerfile = "infra/Dockerfile.api"
   target     = "production"
   
   tags = [
@@ -65,8 +65,8 @@ target "api" {
 # Target: API Development (avec hot-reload)
 # =============================================================================
 target "api-dev" {
-  context    = "./app/back"
-  dockerfile = "../../infra/Dockerfile.api"
+  context    = "."
+  dockerfile = "infra/Dockerfile.api"
   target     = "development"
   
   tags = [
