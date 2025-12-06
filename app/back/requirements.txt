@@ -8,3 +8,4 @@ psycopg2-binary==2.9.10
 passlib[bcrypt]==1.7.4
 pyjwt==2.10.1
 python-multipart==0.0.17
+email-validator
