@@ -9,7 +9,7 @@
 # Documentation: https://docs.github.com/en/actions
 # =============================================================================
 
-name: API CI
+name: API CI/CD
 
 on:
   push:
