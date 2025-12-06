@@ -1,0 +1,138 @@
+"""
+FastAPI application entry point.
+
+Ce fichier est le point d'entrée de l'API. Il:
+- Crée l'instance FastAPI
+- Configure CORS (Cross-Origin Resource Sharing)
+- Inclut les routers des différents modules
+- Définit un endpoint de health check
+
+Pour lancer l'API:
+    uvicorn app:app --reload --host 0.0.0.0 --port 8000
+
+Documentation:
+https://fastapi.tiangolo.com/tutorial/first-steps/
+"""
+
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from core.config import settings
+from core.db import engine, Base
+from auth.routes import router as auth_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan events: startup and shutdown.
+    
+    - startup: Crée les tables si elles n'existent pas (dev only)
+    - shutdown: Nettoie les ressources si nécessaire
+    
+    En production, on utilise Alembic pour les migrations.
+    
+    Documentation:
+    https://fastapi.tiangolo.com/advanced/events/
+    """
+    # Startup
+    # Crée les tables automatiquement (utile en dev, à désactiver en prod)
+    # En production, utiliser: alembic upgrade head
+    if settings.DEBUG:
+        Base.metadata.create_all(bind=engine)
+    
+    yield
+    
+    # Shutdown
+    # Rien à nettoyer pour l'instant
+
+
+# =============================================================================
+# APPLICATION INSTANCE
+# =============================================================================
+
+app = FastAPI(
+    title="Life Planner API",
+    description="""
+    API pour l'application Life Planner.
+    
+    ## Features
+    - 🔐 **Auth**: Inscription, connexion, JWT tokens
+    - 🏋️ **Workout**: Gestion des séances de sport
+    - 🍳 **Recipes**: Recettes et liste de courses (à venir)
+    - 💰 **Budget**: Suivi des dépenses (à venir)
+    - ✅ **Habits**: Suivi d'habitudes (à venir)
+    """,
+    version="0.1.0",
+    lifespan=lifespan,
+    # Documentation disponible sur /docs (Swagger) et /redoc
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+
+# =============================================================================
+# CORS MIDDLEWARE
+# =============================================================================
+
+# CORS permet au frontend (localhost:3000) d'appeler l'API (localhost:8000)
+# Sans CORS, le navigateur bloquerait les requêtes cross-origin
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,  # ["http://localhost:3000"]
+    allow_credentials=True,  # Permet l'envoi de cookies
+    allow_methods=["*"],     # GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],     # Authorization, Content-Type, etc.
+)
+
+
+# =============================================================================
+# ROUTERS
+# =============================================================================
+
+# Inclut les routers des différents modules
+# Chaque router ajoute son préfixe (ex: /auth)
+app.include_router(auth_router)
+
+
+# =============================================================================
+# HEALTH CHECK
+# =============================================================================
+
+@app.get(
+    "/health",
+    tags=["Health"],
+    summary="Health check",
+    description="Check if the API is running.",
+)
+def health_check() -> dict:
+    """
+    Endpoint de health check.
+    
+    Utilisé par:
+    - Docker pour vérifier que le container est healthy
+    - Les load balancers pour vérifier que l'instance est up
+    - Les systèmes de monitoring
+    """
+    return {
+        "status": "healthy",
+        "version": "0.1.0",
+    }
+
+
+@app.get(
+    "/",
+    tags=["Root"],
+    summary="Root endpoint",
+    description="Welcome message and API info.",
+)
+def root() -> dict:
+    """Endpoint racine avec message de bienvenue."""
+    return {
+        "message": "Welcome to Life Planner API",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
