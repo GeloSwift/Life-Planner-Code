@@ -2,14 +2,15 @@
 # DOCKER COMPOSE - LOCAL DEVELOPMENT
 # =============================================================================
 # Usage:
-#   docker compose up              # Lance tous les services
-#   docker compose up -d           # Lance en arrière-plan
-#   docker compose up --build      # Rebuild les images avant de lancer
-#   docker compose down            # Arrête tous les services
-#   docker compose down -v         # Arrête et supprime les volumes (reset DB)
-#   docker compose logs -f api     # Suit les logs de l'API
-#   docker compose exec db psql -U postgres  # Accès à PostgreSQL
+#   COMPOSE_BAKE=true docker compose up --build   # Build avec Bake (plus rapide)
+#   docker compose up -d                          # Lance en arrière-plan
+#   docker compose down                           # Arrête tous les services
+#   docker compose down -v                        # Reset DB (supprime volumes)
+#   docker compose logs -f api                    # Logs de l'API
+#   docker compose exec db psql -U postgres       # Accès PostgreSQL
 #
+# Pour VS Code Database extension, connexion:
+#   Host: localhost | Port: 5432 | User: postgres | Password: postgres | DB: lifeplanner
 # =============================================================================
 
 services:
@@ -25,10 +26,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-lifeplanner}
     ports:
-      # Expose le port pour accès depuis l'hôte (pgAdmin, DBeaver, etc.)
+      # Expose le port pour accès depuis l'hôte (VS Code Database extension, DBeaver, etc.)
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      # Persistance des données (survit aux redémarrages)
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-lifeplanner}"]
@@ -46,11 +46,10 @@ services:
     build:
       context: ../app/back
       dockerfile: ../../infra/Dockerfile.api
-      target: development  # Utilise le stage "development" avec hot-reload
+      target: development
     container_name: lifeplanner-api
     restart: unless-stopped
     environment:
-      # Surcharge DATABASE_URL pour pointer vers le container "db"
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-lifeplanner}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
@@ -61,9 +60,7 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
-      # Monte le code source pour le hot-reload
       - ../app/back:/app
-      # Exclut le dossier .venv du montage (utilise les deps du container)
       - /app/.venv
     depends_on:
       db:
@@ -77,41 +74,14 @@ services:
     networks:
       - lifeplanner-network
 
-  # ---------------------------------------------------------------------------
-  # pgAdmin (optionnel) - Interface web pour PostgreSQL
-  # ---------------------------------------------------------------------------
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: lifeplanner-pgadmin
-    restart: unless-stopped
-    profiles:
-      - tools  # Ne se lance que si on fait: docker compose --profile tools up
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-angelo.nichele@icloud.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-password}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-    ports:
-      - "5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    depends_on:
-      - db
-    networks:
-      - lifeplanner-network
-
 # =============================================================================
-# Networks
+# Networks & Volumes
 # =============================================================================
 networks:
   lifeplanner-network:
     driver: bridge
 
-# =============================================================================
-# Volumes
-# =============================================================================
 volumes:
   postgres_data:
     name: lifeplanner-postgres-data
-  pgadmin_data:
-    name: lifeplanner-pgadmin-data
 
