@@ -2,14 +2,24 @@
 # DOCKER COMPOSE - LOCAL DEVELOPMENT
 # =============================================================================
 # Usage (depuis le dossier infra/):
-#   docker compose up                             # Lance tous les services
-#   docker compose up -d                          # Lance en arrière-plan
-#   docker compose up --build                     # Rebuild les images
-#   docker compose down                           # Arrête tous les services
-#   docker compose down -v                        # Reset DB (supprime volumes)
-#   docker compose logs -f api                    # Logs de l'API
-#   docker compose logs -f front                  # Logs du front
-#   docker compose exec db psql -U postgres       # Accès PostgreSQL
+#
+#   MODE RECOMMANDÉ (Windows) - Backend Docker + Front local:
+#   ─────────────────────────────────────────────────────────
+#   docker compose up db api          # Lance DB + API
+#   cd ../app/front && pnpm dev       # Front en local (hot-reload rapide!)
+#
+#   MODE COMPLET (tout dans Docker):
+#   ────────────────────────────────
+#   docker compose up                 # Lance tous les services
+#   docker compose up -d              # Lance en arrière-plan
+#   docker compose up --build         # Rebuild les images
+#
+#   COMMANDES UTILES:
+#   ─────────────────
+#   docker compose down               # Arrête tous les services
+#   docker compose down -v            # Reset DB (supprime volumes)
+#   docker compose logs -f api        # Logs de l'API
+#   docker compose exec db psql -U postgres  # Accès PostgreSQL
 #
 # URLs:
 #   Frontend: http://localhost:3000

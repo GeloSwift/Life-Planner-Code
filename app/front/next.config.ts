@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
   // Output standalone build for Docker deployment
   // This creates a minimal production build that doesn't need node_modules
   output: "standalone",
-  
-  // Disable telemetry
-  telemetry: false,
 };
 
 export default nextConfig;
+
+// Note: To disable telemetry, use the environment variable:
+// NEXT_TELEMETRY_DISABLED=1
