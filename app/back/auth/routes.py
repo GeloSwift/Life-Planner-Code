@@ -4,19 +4,25 @@ API routes for authentication.
 Ce module définit les endpoints REST pour l'authentification:
 - POST /auth/register - Inscription
 - POST /auth/login - Connexion
+- POST /auth/logout - Déconnexion
 - POST /auth/refresh - Rafraîchir le token
 - GET /auth/me - Obtenir l'utilisateur courant
+- GET /auth/google/url - Obtenir l'URL Google OAuth
+- POST /auth/google/callback - Callback Google OAuth
+- GET /auth/apple/url - Obtenir l'URL Apple OAuth
+- POST /auth/apple/callback - Callback Apple OAuth
+- GET /auth/providers - Liste des providers OAuth configurés
 
 Documentation:
 https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
-from auth import service
-from auth.models import User
+from auth import service, oauth
+from auth.models import User, AuthProvider
 from auth.schemas import (
     UserCreate,
     UserResponse,
@@ -24,7 +30,10 @@ from auth.schemas import (
     TokenResponse,
     RefreshRequest,
     MessageResponse,
+    OAuthLoginRequest,
+    OAuthURLResponse,
 )
+from core.config import settings
 from core.db import get_db
 from core.security import create_access_token, create_refresh_token, decode_token
 
@@ -34,15 +43,72 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # OAuth2PasswordBearer indique à FastAPI où récupérer le token
 # Le client doit envoyer: Authorization: Bearer <token>
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+# Cookie names
+ACCESS_TOKEN_COOKIE = "access_token"
+REFRESH_TOKEN_COOKIE = "refresh_token"
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    """
+    Définit les cookies d'authentification httpOnly.
+    
+    httpOnly empêche JavaScript d'accéder aux cookies (protection XSS).
+    secure=True en production (HTTPS uniquement).
+    samesite="lax" protège contre CSRF tout en permettant les redirects.
+    """
+    is_secure = not settings.DEBUG
+    
+    response.set_cookie(
+        key=ACCESS_TOKEN_COOKIE,
+        value=access_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE,
+        value=refresh_token,
+        httponly=True,
+        secure=is_secure,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+
+
+def clear_auth_cookies(response: Response) -> None:
+    """Supprime les cookies d'authentification."""
+    response.delete_cookie(key=ACCESS_TOKEN_COOKIE, path="/")
+    response.delete_cookie(key=REFRESH_TOKEN_COOKIE, path="/")
 
 
 # =============================================================================
 # DEPENDENCIES (Dépendances réutilisables)
 # =============================================================================
 
+def get_token_from_request(
+    token_header: str | None = Depends(oauth2_scheme),
+    access_token_cookie: str | None = Cookie(default=None, alias=ACCESS_TOKEN_COOKIE),
+) -> str | None:
+    """
+    Récupère le token depuis le header Authorization ou les cookies.
+    
+    Priorité: Header > Cookie
+    Cela permet de supporter les deux méthodes d'authentification.
+    """
+    return token_header or access_token_cookie
+
+
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(get_token_from_request),
     db: Session = Depends(get_db),
 ) -> User:
     """
@@ -64,6 +130,9 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    
+    if not token:
+        raise credentials_exception
     
     # Décode le token
     payload = decode_token(token)
@@ -93,8 +162,26 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    token: str | None = Depends(get_token_from_request),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """
+    Comme get_current_user mais retourne None si non authentifié.
+    
+    Utile pour les routes qui fonctionnent avec ou sans authentification.
+    """
+    if not token:
+        return None
+    
+    try:
+        return get_current_user(token, db)
+    except HTTPException:
+        return None
+
+
 # =============================================================================
-# ROUTES
+# ROUTES - Basic Auth
 # =============================================================================
 
 @router.post(
@@ -131,13 +218,17 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)) -> User:
     summary="Login and get tokens",
     description="Authenticate with email and password to receive JWT tokens.",
 )
-def login(login_data: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def login(
+    login_data: LoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
     """
     Connexion d'un utilisateur.
     
     - Vérifie les identifiants (email + mot de passe)
     - Génère un access token (courte durée) et un refresh token (longue durée)
-    - Retourne les deux tokens
+    - Définit les cookies httpOnly ET retourne les tokens dans la réponse
     """
     user = service.authenticate_user(db, login_data.email, login_data.password)
     
@@ -152,10 +243,31 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)) -> TokenRespo
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
     
+    # Définit les cookies httpOnly
+    set_auth_cookies(response, access_token, refresh_token)
+    
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+@router.post(
+    "/logout",
+    response_model=MessageResponse,
+    summary="Logout and clear tokens",
+    description="Clear authentication cookies.",
+)
+def logout(response: Response) -> MessageResponse:
+    """
+    Déconnexion de l'utilisateur.
+    
+    Supprime les cookies d'authentification.
+    Note: Les tokens JWT restent valides jusqu'à expiration.
+    Pour une révocation complète, implémenter une blacklist de tokens.
+    """
+    clear_auth_cookies(response)
+    return MessageResponse(message="Successfully logged out")
 
 
 @router.post(
@@ -164,9 +276,18 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)) -> TokenRespo
     summary="Refresh access token",
     description="Get a new access token using a valid refresh token.",
 )
-def refresh(refresh_data: RefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def refresh(
+    response: Response,
+    refresh_data: RefreshRequest | None = None,
+    refresh_token_cookie: str | None = Cookie(default=None, alias=REFRESH_TOKEN_COOKIE),
+    db: Session = Depends(get_db),
+) -> TokenResponse:
     """
     Rafraîchit un access token.
+    
+    Le refresh token peut être fourni:
+    - Dans le body (refresh_data.refresh_token)
+    - Dans les cookies (refresh_token_cookie)
     
     Le refresh token a une durée de vie plus longue (7 jours par défaut).
     Il permet d'obtenir un nouveau access token sans redemander le mot de passe.
@@ -177,8 +298,13 @@ def refresh(refresh_data: RefreshRequest, db: Session = Depends(get_db)) -> Toke
         headers={"WWW-Authenticate": "Bearer"},
     )
     
+    # Récupère le refresh token (body > cookie)
+    token = refresh_data.refresh_token if refresh_data else refresh_token_cookie
+    if not token:
+        raise credentials_exception
+    
     # Décode le refresh token
-    payload = decode_token(refresh_data.refresh_token)
+    payload = decode_token(token)
     if payload is None:
         raise credentials_exception
     
@@ -198,6 +324,9 @@ def refresh(refresh_data: RefreshRequest, db: Session = Depends(get_db)) -> Toke
     # Génère de nouveaux tokens
     access_token = create_access_token(data={"sub": user.id})
     new_refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Met à jour les cookies
+    set_auth_cookies(response, access_token, new_refresh_token)
     
     return TokenResponse(
         access_token=access_token,
@@ -219,4 +348,204 @@ def get_me(current_user: User = Depends(get_current_user)) -> User:
     La dépendance `get_current_user` extrait automatiquement l'utilisateur du token.
     """
     return current_user
+
+
+# =============================================================================
+# ROUTES - OAuth Providers Info
+# =============================================================================
+
+@router.get(
+    "/providers",
+    summary="Get configured OAuth providers",
+    description="Returns which OAuth providers are configured and available.",
+)
+def get_providers() -> dict:
+    """
+    Retourne la liste des providers OAuth configurés.
+    
+    Permet au frontend de savoir quels boutons OAuth afficher.
+    """
+    return {
+        "google": oauth.is_google_configured(),
+        "apple": oauth.is_apple_configured(),
+    }
+
+
+# =============================================================================
+# ROUTES - Google OAuth
+# =============================================================================
+
+@router.get(
+    "/google/url",
+    response_model=OAuthURLResponse,
+    summary="Get Google OAuth URL",
+    description="Get the authorization URL for Google Sign-In.",
+)
+def get_google_url(redirect_uri: str) -> OAuthURLResponse:
+    """
+    Génère l'URL d'autorisation Google OAuth.
+    
+    Le frontend redirige l'utilisateur vers cette URL.
+    Après authentification, Google redirige vers redirect_uri avec un code.
+    """
+    if not oauth.is_google_configured():
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured",
+        )
+    
+    authorization_url, state = oauth.get_google_auth_url(redirect_uri)
+    return OAuthURLResponse(authorization_url=authorization_url, state=state)
+
+
+@router.post(
+    "/google/callback",
+    response_model=TokenResponse,
+    summary="Google OAuth callback",
+    description="Exchange Google authorization code for tokens.",
+)
+async def google_callback(
+    oauth_data: OAuthLoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    """
+    Callback Google OAuth.
+    
+    Le frontend envoie le code d'autorisation reçu de Google.
+    L'API l'échange contre les infos utilisateur et génère des tokens JWT.
+    """
+    if not oauth.is_google_configured():
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured",
+        )
+    
+    try:
+        # Échange le code contre les infos utilisateur
+        user_info = await oauth.exchange_google_code(
+            code=oauth_data.code,
+            redirect_uri=oauth_data.redirect_uri,
+        )
+        
+        # Crée ou récupère l'utilisateur
+        user = service.get_or_create_oauth_user(
+            db=db,
+            email=user_info.email,
+            full_name=user_info.name,
+            provider=AuthProvider.GOOGLE,
+            provider_user_id=user_info.provider_user_id,
+            avatar_url=user_info.picture,
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    
+    # Génère les tokens
+    access_token = create_access_token(data={"sub": user.id})
+    refresh_token = create_refresh_token(data={"sub": user.id})
+    
+    # Définit les cookies
+    set_auth_cookies(response, access_token, refresh_token)
+    
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
+
+
+# =============================================================================
+# ROUTES - Apple OAuth
+# =============================================================================
+
+@router.get(
+    "/apple/url",
+    response_model=OAuthURLResponse,
+    summary="Get Apple OAuth URL",
+    description="Get the authorization URL for Apple Sign In.",
+)
+def get_apple_url(redirect_uri: str) -> OAuthURLResponse:
+    """
+    Génère l'URL d'autorisation Apple Sign In.
+    
+    Le frontend redirige l'utilisateur vers cette URL.
+    Après authentification, Apple redirige vers redirect_uri avec un code.
+    """
+    if not oauth.is_apple_configured():
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Apple OAuth is not configured",
+        )
+    
+    authorization_url, state = oauth.get_apple_auth_url(redirect_uri)
+    return OAuthURLResponse(authorization_url=authorization_url, state=state)
+
+
+@router.post(
+    "/apple/callback",
+    response_model=TokenResponse,
+    summary="Apple OAuth callback",
+    description="Exchange Apple authorization code for tokens.",
+)
+async def apple_callback(
+    oauth_data: OAuthLoginRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+    user: str | None = None,  # Apple envoie les données user en JSON string
+) -> TokenResponse:
+    """
+    Callback Apple Sign In.
+    
+    Le frontend envoie le code d'autorisation reçu d'Apple.
+    L'API l'échange contre les infos utilisateur et génère des tokens JWT.
+    
+    Note: Apple n'envoie le nom de l'utilisateur qu'à la première connexion.
+    """
+    if not oauth.is_apple_configured():
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Apple OAuth is not configured",
+        )
+    
+    try:
+        import json
+        user_data = json.loads(user) if user else None
+        
+        # Échange le code contre les infos utilisateur
+        user_info = await oauth.exchange_apple_code(
+            code=oauth_data.code,
+            redirect_uri=oauth_data.redirect_uri,
+            user_data=user_data,
+        )
+        
+        # Crée ou récupère l'utilisateur
+        db_user = service.get_or_create_oauth_user(
+            db=db,
+            email=user_info.email,
+            full_name=user_info.name,
+            provider=AuthProvider.APPLE,
+            provider_user_id=user_info.provider_user_id,
+            avatar_url=user_info.picture,
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    
+    # Génère les tokens
+    access_token = create_access_token(data={"sub": db_user.id})
+    refresh_token = create_refresh_token(data={"sub": db_user.id})
+    
+    # Définit les cookies
+    set_auth_cookies(response, access_token, refresh_token)
+    
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )
 

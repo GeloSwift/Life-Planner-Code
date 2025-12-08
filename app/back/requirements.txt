@@ -7,6 +7,7 @@ alembic==1.14.0
 psycopg2-binary==2.9.10
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
-pyjwt==2.10.1
+pyjwt[crypto]==2.10.1
 python-multipart==0.0.17
 email-validator
+httpx==0.28.1

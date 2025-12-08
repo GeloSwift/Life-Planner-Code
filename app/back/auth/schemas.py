@@ -17,8 +17,16 @@ https://fastapi.tiangolo.com/tutorial/response-model/
 """
 
 from datetime import datetime
+from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
+
+
+class AuthProviderEnum(str, Enum):
+    """Providers d'authentification pour les schemas."""
+    LOCAL = "local"
+    GOOGLE = "google"
+    APPLE = "apple"
 
 
 # =============================================================================
@@ -66,6 +74,9 @@ class UserResponse(UserBase):
     """
     id: int
     is_active: bool
+    is_email_verified: bool
+    auth_provider: AuthProviderEnum
+    avatar_url: str | None = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
@@ -100,4 +111,25 @@ class RefreshRequest(BaseModel):
 class MessageResponse(BaseModel):
     """Schema générique pour les messages."""
     message: str
+
+
+# =============================================================================
+# OAUTH SCHEMAS
+# =============================================================================
+
+class OAuthLoginRequest(BaseModel):
+    """
+    Schema pour la requête OAuth.
+    
+    Le frontend envoie le code d'autorisation reçu du provider OAuth.
+    Le backend l'échange contre un access token.
+    """
+    code: str = Field(..., description="Code d'autorisation OAuth")
+    redirect_uri: str = Field(..., description="URI de redirection utilisée")
+
+
+class OAuthURLResponse(BaseModel):
+    """Schema pour la réponse contenant l'URL d'autorisation OAuth."""
+    authorization_url: str = Field(..., description="URL d'autorisation OAuth")
+    state: str = Field(..., description="State pour la validation CSRF")
 
