@@ -5,7 +5,7 @@
  * 
  * Fonctionnalités:
  * - Formulaire nom/email/mot de passe
- * - Boutons OAuth (Google, Apple)
+ * - Bouton OAuth Google
  * - Validation du mot de passe (min 8 caractères)
  * - Gestion des erreurs
  * - Redirection automatique si déjà connecté
@@ -20,11 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Mail, Lock, User, AlertCircle, Check } from "lucide-react";
-import { GoogleIcon, AppleIcon } from "@/components/icons/oauth-icons";
+import { GoogleIcon } from "@/components/icons/oauth-icons";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register, loginWithGoogle, loginWithApple, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { register, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +32,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [oauthProviders, setOauthProviders] = useState({ google: false, apple: false });
+  const [oauthProviders, setOauthProviders] = useState({ google: false });
 
   // Validation du mot de passe
   const passwordRequirements = [
@@ -103,15 +103,6 @@ export default function RegisterPage() {
     }
   };
 
-  const handleAppleLogin = async () => {
-    setError(null);
-    try {
-      await loginWithApple();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur avec Apple");
-    }
-  };
-
   // Loading state
   if (authLoading) {
     return (
@@ -139,32 +130,17 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* OAuth Buttons */}
-            {(oauthProviders.google || oauthProviders.apple) && (
+            {oauthProviders.google && (
               <>
-                <div className="grid gap-3">
-                  {oauthProviders.google && (
-                    <Button
-                      variant="outline"
-                      className="h-12 gap-3 text-base"
-                      onClick={handleGoogleLogin}
-                      disabled={isLoading}
-                    >
-                      <GoogleIcon className="h-5 w-5" />
-                      S&apos;inscrire avec Google
-                    </Button>
-                  )}
-                  {oauthProviders.apple && (
-                    <Button
-                      variant="outline"
-                      className="h-12 gap-3 text-base"
-                      onClick={handleAppleLogin}
-                      disabled={isLoading}
-                    >
-                      <AppleIcon className="h-5 w-5" />
-                      S&apos;inscrire avec Apple
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  variant="outline"
+                  className="h-12 w-full gap-3 text-base"
+                  onClick={handleGoogleLogin}
+                  disabled={isLoading}
+                >
+                  <GoogleIcon className="h-5 w-5" />
+                  S&apos;inscrire avec Google
+                </Button>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">

@@ -26,7 +26,6 @@ class AuthProviderEnum(str, Enum):
     """Providers d'authentification pour les schemas."""
     LOCAL = "local"
     GOOGLE = "google"
-    APPLE = "apple"
 
 
 # =============================================================================

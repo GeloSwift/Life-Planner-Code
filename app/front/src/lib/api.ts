@@ -168,27 +168,6 @@ export const authApi = {
       skipAuth: true,
     });
   },
-
-  /**
-   * Récupère l'URL d'autorisation Apple.
-   */
-  async getAppleUrl(redirectUri: string): Promise<OAuthURLResponse> {
-    const params = new URLSearchParams({ redirect_uri: redirectUri });
-    return apiFetch<OAuthURLResponse>(`/auth/apple/url?${params}`, {
-      skipAuth: true,
-    });
-  },
-
-  /**
-   * Callback Apple OAuth - échange le code contre des tokens.
-   */
-  async appleCallback(code: string, redirectUri: string): Promise<TokenResponse> {
-    return apiFetch<TokenResponse>("/auth/apple/callback", {
-      method: "POST",
-      body: JSON.stringify({ code, redirect_uri: redirectUri }),
-      skipAuth: true,
-    });
-  },
 };
 
 // =============================================================================

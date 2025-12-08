@@ -49,13 +49,6 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
     
-    # Apple OAuth Configuration
-    # Get credentials from: https://developer.apple.com/account/resources/authkeys
-    APPLE_CLIENT_ID: str | None = None  # Service ID (com.yourcompany.yourapp)
-    APPLE_TEAM_ID: str | None = None
-    APPLE_KEY_ID: str | None = None
-    APPLE_PRIVATE_KEY: str | None = None  # Contents of .p8 file
-    
     @property
     def database_url_sync(self) -> str:
         """

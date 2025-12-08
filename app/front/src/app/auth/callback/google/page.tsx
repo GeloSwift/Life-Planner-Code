@@ -5,30 +5,31 @@
  * 
  * Google redirige vers cette page avec un code d'autorisation.
  * On échange ce code contre des tokens via l'API.
+ * 
+ * Note: useSearchParams() doit être enveloppé dans Suspense pour le SSR.
  */
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-export default function GoogleCallbackPage() {
+function GoogleCallbackContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { handleOAuthCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const processCallback = async () => {
       const code = searchParams.get("code");
-      const error = searchParams.get("error");
+      const errorParam = searchParams.get("error");
       const state = searchParams.get("state");
 
       // Vérifie les erreurs OAuth
-      if (error) {
-        setError(`Erreur Google: ${error}`);
+      if (errorParam) {
+        setError(`Erreur Google: ${errorParam}`);
         return;
       }
 
@@ -73,6 +74,23 @@ export default function GoogleCallbackPage() {
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
       <p className="text-lg text-muted-foreground">Connexion avec Google...</p>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <p className="text-lg text-muted-foreground">Chargement...</p>
+    </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <GoogleCallbackContent />
+    </Suspense>
   );
 }
 

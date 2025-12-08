@@ -21,7 +21,7 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { authApi } from "./api";
 import type { User, AuthContextType, OAuthProviders } from "./types";
 
@@ -42,9 +42,8 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [providers, setProviders] = useState<OAuthProviders>({ google: false, apple: false });
+  const [providers, setProviders] = useState<OAuthProviders>({ google: false });
   const router = useRouter();
-  const pathname = usePathname();
 
   // Vérifie si l'utilisateur est authentifié au chargement
   useEffect(() => {
@@ -136,35 +135,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   /**
-   * Redirige vers Apple pour l'authentification.
-   */
-  const loginWithApple = useCallback(async () => {
-    const redirectUri = `${window.location.origin}/auth/callback/apple`;
-    const { authorization_url, state } = await authApi.getAppleUrl(redirectUri);
-    
-    // Stocke le state pour la validation CSRF
-    sessionStorage.setItem("oauth_state", state);
-    
-    // Redirige vers Apple
-    window.location.href = authorization_url;
-  }, []);
-
-  /**
-   * Gère le callback OAuth après redirection.
+   * Gère le callback OAuth après redirection (Google uniquement).
    */
   const handleOAuthCallback = useCallback(async (
-    provider: "google" | "apple",
+    provider: "google",
     code: string,
   ) => {
     setIsLoading(true);
     try {
       const redirectUri = `${window.location.origin}/auth/callback/${provider}`;
-      
-      if (provider === "google") {
-        await authApi.googleCallback(code, redirectUri);
-      } else {
-        await authApi.appleCallback(code, redirectUri);
-      }
+      await authApi.googleCallback(code, redirectUri);
       
       const currentUser = await authApi.getMe();
       setUser(currentUser);
@@ -200,11 +180,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       register,
       logout,
       loginWithGoogle,
-      loginWithApple,
       handleOAuthCallback,
       refreshUser,
     }),
-    [user, isLoading, login, register, logout, loginWithGoogle, loginWithApple, handleOAuthCallback, refreshUser]
+    [user, isLoading, login, register, logout, loginWithGoogle, handleOAuthCallback, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

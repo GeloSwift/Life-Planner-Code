@@ -367,7 +367,6 @@ def get_providers() -> dict:
     """
     return {
         "google": oauth.is_google_configured(),
-        "apple": oauth.is_apple_configured(),
     }
 
 
@@ -447,99 +446,6 @@ async def google_callback(
     # Génère les tokens
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
-    
-    # Définit les cookies
-    set_auth_cookies(response, access_token, refresh_token)
-    
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-    )
-
-
-# =============================================================================
-# ROUTES - Apple OAuth
-# =============================================================================
-
-@router.get(
-    "/apple/url",
-    response_model=OAuthURLResponse,
-    summary="Get Apple OAuth URL",
-    description="Get the authorization URL for Apple Sign In.",
-)
-def get_apple_url(redirect_uri: str) -> OAuthURLResponse:
-    """
-    Génère l'URL d'autorisation Apple Sign In.
-    
-    Le frontend redirige l'utilisateur vers cette URL.
-    Après authentification, Apple redirige vers redirect_uri avec un code.
-    """
-    if not oauth.is_apple_configured():
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Apple OAuth is not configured",
-        )
-    
-    authorization_url, state = oauth.get_apple_auth_url(redirect_uri)
-    return OAuthURLResponse(authorization_url=authorization_url, state=state)
-
-
-@router.post(
-    "/apple/callback",
-    response_model=TokenResponse,
-    summary="Apple OAuth callback",
-    description="Exchange Apple authorization code for tokens.",
-)
-async def apple_callback(
-    oauth_data: OAuthLoginRequest,
-    response: Response,
-    db: Session = Depends(get_db),
-    user: str | None = None,  # Apple envoie les données user en JSON string
-) -> TokenResponse:
-    """
-    Callback Apple Sign In.
-    
-    Le frontend envoie le code d'autorisation reçu d'Apple.
-    L'API l'échange contre les infos utilisateur et génère des tokens JWT.
-    
-    Note: Apple n'envoie le nom de l'utilisateur qu'à la première connexion.
-    """
-    if not oauth.is_apple_configured():
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Apple OAuth is not configured",
-        )
-    
-    try:
-        import json
-        user_data = json.loads(user) if user else None
-        
-        # Échange le code contre les infos utilisateur
-        user_info = await oauth.exchange_apple_code(
-            code=oauth_data.code,
-            redirect_uri=oauth_data.redirect_uri,
-            user_data=user_data,
-        )
-        
-        # Crée ou récupère l'utilisateur
-        db_user = service.get_or_create_oauth_user(
-            db=db,
-            email=user_info.email,
-            full_name=user_info.name,
-            provider=AuthProvider.APPLE,
-            provider_user_id=user_info.provider_user_id,
-            avatar_url=user_info.picture,
-        )
-        
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    
-    # Génère les tokens
-    access_token = create_access_token(data={"sub": db_user.id})
-    refresh_token = create_refresh_token(data={"sub": db_user.id})
     
     # Définit les cookies
     set_auth_cookies(response, access_token, refresh_token)

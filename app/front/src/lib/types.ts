@@ -9,7 +9,7 @@
 // ENUMS
 // =============================================================================
 
-export type AuthProvider = "local" | "google" | "apple";
+export type AuthProvider = "local" | "google";
 
 // =============================================================================
 // USER TYPES
@@ -69,7 +69,6 @@ export interface OAuthURLResponse {
 
 export interface OAuthProviders {
   google: boolean;
-  apple: boolean;
 }
 
 // =============================================================================
@@ -99,8 +98,7 @@ export interface AuthContextType extends AuthState {
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
-  handleOAuthCallback: (provider: "google" | "apple", code: string) => Promise<void>;
+  handleOAuthCallback: (provider: "google", code: string) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 

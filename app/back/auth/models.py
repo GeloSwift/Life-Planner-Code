@@ -21,7 +21,6 @@ class AuthProvider(str, Enum):
     """Providers d'authentification supportés."""
     LOCAL = "local"      # Email + mot de passe
     GOOGLE = "google"    # Google OAuth
-    APPLE = "apple"      # Apple Sign In
 
 
 class User(Base):
