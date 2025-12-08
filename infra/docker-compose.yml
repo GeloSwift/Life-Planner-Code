@@ -98,6 +98,9 @@ services:
       # API URL for client-side requests (browser)
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NODE_ENV: development
+      # Enable polling for file changes (fix for Windows/WSL)
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "3000:3000"
     volumes:
