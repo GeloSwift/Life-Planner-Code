@@ -2,12 +2,19 @@
 # DOCKER COMPOSE - LOCAL DEVELOPMENT
 # =============================================================================
 # Usage (depuis le dossier infra/):
-#   COMPOSE_BAKE=true docker compose up --build   # Build avec Bake
+#   docker compose up                             # Lance tous les services
 #   docker compose up -d                          # Lance en arrière-plan
+#   docker compose up --build                     # Rebuild les images
 #   docker compose down                           # Arrête tous les services
 #   docker compose down -v                        # Reset DB (supprime volumes)
 #   docker compose logs -f api                    # Logs de l'API
+#   docker compose logs -f front                  # Logs du front
 #   docker compose exec db psql -U postgres       # Accès PostgreSQL
+#
+# URLs:
+#   Frontend: http://localhost:3000
+#   API:      http://localhost:8000
+#   API Docs: http://localhost:8000/docs
 #
 # VS Code Database extension:
 #   Host: localhost | Port: 5433 | User: postgres | Password: postgres | DB: lifeplanner
@@ -72,6 +79,35 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - lifeplanner-network
+
+  # ---------------------------------------------------------------------------
+  # Next.js Frontend
+  # ---------------------------------------------------------------------------
+  front:
+    build:
+      context: ../app/front
+      dockerfile: Dockerfile
+      target: development
+    container_name: lifeplanner-front
+    restart: unless-stopped
+    environment:
+      # API URL for server-side requests (inside Docker network)
+      API_URL: http://api:8000
+      # API URL for client-side requests (browser)
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reload
+      - ../app/front:/app
+      # Exclude node_modules (use container's installed modules)
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
     networks:
       - lifeplanner-network
 

@@ -1,0 +1,199 @@
+# =============================================================================
+# GITHUB ACTIONS - CI/CD PIPELINE
+# =============================================================================
+# Ce workflow:
+# 1. Lint et test l'API Python et le front Next.js
+# 2. Build les images Docker
+# 3. (Optionnel) Push vers un registry et deploy
+#
+# Documentation: https://docs.github.com/en/actions
+# =============================================================================
+
+name: CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+
+jobs:
+  # ===========================================================================
+  # API JOBS
+  # ===========================================================================
+  
+  api-lint-test:
+    name: API - Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/back
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: app/back/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest pytest-cov httpx
+
+      - name: Lint with Ruff
+        run: ruff check . --output-format=github
+        continue-on-error: true
+
+      - name: Check imports
+        run: python -c "from app import app; print('✅ API imports OK')"
+
+  api-build:
+    name: API - Build Docker
+    runs-on: ubuntu-latest
+    needs: api-lint-test
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/api
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app/back
+          file: ./app/back/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+  # ===========================================================================
+  # FRONT JOBS
+  # ===========================================================================
+  
+  front-lint-test:
+    name: Front - Lint & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/front
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: app/front/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+        continue-on-error: true
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+        continue-on-error: true
+
+      - name: Build (test)
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  front-build:
+    name: Front - Build Docker
+    runs-on: ubuntu-latest
+    needs: front-lint-test
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/front
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Front image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app/front
+          file: ./app/front/Dockerfile
+          target: production
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=front
+          cache-to: type=gha,mode=max,scope=front
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8000' }}
+

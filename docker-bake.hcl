@@ -7,8 +7,10 @@
 # - Meilleure gestion des dépendances
 #
 # Usage:
-#   COMPOSE_BAKE=true docker compose -f infra/docker-compose.yml up --build
-#   docker buildx bake                              # Depuis la racine
+#   docker buildx bake                    # Build all default targets
+#   docker buildx bake api                # Build API only
+#   docker buildx bake front              # Build front only
+#   docker buildx bake --push             # Build and push to registry
 #
 # Documentation: https://docs.docker.com/build/bake/
 # =============================================================================
@@ -30,11 +32,11 @@ variable "TAG" {
 # Groups
 # =============================================================================
 group "default" {
-  targets = ["api"]
+  targets = ["api", "front"]
 }
 
 group "all" {
-  targets = ["api", "api-dev"]
+  targets = ["api", "api-dev", "front", "front-dev"]
 }
 
 # =============================================================================
@@ -68,6 +70,40 @@ target "api-dev" {
   
   tags = [
     "lifeplanner-api:dev"
+  ]
+}
+
+# =============================================================================
+# Target: Front Production
+# =============================================================================
+target "front" {
+  context    = "./app/front"
+  dockerfile = "Dockerfile"
+  target     = "production"
+  
+  tags = [
+    "${REGISTRY}/${REPOSITORY}/front:${TAG}",
+    "${REGISTRY}/${REPOSITORY}/front:latest"
+  ]
+  
+  platforms = ["linux/amd64"]
+  
+  labels = {
+    "org.opencontainers.image.source" = "https://github.com/${REPOSITORY}"
+    "org.opencontainers.image.description" = "Life Planner Frontend"
+  }
+}
+
+# =============================================================================
+# Target: Front Development
+# =============================================================================
+target "front-dev" {
+  context    = "./app/front"
+  dockerfile = "Dockerfile"
+  target     = "development"
+  
+  tags = [
+    "lifeplanner-front:dev"
   ]
 }
 
