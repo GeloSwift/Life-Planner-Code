@@ -7,6 +7,8 @@ depuis un fichier .env ou les variables système.
 Documentation: https://fastapi.tiangolo.com/advanced/settings/
 """
 
+from functools import cached_property
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,8 +28,9 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Database Configuration
-    # Format: postgresql+psycopg2://user:password@host:port/dbname
-    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/lifeplanner"
+    # Railway/Render utilisent postgresql://, SQLAlchemy a besoin de postgresql+psycopg2://
+    # La propriété database_url_sync gère la conversion automatiquement
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/lifeplanner"
     
     # JWT Configuration
     JWT_SECRET: str = "your-secret-key-change-in-production"
@@ -37,6 +40,30 @@ class Settings(BaseSettings):
     
     # CORS Configuration (frontend URL)
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    
+    @property
+    def database_url_sync(self) -> str:
+        """
+        Retourne l'URL de la base de données compatible avec psycopg2.
+        
+        Convertit automatiquement:
+        - postgresql:// → postgresql+psycopg2://
+        - postgres:// → postgresql+psycopg2:// (format legacy)
+        
+        Cela permet d'utiliser la variable DATABASE_URL native de Railway/Render
+        sans modification manuelle.
+        """
+        url = self.DATABASE_URL
+        
+        # Convertit postgres:// en postgresql:// (format legacy utilisé par certains providers)
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        
+        # Ajoute +psycopg2 si pas déjà présent
+        if url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        
+        return url
     
     model_config = SettingsConfigDict(
         # Charge les variables depuis le fichier .env à la racine du projet

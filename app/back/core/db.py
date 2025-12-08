@@ -21,8 +21,9 @@ from core.config import settings
 # Engine: gère le pool de connexions à la base de données
 # - echo=True: affiche les requêtes SQL dans les logs (utile en dev)
 # - pool_pre_ping=True: vérifie que la connexion est valide avant de l'utiliser
+# Note: database_url_sync convertit automatiquement postgresql:// en postgresql+psycopg2://
 engine = create_engine(
-    settings.DATABASE_URL,
+    settings.database_url_sync,
     echo=settings.DEBUG,
     pool_pre_ping=True,
 )

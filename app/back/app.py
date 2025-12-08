@@ -20,7 +20,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
-from core.db import engine, Base
 from auth.routes import router as auth_router
 
 
@@ -29,19 +28,13 @@ async def lifespan(app: FastAPI):
     """
     Lifespan events: startup and shutdown.
     
-    - startup: Crée les tables si elles n'existent pas (dev only)
-    - shutdown: Nettoie les ressources si nécessaire
-    
-    En production, on utilise Alembic pour les migrations.
-    
     Documentation:
     https://fastapi.tiangolo.com/advanced/events/
     """
     # Startup
-    # Crée les tables automatiquement (utile en dev, à désactiver en prod)
-    # En production, utiliser: alembic upgrade head
-    if settings.DEBUG:
-        Base.metadata.create_all(bind=engine)
+    # Les migrations sont gérées par Alembic:
+    #   alembic upgrade head
+    # Ne PAS utiliser create_all() ici pour garder le contrôle sur les migrations
     
     yield
     

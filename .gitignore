@@ -1,24 +1,179 @@
-# Node / Next
-node_modules/
-.next/
-.out/
-.vercel/
-*.log
-npm-debug.log*
+# =============================================================================
+# LIFE PLANNER - GITIGNORE
+# =============================================================================
 
-# Python
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
 .env
 .env.*
-.venv*/
-.pytest_cache/
-.mypy_cache/
+!.env.example
+*.local
 
-# Mac/IDE
-.DS_Store
+# =============================================================================
+# Python
+# =============================================================================
+# Virtual environments
+.venv/
+.venv*/
+venv/
+ENV/
+env/
+
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+*.whl
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# Linting
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# =============================================================================
+# Node.js / Next.js
+# =============================================================================
+node_modules/
+.next/
+out/
+.out/
+.vercel/
+.turbo/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build
+dist/
+build/
+
+# Cache
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# =============================================================================
+# IDE / Editors
+# =============================================================================
+# VS Code / Cursor
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains (PyCharm, WebStorm, etc.)
 .idea/
-.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# OS
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# =============================================================================
+# Docker
+# =============================================================================
+# Ignore Docker override files (local customizations)
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# =============================================================================
+# Database
+# =============================================================================
+# SQLite (if used for local dev/testing)
+*.sqlite
+*.sqlite3
+*.db
+
+# PostgreSQL dumps
+*.sql
+!infra/init.sql
+
+# =============================================================================
+# Alembic
+# =============================================================================
+# Ne PAS ignorer les migrations (elles doivent être versionnées)
+# Mais ignorer les fichiers temporaires
+alembic/versions/__pycache__/
+
+# =============================================================================
+# Misc
+# =============================================================================
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Secrets / Keys
+*.pem
+*.key
+*.crt
+secrets/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Storybook
+storybook-static/
+
+# PWA
+**/public/sw.js
+**/public/workbox-*.js
