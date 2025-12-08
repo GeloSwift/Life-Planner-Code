@@ -1,0 +1,49 @@
+# =============================================================================
+# DOCKER IGNORE - FASTAPI
+# =============================================================================
+# Exclut les fichiers inutiles du contexte de build Docker
+# =============================================================================
+
+# Virtual environments (will be installed in container)
+.venv
+venv
+ENV
+env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker (avoid recursive copy)
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+
+# Misc
+*.md
+!README.md
+
