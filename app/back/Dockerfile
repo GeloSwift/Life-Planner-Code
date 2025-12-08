@@ -4,6 +4,9 @@
 # Build: docker build -t lifeplanner-api ./app/back
 # Run:   docker run -p 8000:8000 lifeplanner-api
 #
+# For development with docker-compose, use target: development
+# For production (Railway, etc.), the default target is production (last stage)
+#
 # Documentation: https://fastapi.tiangolo.com/deployment/docker/
 # =============================================================================
 
@@ -35,15 +38,30 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------------------------------------------------------
-# Stage 3: Production
+# Stage 3: Development (for docker-compose with volume mounts)
 # -----------------------------------------------------------------------------
+FROM dependencies AS development
+
+# In dev, code is mounted as volume, no need to COPY
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+# -----------------------------------------------------------------------------
+# Stage 4: Production (DEFAULT - Railway, Render, etc.)
+# -----------------------------------------------------------------------------
+# This is the LAST stage, so it's used by default when no target is specified
 FROM dependencies AS production
 
+# Copy all application code
 COPY . .
 
 # Make startup script executable
 RUN chmod +x scripts/start.sh
 
+# Set ownership
 RUN chown -R appuser:appgroup /app
 
 USER appuser
@@ -52,20 +70,8 @@ USER appuser
 ENV PORT=8000
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
 
-# Use startup script that runs migrations then starts the server
+# Startup script runs migrations then starts Uvicorn
 CMD ["./scripts/start.sh"]
-
-# -----------------------------------------------------------------------------
-# Stage 4: Development (hot-reload)
-# -----------------------------------------------------------------------------
-FROM dependencies AS development
-
-USER appuser
-
-EXPOSE 8000
-
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
