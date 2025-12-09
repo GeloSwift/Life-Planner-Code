@@ -63,7 +63,11 @@ class User(Base):
     
     # OAuth fields
     auth_provider: Mapped[AuthProvider] = mapped_column(
-        SQLEnum(AuthProvider),
+        SQLEnum(
+            AuthProvider,
+            values_callable=lambda x: [e.value for e in x],
+            name='authprovider',
+        ),
         default=AuthProvider.LOCAL,
         nullable=False,
     )
