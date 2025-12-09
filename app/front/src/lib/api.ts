@@ -29,6 +29,35 @@ import type {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // =============================================================================
+// TOKEN STORAGE (localStorage pour cross-origin)
+// =============================================================================
+
+const TOKEN_KEY = "access_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
+
+export function getStoredToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setStoredTokens(accessToken: string, refreshToken: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+}
+
+export function clearStoredTokens(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
+function getStoredRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+// =============================================================================
 // FETCH WRAPPER
 // =============================================================================
 
@@ -52,10 +81,18 @@ async function apiFetch<T>(
     ...fetchOptions.headers,
   };
 
+  // Ajoute le token d'authentification si disponible et requis
+  if (!skipAuth) {
+    const token = getStoredToken();
+    if (token) {
+      (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetch(url, {
     ...fetchOptions,
     headers,
-    credentials: "include", // Envoie les cookies httpOnly
+    credentials: "include", // Garde les cookies pour compatibilité
   });
 
   // Gestion des erreurs HTTP
@@ -103,23 +140,32 @@ export const authApi = {
 
   /**
    * Connexion avec email et mot de passe.
-   * Les tokens sont automatiquement stockés dans les cookies httpOnly.
+   * Stocke les tokens dans localStorage pour les requêtes suivantes.
    */
   async login(data: LoginRequest): Promise<TokenResponse> {
-    return apiFetch<TokenResponse>("/auth/login", {
+    const response = await apiFetch<TokenResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify(data),
       skipAuth: true,
     });
+    // Stocke les tokens pour les requêtes futures
+    setStoredTokens(response.access_token, response.refresh_token);
+    return response;
   },
 
   /**
-   * Déconnexion - supprime les cookies.
+   * Déconnexion - supprime les tokens.
    */
   async logout(): Promise<MessageResponse> {
-    return apiFetch<MessageResponse>("/auth/logout", {
-      method: "POST",
-    });
+    try {
+      const response = await apiFetch<MessageResponse>("/auth/logout", {
+        method: "POST",
+      });
+      return response;
+    } finally {
+      // Toujours supprimer les tokens locaux, même si l'appel API échoue
+      clearStoredTokens();
+    }
   },
 
   /**
@@ -162,11 +208,14 @@ export const authApi = {
    * Callback Google OAuth - échange le code contre des tokens.
    */
   async googleCallback(code: string, redirectUri: string): Promise<TokenResponse> {
-    return apiFetch<TokenResponse>("/auth/google/callback", {
+    const response = await apiFetch<TokenResponse>("/auth/google/callback", {
       method: "POST",
       body: JSON.stringify({ code, redirect_uri: redirectUri }),
       skipAuth: true,
     });
+    // Stocke les tokens pour les requêtes futures
+    setStoredTokens(response.access_token, response.refresh_token);
+    return response;
   },
 };
 

@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { authApi } from "./api";
+import { authApi, getStoredToken, clearStoredTokens } from "./api";
 import type { User, AuthContextType, OAuthProviders } from "./types";
 
 // =============================================================================
@@ -48,11 +48,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Vérifie si l'utilisateur est authentifié au chargement
   useEffect(() => {
     const checkAuth = async () => {
+      // Vérifie d'abord si un token est stocké
+      const token = getStoredToken();
+      if (!token) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const currentUser = await authApi.getMe();
         setUser(currentUser);
       } catch {
-        // Non connecté ou token expiré
+        // Token invalide ou expiré - on le supprime
+        clearStoredTokens();
         setUser(null);
       } finally {
         setIsLoading(false);
