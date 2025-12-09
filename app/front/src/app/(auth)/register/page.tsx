@@ -39,37 +39,10 @@ function RegisterContent() {
   const [oauthProviders, setOauthProviders] = useState({ google: false });
   const [mounted, setMounted] = useState(false);
 
-
   // Animation d'entrée
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Validation du mot de passe
-  const passwordRequirements = [
-    { met: password.length >= 8, label: "Au moins 8 caractères" },
-    { met: /[A-Z]/.test(password), label: "Une lettre majuscule" },
-    { met: /[a-z]/.test(password), label: "Une lettre minuscule" },
-    { met: /[0-9]/.test(password), label: "Un chiffre" },
-  ];
-  const isPasswordValid = passwordRequirements.every((req) => req.met);
-  const doPasswordsMatch = password === confirmPassword && password.length > 0;
-
-  // Redirige si déjà connecté (avant le rendu pour éviter le flash)
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.replace("/");
-    }
-  }, [isAuthenticated, authLoading, router]);
-
-  // Ne rend rien tant que l'auth est en cours de chargement ou si déjà connecté
-  if (authLoading || isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   // Charge les providers OAuth disponibles
   useEffect(() => {
@@ -88,6 +61,31 @@ function RegisterContent() {
     };
     loadProviders();
   }, []);
+
+  // Validation du mot de passe
+  const passwordRequirements = [
+    { met: password.length >= 8, label: "Au moins 8 caractères" },
+    { met: /[A-Z]/.test(password), label: "Une lettre majuscule" },
+    { met: /[a-z]/.test(password), label: "Une lettre minuscule" },
+    { met: /[0-9]/.test(password), label: "Un chiffre" },
+  ];
+  const isPasswordValid = passwordRequirements.every((req) => req.met);
+  const doPasswordsMatch = password === confirmPassword && password.length > 0;
+
+  // Ne rend rien tant que l'auth est en cours de chargement
+  // Si déjà connecté, le callback de register() gérera la redirection
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Si déjà connecté, ne rien rendre (évite le flash et les erreurs)
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

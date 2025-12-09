@@ -80,7 +80,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentUser = await authApi.getMe();
       setUser(currentUser);
       // Utilise replace pour éviter le flash et l'historique
-      router.replace("/");
+      // Utilise setTimeout pour éviter les erreurs de rendu
+      setTimeout(() => {
+        router.replace("/");
+      }, 0);
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +101,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentUser = await authApi.getMe();
       setUser(currentUser);
       // Utilise replace pour éviter le flash et l'historique
-      router.replace("/");
+      // Utilise setTimeout pour éviter les erreurs de rendu
+      setTimeout(() => {
+        router.replace("/");
+      }, 0);
     } finally {
       setIsLoading(false);
     }
@@ -154,11 +160,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       sessionStorage.removeItem("oauth_state");
       
       // Utilise replace pour éviter le flash et l'historique
-      router.replace("/");
+      // Utilise setTimeout pour éviter les erreurs de rendu
+      setTimeout(() => {
+        router.replace("/");
+      }, 0);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   /**
    * Rafraîchit les informations de l'utilisateur.

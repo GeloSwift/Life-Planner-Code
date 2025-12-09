@@ -46,22 +46,6 @@ function LoginContent() {
     setMounted(true);
   }, []);
 
-  // Redirige si déjà connecté (avant le rendu pour éviter le flash)
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.replace("/");
-    }
-  }, [isAuthenticated, authLoading, router]);
-
-  // Ne rend rien tant que l'auth est en cours de chargement ou si déjà connecté
-  if (authLoading || isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   // Charge les providers OAuth disponibles
   useEffect(() => {
     const loadProviders = async () => {
@@ -79,6 +63,21 @@ function LoginContent() {
     };
     loadProviders();
   }, []);
+
+  // Ne rend rien tant que l'auth est en cours de chargement
+  // Si déjà connecté, le callback de login() gérera la redirection
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Si déjà connecté, ne rien rendre (évite le flash et les erreurs)
+  if (isAuthenticated) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
