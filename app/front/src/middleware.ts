@@ -47,10 +47,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Routes d'auth: redirige vers dashboard si déjà connecté
+  // Routes d'auth: redirige vers la page d'accueil si déjà connecté
   // (sauf pour les callbacks OAuth)
   if (isAuthRoute && isAuthenticated && !isOAuthCallback) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();
