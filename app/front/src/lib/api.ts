@@ -87,7 +87,13 @@ async function apiFetch<T>(
     const token = getStoredToken();
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-      console.log("[API] Token found, adding to request:", token.substring(0, 20) + "...");
+      // Décode le token pour voir son contenu (juste pour debug)
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log(`[API] Token found, user_id=${payload.sub}, exp=${new Date(payload.exp * 1000).toISOString()}`);
+      } catch {
+        console.log("[API] Token found but couldn't decode payload");
+      }
     } else {
       console.log("[API] No token found for request to:", endpoint);
     }
