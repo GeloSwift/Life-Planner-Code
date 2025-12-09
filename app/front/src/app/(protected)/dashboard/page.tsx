@@ -7,9 +7,11 @@
  * Le middleware redirige vers /login si non connecté.
  */
 
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Loader2,
   LogOut,
@@ -73,8 +75,13 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <h1 className="gradient-text text-xl font-bold">Life Planner</h1>
-          <div className="flex items-center gap-4">
+          <Link href="/">
+            <h1 className="gradient-text text-xl font-bold hover:opacity-80 transition-opacity cursor-pointer">
+              Life Planner
+            </h1>
+          </Link>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <div className="flex items-center gap-2">
               {user.avatar_url ? (
                 <img

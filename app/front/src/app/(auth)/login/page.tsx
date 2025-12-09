@@ -4,28 +4,31 @@
  * Page de connexion.
  * 
  * Fonctionnalités:
- * - Formulaire email/mot de passe
+ * - Formulaire email/mot de passe avec toggle visibilité
  * - Bouton OAuth Google
  * - Gestion des erreurs
  * - Redirection automatique si déjà connecté
  * - Toggle mode sombre
- * - Animations de transition
+ * - Animations de transition directionnelles
  */
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/oauth-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [email, setEmail] = useState("");
@@ -34,6 +37,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [oauthProviders, setOauthProviders] = useState({ google: false });
   const [mounted, setMounted] = useState(false);
+  
+  // Direction de l'animation (from=register signifie qu'on vient de register, donc animation vers la gauche)
+  const fromRegister = searchParams.get("from") === "register";
 
   // Animation d'entrée
   useEffect(() => {
@@ -97,6 +103,14 @@ export default function LoginPage() {
     );
   }
 
+  // Classes d'animation selon la direction
+  const slideInClass = fromRegister
+    ? "translate-x-0 opacity-100"
+    : "translate-x-0 opacity-100";
+  const slideOutClass = fromRegister
+    ? "translate-x-10 opacity-0"
+    : "-translate-x-10 opacity-0";
+
   return (
     <div className="flex min-h-screen">
       {/* Theme Toggle - Fixed position */}
@@ -113,12 +127,14 @@ export default function LoginPage() {
         <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent/20 blur-3xl animate-pulse delay-1000" />
         <div 
           className={`relative flex h-full flex-col justify-between p-12 text-primary-foreground transition-all duration-700 ${
-            mounted ? "translate-x-0 opacity-100" : "-translate-x-10 opacity-0"
+            mounted ? slideInClass : slideOutClass
           }`}
         >
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Life Planner</h1>
-          </div>
+          <Link href="/" className="w-fit">
+            <h1 className="text-3xl font-bold tracking-tight hover:opacity-80 transition-opacity cursor-pointer">
+              Life Planner
+            </h1>
+          </Link>
           <div className="space-y-4">
             <blockquote className="text-xl font-medium leading-relaxed">
               &ldquo;Le meilleur moment pour planter un arbre était il y a 20 ans. 
@@ -140,9 +156,11 @@ export default function LoginPage() {
           }`}
         >
           <CardHeader className="space-y-1 text-center">
-            <div className="mb-4 lg:hidden">
-              <h1 className="gradient-text text-2xl font-bold">Life Planner</h1>
-            </div>
+            <Link href="/" className="mb-4 lg:hidden block">
+              <h1 className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
+                Life Planner
+              </h1>
+            </Link>
             <CardTitle className="text-2xl font-bold tracking-tight">
               Bon retour parmi nous
             </CardTitle>
@@ -199,7 +217,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative group">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
                   <Input
                     id="email"
                     type="email"
@@ -216,18 +234,14 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-sm text-primary hover:underline transition-colors"
-                  >
+                  <span className="text-sm text-muted-foreground cursor-not-allowed opacity-50">
                     Mot de passe oublié ?
-                  </Link>
+                  </span>
                 </div>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                  <Input
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                  <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -262,7 +276,7 @@ export default function LoginPage() {
               <p className="text-center text-sm text-muted-foreground">
                 Pas encore de compte ?{" "}
                 <Link 
-                  href="/register" 
+                  href="/register?from=login" 
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline group"
                 >
                   Créer un compte
@@ -274,5 +288,17 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

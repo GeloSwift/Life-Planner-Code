@@ -4,29 +4,31 @@
  * Page d'inscription.
  * 
  * Fonctionnalités:
- * - Formulaire nom/email/mot de passe
+ * - Formulaire nom/email/mot de passe avec toggle visibilité
  * - Bouton OAuth Google
  * - Validation du mot de passe (min 8 caractères)
  * - Gestion des erreurs
  * - Redirection automatique si déjà connecté
  * - Toggle mode sombre
- * - Animations de transition
+ * - Animations de transition directionnelles
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Mail, Lock, User, AlertCircle, Check, ArrowLeft } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/oauth-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [fullName, setFullName] = useState("");
@@ -37,6 +39,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [oauthProviders, setOauthProviders] = useState({ google: false });
   const [mounted, setMounted] = useState(false);
+
+  // Direction de l'animation
+  const fromLogin = searchParams.get("from") === "login";
 
   // Animation d'entrée
   useEffect(() => {
@@ -136,9 +141,11 @@ export default function RegisterPage() {
           }`}
         >
           <CardHeader className="space-y-1 text-center">
-            <div className="mb-4 lg:hidden">
-              <h1 className="gradient-text text-2xl font-bold">Life Planner</h1>
-            </div>
+            <Link href="/" className="mb-4 lg:hidden block">
+              <h1 className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
+                Life Planner
+              </h1>
+            </Link>
             <CardTitle className="text-2xl font-bold tracking-tight">
               Créer un compte
             </CardTitle>
@@ -195,7 +202,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nom complet</Label>
                 <div className="relative group">
-                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                  <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
                   <Input
                     id="fullName"
                     type="text"
@@ -211,7 +218,7 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative group">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
                   <Input
                     id="email"
                     type="email"
@@ -228,10 +235,9 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">Mot de passe</Label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                  <Input
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                  <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -266,10 +272,9 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                  <Input
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -319,7 +324,7 @@ export default function RegisterPage() {
               <p className="text-center text-sm text-muted-foreground">
                 Déjà un compte ?{" "}
                 <Link 
-                  href="/login" 
+                  href="/login?from=register" 
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline group"
                 >
                   <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
@@ -355,9 +360,11 @@ export default function RegisterPage() {
             mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"
           }`}
         >
-          <div className="text-right">
-            <h1 className="text-3xl font-bold tracking-tight">Life Planner</h1>
-          </div>
+          <Link href="/" className="text-right w-full block">
+            <h1 className="text-3xl font-bold tracking-tight hover:opacity-80 transition-opacity cursor-pointer">
+              Life Planner
+            </h1>
+          </Link>
           <div className="space-y-6">
             <h2 className="text-3xl font-bold leading-tight">
               Transformez vos rêves<br />en plans d&apos;action
@@ -390,5 +397,17 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <RegisterContent />
+    </Suspense>
   );
 }

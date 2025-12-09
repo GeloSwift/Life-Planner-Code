@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Loader2,
   Dumbbell,
@@ -76,7 +77,8 @@ export default function HomePage() {
       {/* Header */}
       <header className="container mx-auto flex items-center justify-between px-4 py-6">
         <h1 className="gradient-text text-2xl font-bold">Life Planner</h1>
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-2 sm:gap-4">
+          <ThemeToggle />
           <Button variant="ghost" asChild>
             <Link href="/login">Se connecter</Link>
           </Button>
