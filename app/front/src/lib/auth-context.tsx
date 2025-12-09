@@ -23,7 +23,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { authApi, getStoredToken, clearStoredTokens } from "./api";
-import type { User, AuthContextType, OAuthProviders } from "./types";
+import type { User, AuthContextType } from "./types";
 
 // =============================================================================
 // CONTEXT
@@ -42,7 +42,6 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [providers, setProviders] = useState<OAuthProviders>({ google: false });
   const router = useRouter();
 
   // Vérifie si l'utilisateur est authentifié au chargement
@@ -68,17 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
 
-    const loadProviders = async () => {
-      try {
-        const availableProviders = await authApi.getProviders();
-        setProviders(availableProviders);
-      } catch {
-        // Ignore l'erreur, utilise les valeurs par défaut
-      }
-    };
-
     checkAuth();
-    loadProviders();
   }, []);
 
   /**
@@ -90,7 +79,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.login({ email, password });
       const currentUser = await authApi.getMe();
       setUser(currentUser);
-      router.push("/dashboard");
+      router.push("/");
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.login({ email, password });
       const currentUser = await authApi.getMe();
       setUser(currentUser);
-      router.push("/dashboard");
+      router.push("/");
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Nettoie le state
       sessionStorage.removeItem("oauth_state");
       
-      router.push("/dashboard");
+      router.push("/");
     } finally {
       setIsLoading(false);
     }

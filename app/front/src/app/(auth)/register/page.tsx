@@ -40,8 +40,6 @@ function RegisterContent() {
   const [oauthProviders, setOauthProviders] = useState({ google: false });
   const [mounted, setMounted] = useState(false);
 
-  // Direction de l'animation
-  const fromLogin = searchParams.get("from") === "login";
 
   // Animation d'entrée
   useEffect(() => {

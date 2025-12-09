@@ -19,9 +19,6 @@ const protectedRoutes = ["/dashboard", "/profile", "/settings"];
 // Routes qui nécessitent d'être déconnecté (auth pages)
 const authRoutes = ["/login", "/register"];
 
-// Routes publiques (pas de vérification)
-const publicRoutes = ["/", "/auth/callback"];
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   

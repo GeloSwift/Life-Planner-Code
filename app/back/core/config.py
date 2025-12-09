@@ -7,8 +7,6 @@ depuis un fichier .env ou les variables système.
 Documentation: https://fastapi.tiangolo.com/advanced/settings/
 """
 
-from functools import cached_property
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

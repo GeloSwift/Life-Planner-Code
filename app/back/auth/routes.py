@@ -17,7 +17,7 @@ Documentation:
 https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Request, Cookie
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -141,44 +141,30 @@ def get_current_user(
         print("[AUTH] No token provided")
         raise credentials_exception
     
-    print(f"[AUTH] Token received: {token[:50]}...")
-    print(f"[AUTH] JWT_SECRET used (first 10 chars): {settings.JWT_SECRET[:10]}...")
-    
     # Décode le token
     payload = decode_token(token)
     if payload is None:
-        print("[AUTH] Failed to decode token - JWT_SECRET mismatch or token invalid")
         raise credentials_exception
-    
-    print(f"[AUTH] Token decoded: {payload}")
     
     # Vérifie que c'est un access token (pas un refresh token)
     if payload.get("type") != "access":
-        print(f"[AUTH] Wrong token type: {payload.get('type')}")
         raise credentials_exception
     
     # Récupère l'ID utilisateur du token (sub est maintenant une string)
     user_id_str: str | None = payload.get("sub")
     if user_id_str is None:
-        print("[AUTH] No user_id in token")
         raise credentials_exception
     
     # Convertit en int pour la recherche en base
     try:
         user_id = int(user_id_str)
     except (ValueError, TypeError):
-        print(f"[AUTH] Invalid user_id format: {user_id_str}")
         raise credentials_exception
-    
-    print(f"[AUTH] Looking for user ID: {user_id}")
     
     # Charge l'utilisateur depuis la base de données
     user = service.get_user_by_id(db, user_id)
     if user is None:
-        print(f"[AUTH] User ID {user_id} not found in database!")
         raise credentials_exception
-    
-    print(f"[AUTH] User found: {user.email}")
     
     if not user.is_active:
         raise HTTPException(
@@ -268,7 +254,6 @@ def login(
     
     # Crée les tokens avec l'ID utilisateur dans le payload
     # PyJWT exige que 'sub' soit une string, pas un int
-    print(f"[LOGIN] Creating token for user {user.id} with JWT_SECRET (first 10): {settings.JWT_SECRET[:10]}...")
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
