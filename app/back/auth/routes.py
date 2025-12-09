@@ -157,10 +157,17 @@ def get_current_user(
         print(f"[AUTH] Wrong token type: {payload.get('type')}")
         raise credentials_exception
     
-    # Récupère l'ID utilisateur du token
-    user_id: int | None = payload.get("sub")
-    if user_id is None:
+    # Récupère l'ID utilisateur du token (sub est maintenant une string)
+    user_id_str: str | None = payload.get("sub")
+    if user_id_str is None:
         print("[AUTH] No user_id in token")
+        raise credentials_exception
+    
+    # Convertit en int pour la recherche en base
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        print(f"[AUTH] Invalid user_id format: {user_id_str}")
         raise credentials_exception
     
     print(f"[AUTH] Looking for user ID: {user_id}")
@@ -260,9 +267,10 @@ def login(
         )
     
     # Crée les tokens avec l'ID utilisateur dans le payload
+    # PyJWT exige que 'sub' soit une string, pas un int
     print(f"[LOGIN] Creating token for user {user.id} with JWT_SECRET (first 10): {settings.JWT_SECRET[:10]}...")
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     # Définit les cookies httpOnly
     set_auth_cookies(response, access_token, refresh_token)
@@ -333,8 +341,15 @@ def refresh(
     if payload.get("type") != "refresh":
         raise credentials_exception
     
-    user_id: int | None = payload.get("sub")
-    if user_id is None:
+    # Récupère l'ID utilisateur (sub est maintenant une string)
+    user_id_str: str | None = payload.get("sub")
+    if user_id_str is None:
+        raise credentials_exception
+    
+    # Convertit en int pour la recherche en base
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
         raise credentials_exception
     
     # Vérifie que l'utilisateur existe toujours et est actif
@@ -343,8 +358,9 @@ def refresh(
         raise credentials_exception
     
     # Génère de nouveaux tokens
-    access_token = create_access_token(data={"sub": user.id})
-    new_refresh_token = create_refresh_token(data={"sub": user.id})
+    # PyJWT exige que 'sub' soit une string
+    access_token = create_access_token(data={"sub": str(user.id)})
+    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     # Met à jour les cookies
     set_auth_cookies(response, access_token, new_refresh_token)
@@ -465,8 +481,9 @@ async def google_callback(
         )
     
     # Génère les tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(data={"sub": user.id})
+    # PyJWT exige que 'sub' soit une string
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     # Définit les cookies
     set_auth_cookies(response, access_token, refresh_token)
