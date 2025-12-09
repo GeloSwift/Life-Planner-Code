@@ -44,6 +44,7 @@ export function setStoredTokens(accessToken: string, refreshToken: string): void
   if (typeof window === "undefined") return;
   localStorage.setItem(TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  console.log("[API] Tokens stored successfully:", accessToken.substring(0, 20) + "...");
 }
 
 export function clearStoredTokens(): void {
@@ -86,6 +87,9 @@ async function apiFetch<T>(
     const token = getStoredToken();
     if (token) {
       (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+      console.log("[API] Token found, adding to request:", token.substring(0, 20) + "...");
+    } else {
+      console.log("[API] No token found for request to:", endpoint);
     }
   }
 
