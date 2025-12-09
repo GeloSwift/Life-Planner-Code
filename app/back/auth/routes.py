@@ -138,26 +138,39 @@ def get_current_user(
     )
     
     if not token:
+        print("[AUTH] No token provided")
         raise credentials_exception
+    
+    print(f"[AUTH] Token received: {token[:50]}...")
     
     # Décode le token
     payload = decode_token(token)
     if payload is None:
+        print("[AUTH] Failed to decode token")
         raise credentials_exception
+    
+    print(f"[AUTH] Token decoded: {payload}")
     
     # Vérifie que c'est un access token (pas un refresh token)
     if payload.get("type") != "access":
+        print(f"[AUTH] Wrong token type: {payload.get('type')}")
         raise credentials_exception
     
     # Récupère l'ID utilisateur du token
     user_id: int | None = payload.get("sub")
     if user_id is None:
+        print("[AUTH] No user_id in token")
         raise credentials_exception
+    
+    print(f"[AUTH] Looking for user ID: {user_id}")
     
     # Charge l'utilisateur depuis la base de données
     user = service.get_user_by_id(db, user_id)
     if user is None:
+        print(f"[AUTH] User ID {user_id} not found in database!")
         raise credentials_exception
+    
+    print(f"[AUTH] User found: {user.email}")
     
     if not user.is_active:
         raise HTTPException(
