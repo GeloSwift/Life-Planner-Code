@@ -142,11 +142,12 @@ def get_current_user(
         raise credentials_exception
     
     print(f"[AUTH] Token received: {token[:50]}...")
+    print(f"[AUTH] JWT_SECRET used (first 10 chars): {settings.JWT_SECRET[:10]}...")
     
     # Décode le token
     payload = decode_token(token)
     if payload is None:
-        print("[AUTH] Failed to decode token")
+        print("[AUTH] Failed to decode token - JWT_SECRET mismatch or token invalid")
         raise credentials_exception
     
     print(f"[AUTH] Token decoded: {payload}")
@@ -259,6 +260,7 @@ def login(
         )
     
     # Crée les tokens avec l'ID utilisateur dans le payload
+    print(f"[LOGIN] Creating token for user {user.id} with JWT_SECRET (first 10): {settings.JWT_SECRET[:10]}...")
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(data={"sub": user.id})
     
