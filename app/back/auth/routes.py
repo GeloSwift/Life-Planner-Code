@@ -60,16 +60,21 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
     
     httpOnly empêche JavaScript d'accéder aux cookies (protection XSS).
     secure=True en production (HTTPS uniquement).
-    samesite="lax" protège contre CSRF tout en permettant les redirects.
+    samesite="none" permet les cookies cross-origin (Vercel → Railway).
+    samesite="lax" en développement local (même origine).
     """
-    is_secure = not settings.DEBUG
+    is_production = not settings.DEBUG
+    
+    # En production (cross-origin): samesite=none + secure=true
+    # En dev local (même origine): samesite=lax + secure=false
+    samesite_policy = "none" if is_production else "lax"
     
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE,
         value=access_token,
         httponly=True,
-        secure=is_secure,
-        samesite="lax",
+        secure=is_production,
+        samesite=samesite_policy,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -77,8 +82,8 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
         key=REFRESH_TOKEN_COOKIE,
         value=refresh_token,
         httponly=True,
-        secure=is_secure,
-        samesite="lax",
+        secure=is_production,
+        samesite=samesite_policy,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/",
     )
