@@ -1,5 +1,69 @@
 # 🚀 Life Planner - Guide de Développement
 
+## 🔐 Configuration des Variables d'Environnement
+
+### Comprendre les fichiers
+
+| Fichier | Emplacement | Usage |
+|---------|-------------|-------|
+| `env.template` | `app/back/` | Template backend - **NE PAS COMMITTER DE SECRETS** |
+| `env.template` | `app/front/` | Template frontend |
+| `.env` | `app/back/` | **Fichier réel backend (ignoré par git)** |
+| `.env.local` | `app/front/` | **Fichier réel frontend (ignoré par git)** |
+
+### Configuration locale (dev)
+
+```bash
+# 1. Backend - copie le template
+cd app/back
+cp env.template .env
+# Édite .env avec tes valeurs
+
+# 2. Frontend - copie le template  
+cd app/front
+cp env.template .env.local
+# Édite .env.local avec tes valeurs
+```
+
+### Configuration production (Railway + Vercel)
+
+#### Railway (Backend API)
+
+Va dans Railway Dashboard → ton projet → Variables et ajoute :
+
+| Variable | Valeur |
+|----------|--------|
+| `DATABASE_URL` | *(fourni automatiquement par Railway)* |
+| `JWT_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `CORS_ORIGINS` | `["http://localhost:3000","https://life-planner-code.vercel.app"]` |
+| `FRONTEND_URL` | `https://life-planner-code.vercel.app` |
+| `GOOGLE_CLIENT_ID` | *(ton ID Google OAuth)* |
+| `GOOGLE_CLIENT_SECRET` | *(ton secret Google OAuth)* |
+
+#### Vercel (Frontend)
+
+Va dans Vercel Dashboard → ton projet → Settings → Environment Variables :
+
+| Variable | Valeur |
+|----------|--------|
+| `NEXT_PUBLIC_API_URL` | `https://life-planner-code-production.up.railway.app` |
+| `NEXT_PUBLIC_APP_URL` | `https://life-planner-code.vercel.app` |
+
+### Configuration Google OAuth
+
+1. Va sur [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Crée un projet ou sélectionne "Life Planner"
+3. Crée un "ID client OAuth 2.0" de type "Application Web"
+4. Ajoute les **Origines JavaScript autorisées** :
+   - `http://localhost:3000`
+   - `https://life-planner-code.vercel.app`
+5. Ajoute les **URI de redirection autorisés** :
+   - `http://localhost:3000/auth/callback/google`
+   - `https://life-planner-code.vercel.app/auth/callback/google`
+6. Copie le Client ID et le Client Secret dans Railway
+
+---
+
 ## 📋 Commandes de développement
 
 ### Démarrage rapide (Windows)
@@ -166,11 +230,13 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ## 🔐 Phase 1 : Authentification complète
 
-- [ ] **1.1** Pages Login/Register (Next.js)
-- [ ] **1.2** Connexion Front ↔ API (fetch, tokens JWT)
-- [ ] **1.3** Middleware d'authentification Next.js
-- [ ] **1.4** Page Dashboard (après login)
-- [ ] **1.5** OAuth Google/Apple (optionnel, plus tard)
+- [x] **1.1** Pages Login/Register (Next.js)
+- [x] **1.2** Connexion Front ↔ API (fetch, tokens JWT, cookies httpOnly)
+- [x] **1.3** Middleware d'authentification Next.js
+- [x] **1.4** Page Dashboard (après login)
+- [x] **1.5** OAuth Google (configuration complète)
+- [x] **1.6** Mode sombre avec toggle
+- [x] **1.7** Animations de transition
 
 ---
 

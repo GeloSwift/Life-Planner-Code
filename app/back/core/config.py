@@ -38,8 +38,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
-    # CORS Configuration (frontend URL)
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # CORS Configuration (frontend URLs - dev and production)
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "https://life-planner-code.vercel.app",
+    ]
     
     # Frontend URL (for OAuth redirects)
     FRONTEND_URL: str = "http://localhost:3000"

@@ -8,6 +8,8 @@
  * - Bouton OAuth Google
  * - Gestion des erreurs
  * - Redirection automatique si déjà connecté
+ * - Toggle mode sombre
+ * - Animations de transition
  */
 
 import { useState, useEffect } from "react";
@@ -18,8 +20,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
+import { Loader2, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
 import { GoogleIcon } from "@/components/icons/oauth-icons";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,6 +33,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [oauthProviders, setOauthProviders] = useState({ google: false });
+  const [mounted, setMounted] = useState(false);
+
+  // Animation d'entrée
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirige si déjà connecté
   useEffect(() => {
@@ -90,11 +99,23 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
+      {/* Theme Toggle - Fixed position */}
+      <div className="fixed right-4 top-4 z-50">
+        <ThemeToggle />
+      </div>
+
       {/* Left side - Decorative */}
-      <div className="relative hidden w-1/2 lg:block">
+      <div className="relative hidden w-1/2 overflow-hidden lg:block">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-accent" />
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
-        <div className="relative flex h-full flex-col justify-between p-12 text-primary-foreground">
+        {/* Animated circles */}
+        <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-pulse" />
+        <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent/20 blur-3xl animate-pulse delay-1000" />
+        <div 
+          className={`relative flex h-full flex-col justify-between p-12 text-primary-foreground transition-all duration-700 ${
+            mounted ? "translate-x-0 opacity-100" : "-translate-x-10 opacity-0"
+          }`}
+        >
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Life Planner</h1>
           </div>
@@ -113,7 +134,11 @@ export default function LoginPage() {
 
       {/* Right side - Form */}
       <div className="flex w-full items-center justify-center px-4 lg:w-1/2">
-        <Card className="w-full max-w-md border-0 shadow-none lg:border lg:shadow-sm">
+        <Card 
+          className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${
+            mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+          }`}
+        >
           <CardHeader className="space-y-1 text-center">
             <div className="mb-4 lg:hidden">
               <h1 className="gradient-text text-2xl font-bold">Life Planner</h1>
@@ -128,10 +153,14 @@ export default function LoginPage() {
           <CardContent className="space-y-6">
             {/* OAuth Buttons */}
             {oauthProviders.google && (
-              <>
+              <div 
+                className={`space-y-4 transition-all duration-500 delay-100 ${
+                  mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                }`}
+              >
                 <Button
                   variant="outline"
-                  className="h-12 w-full gap-3 text-base"
+                  className="h-12 w-full gap-3 text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
                 >
@@ -149,30 +178,35 @@ export default function LoginPage() {
                     </span>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Error message */}
             {error && (
-              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive animate-in fade-in slide-in-from-top-2 duration-300">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 {error}
               </div>
             )}
 
             {/* Email/Password Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form 
+              onSubmit={handleSubmit} 
+              className={`space-y-4 transition-all duration-500 delay-200 ${
+                mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+              }`}
+            >
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative group">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="vous@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 pl-10"
+                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
                     required
                     autoComplete="email"
                   />
@@ -184,20 +218,20 @@ export default function LoginPage() {
                   <Label htmlFor="password">Mot de passe</Label>
                   <Link
                     href="/forgot-password"
-                    className="text-sm text-primary hover:underline"
+                    className="text-sm text-primary hover:underline transition-colors"
                   >
                     Mot de passe oublié ?
                   </Link>
                 </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
                   <Input
                     id="password"
                     type="password"
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pl-10"
+                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
                     required
                     autoComplete="current-password"
                   />
@@ -206,7 +240,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="h-12 w-full text-base font-medium"
+                className="h-12 w-full text-base font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -220,16 +254,25 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Pas encore de compte ?{" "}
-              <Link href="/register" className="font-medium text-primary hover:underline">
-                Créer un compte
-              </Link>
-            </p>
+            <div 
+              className={`transition-all duration-500 delay-300 ${
+                mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+              }`}
+            >
+              <p className="text-center text-sm text-muted-foreground">
+                Pas encore de compte ?{" "}
+                <Link 
+                  href="/register" 
+                  className="inline-flex items-center gap-1 font-medium text-primary hover:underline group"
+                >
+                  Créer un compte
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
     </div>
   );
 }
-
