@@ -19,20 +19,12 @@ import {
   CheckSquare,
   ArrowRight,
   Sparkles,
+  User,
+  LogOut,
 } from "lucide-react";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  // Redirige vers dashboard si déjà connecté
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      router.push("/dashboard");
-    }
-  }, [isAuthenticated, isLoading, router]);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -76,15 +68,39 @@ export default function HomePage() {
 
       {/* Header */}
       <header className="container mx-auto flex items-center justify-between px-4 py-6">
-        <h1 className="gradient-text text-2xl font-bold">Life Planner</h1>
+        <Link href="/" className="gradient-text text-2xl font-bold">
+          Life Planner
+        </Link>
         <nav className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
-          <Button variant="ghost" asChild>
-            <Link href="/login">Se connecter</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">Commencer</Link>
-          </Button>
+          {isAuthenticated && user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+              >
+                <User className="h-4 w-4" />
+                <span className="hidden sm:inline">{user.full_name || user.email}</span>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                title="Déconnexion"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/login">Se connecter</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/register">Commencer</Link>
+              </Button>
+            </>
+          )}
         </nav>
       </header>
 
@@ -108,15 +124,26 @@ export default function HomePage() {
           </p>
 
           <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row">
-            <Button size="lg" className="h-12 px-8 text-base" asChild>
-              <Link href="/register">
-                Créer un compte gratuit
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="h-12 px-8 text-base" asChild>
-              <Link href="/login">Se connecter</Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button size="lg" className="h-12 px-8 text-base" asChild>
+                <Link href="/dashboard">
+                  Accéder au tableau de bord
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button size="lg" className="h-12 px-8 text-base" asChild>
+                  <Link href="/register">
+                    Créer un compte gratuit
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button variant="outline" size="lg" className="h-12 px-8 text-base" asChild>
+                  <Link href="/login">Se connecter</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -156,24 +183,49 @@ export default function HomePage() {
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/80 px-8 py-16 text-center text-primary-foreground sm:px-16">
           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
           <div className="relative z-10">
-            <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Prêt à transformer votre vie ?
-            </h3>
-            <p className="mx-auto mt-4 max-w-xl opacity-90">
-              Rejoignez des milliers de personnes qui utilisent Life Planner 
-              pour atteindre leurs objectifs au quotidien.
-            </p>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="mt-8 h-12 px-8 text-base"
-              asChild
-            >
-              <Link href="/register">
-                Commencer gratuitement
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            {isAuthenticated && user ? (
+              <>
+                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  Bienvenue, {user.full_name || "Champion"} ! 🎉
+                </h3>
+                <p className="mx-auto mt-4 max-w-xl opacity-90">
+                  Votre compte est prêt. Accédez à votre tableau de bord pour 
+                  commencer à planifier votre vie et atteindre vos objectifs.
+                </p>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="mt-8 h-12 px-8 text-base"
+                  asChild
+                >
+                  <Link href="/dashboard">
+                    Mon tableau de bord
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                  Prêt à transformer votre vie ?
+                </h3>
+                <p className="mx-auto mt-4 max-w-xl opacity-90">
+                  Rejoignez des milliers de personnes qui utilisent Life Planner 
+                  pour atteindre leurs objectifs au quotidien.
+                </p>
+                <Button
+                  size="lg"
+                  variant="secondary"
+                  className="mt-8 h-12 px-8 text-base"
+                  asChild
+                >
+                  <Link href="/register">
+                    Commencer gratuitement
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </section>
