@@ -46,12 +46,21 @@ function LoginContent() {
     setMounted(true);
   }, []);
 
-  // Redirige si déjà connecté
+  // Redirige si déjà connecté (avant le rendu pour éviter le flash)
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.push("/dashboard");
+      router.replace("/");
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Ne rend rien tant que l'auth est en cours de chargement ou si déjà connecté
+  if (authLoading || isAuthenticated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Charge les providers OAuth disponibles
   useEffect(() => {

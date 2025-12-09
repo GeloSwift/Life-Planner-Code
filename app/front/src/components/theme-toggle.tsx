@@ -5,20 +5,14 @@
  */
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  // Évite le flash de contenu lors du chargement
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
+  // Si le thème n'est pas encore résolu, affiche un bouton vide pour éviter le flash
+  if (!resolvedTheme) {
     return (
       <Button variant="ghost" size="icon" className="h-9 w-9">
         <span className="sr-only">Toggle theme</span>

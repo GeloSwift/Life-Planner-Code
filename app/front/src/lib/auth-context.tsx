@@ -79,12 +79,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.login({ email, password });
       const currentUser = await authApi.getMe();
       setUser(currentUser);
-      // Force une redirection complète pour éviter l'interception du middleware
-      window.location.href = "/";
+      // Utilise replace pour éviter le flash et l'historique
+      router.replace("/");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   /**
    * Inscription d'un nouvel utilisateur.
@@ -97,12 +97,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authApi.login({ email, password });
       const currentUser = await authApi.getMe();
       setUser(currentUser);
-      // Force une redirection complète pour éviter l'interception du middleware
-      window.location.href = "/";
+      // Utilise replace pour éviter le flash et l'historique
+      router.replace("/");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   /**
    * Déconnexion.
@@ -116,7 +116,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setUser(null);
       setIsLoading(false);
-      router.push("/login");
+      // Redirige vers la page d'accueil après déconnexion
+      router.replace("/");
     }
   }, [router]);
 
@@ -152,8 +153,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Nettoie le state
       sessionStorage.removeItem("oauth_state");
       
-      // Force une redirection complète pour éviter l'interception du middleware
-      window.location.href = "/";
+      // Utilise replace pour éviter le flash et l'historique
+      router.replace("/");
     } finally {
       setIsLoading(false);
     }
