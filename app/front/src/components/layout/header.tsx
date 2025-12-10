@@ -31,9 +31,7 @@ export function Header({ variant = "default" }: HeaderProps) {
       : "";
 
   const containerClasses =
-    variant === "sticky"
-      ? "container mx-auto flex h-16 items-center justify-between px-4"
-      : "container mx-auto flex items-center justify-between px-4 py-6";
+    "container mx-auto flex items-center justify-between px-4 py-6";
 
   return (
     <header className={headerClasses}>
@@ -46,7 +44,7 @@ export function Header({ variant = "default" }: HeaderProps) {
           {isAuthenticated && user && !isLoading ? (
             <>
               <Link
-                href="/dashboard"
+                href="/profile"
                 className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
               >
                 {user.avatar_url ? (

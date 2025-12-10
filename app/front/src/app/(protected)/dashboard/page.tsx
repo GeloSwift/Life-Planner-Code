@@ -172,41 +172,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </section>
-
-        {/* Account Info */}
-        <section className="mt-12">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Informations du compte</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-sm text-muted-foreground">Email</p>
-                <p className="font-medium">{user.email}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Méthode de connexion</p>
-                <p className="font-medium capitalize">{user.auth_provider}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Compte créé le</p>
-                <p className="font-medium">
-                  {new Date(user.created_at).toLocaleDateString("fr-FR", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Email vérifié</p>
-                <p className="font-medium">
-                  {user.is_email_verified ? "✅ Oui" : "❌ Non"}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
       </main>
       <Footer />
     </div>
