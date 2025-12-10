@@ -10,7 +10,9 @@
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import {
   Loader2,
   Dumbbell,
@@ -19,8 +21,6 @@ import {
   CheckSquare,
   ArrowRight,
   Sparkles,
-  User,
-  LogOut,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -59,50 +59,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen overflow-hidden">
-      {/* Background decoration */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/5" />
-        <div className="absolute right-0 top-0 h-[500px] w-[500px] rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-[500px] w-[500px] rounded-full bg-accent/10 blur-3xl" />
-      </div>
-
-      {/* Header */}
-      <header className="container mx-auto flex items-center justify-between px-4 py-6">
-        <Link href="/" className="gradient-text text-2xl font-bold">
-          Life Planner
-        </Link>
-        <nav className="flex items-center gap-2 sm:gap-4">
-          <ThemeToggle />
-          {isAuthenticated && user ? (
-            <>
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-              >
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">{user.full_name || user.email}</span>
-              </Link>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={logout}
-                title="Déconnexion"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" asChild>
-                <Link href="/login">Se connecter</Link>
-              </Button>
-              <Button asChild>
-                <Link href="/register">Commencer</Link>
-              </Button>
-            </>
-          )}
-        </nav>
-      </header>
+      <BackgroundDecorations />
+      <Header />
 
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center lg:py-32">
@@ -230,20 +188,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container mx-auto flex flex-col items-center justify-between gap-4 px-4 text-sm text-muted-foreground sm:flex-row">
-          <p>© 2024 Life Planner. Tous droits réservés.</p>
-          <div className="flex gap-6">
-            <Link href="/privacy" className="hover:text-foreground">
-              Confidentialité
-            </Link>
-            <Link href="/terms" className="hover:text-foreground">
-              Conditions
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

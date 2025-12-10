@@ -7,16 +7,16 @@
  * Le middleware redirige vers /login si non connecté.
  */
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import {
   Loader2,
-  LogOut,
   User,
   Dumbbell,
   Utensils,
@@ -81,40 +81,9 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-sm">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/">
-            <h1 className="gradient-text text-xl font-bold hover:opacity-80 transition-opacity cursor-pointer">
-              Life Planner
-            </h1>
-          </Link>
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <div className="flex items-center gap-2">
-              {user.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.avatar_url}
-                  alt={user.full_name || user.email}
-                  className="h-8 w-8 rounded-full"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <User className="h-4 w-4" />
-                </div>
-              )}
-              <span className="hidden text-sm font-medium sm:inline">
-                {user.full_name || user.email}
-              </span>
-            </div>
-            <Button variant="ghost" size="icon" onClick={logout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen overflow-hidden">
+      <BackgroundDecorations />
+      <Header variant="sticky" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -239,6 +208,7 @@ export default function DashboardPage() {
           </Card>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }
