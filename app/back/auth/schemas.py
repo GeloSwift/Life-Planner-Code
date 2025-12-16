@@ -132,3 +132,7 @@ class OAuthURLResponse(BaseModel):
     authorization_url: str = Field(..., description="URL d'autorisation OAuth")
     state: str = Field(..., description="State pour la validation CSRF")
 
+
+class AvatarUpdateRequest(BaseModel):
+    """Schema pour la mise à jour de l'avatar."""
+    avatar_url: str = Field(..., description="URL de l'avatar (peut être une data URL base64)")

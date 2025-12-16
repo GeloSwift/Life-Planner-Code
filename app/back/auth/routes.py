@@ -25,6 +25,7 @@ from auth import service, oauth
 from auth.models import User, AuthProvider
 from auth.schemas import (
     UserCreate,
+    UserUpdate,
     UserResponse,
     LoginRequest,
     TokenResponse,
@@ -32,6 +33,7 @@ from auth.schemas import (
     MessageResponse,
     OAuthLoginRequest,
     OAuthURLResponse,
+    AvatarUpdateRequest,
 )
 from core.config import settings
 from core.db import get_db
@@ -369,6 +371,74 @@ def get_me(current_user: User = Depends(get_current_user)) -> User:
     Cette route est protégée: elle nécessite un access token valide.
     La dépendance `get_current_user` extrait automatiquement l'utilisateur du token.
     """
+    return current_user
+
+
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Update current user",
+    description="Update the currently authenticated user's information.",
+)
+def update_me(
+    user_data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Met à jour les informations de l'utilisateur connecté.
+    
+    - full_name: Nom complet (optionnel)
+    - password: Nouveau mot de passe (optionnel, min. 8 caractères)
+      Note: Non disponible pour les utilisateurs OAuth (Google)
+    
+    Raises:
+        HTTPException 400: Si l'utilisateur est OAuth et essaie de changer le mot de passe
+    """
+    # Les utilisateurs OAuth ne peuvent pas changer leur mot de passe
+    if user_data.password and current_user.auth_provider != AuthProvider.LOCAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change password for OAuth users",
+        )
+    
+    # Vérifie que l'email n'est pas déjà utilisé (si changement d'email)
+    if user_data.email and user_data.email != current_user.email:
+        existing_user = service.get_user_by_email(db, user_data.email)
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered",
+            )
+    
+    # Met à jour l'utilisateur
+    updated_user = service.update_user(db, current_user, user_data)
+    return updated_user
+
+
+@router.post(
+    "/me/avatar",
+    response_model=UserResponse,
+    summary="Upload avatar",
+    description="Upload a profile picture for the current user.",
+)
+def upload_avatar(
+    avatar_data: AvatarUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Met à jour l'avatar de l'utilisateur connecté.
+    
+    Accepte une URL d'avatar (peut être une data URL base64).
+    L'avatar est stocké dans le champ avatar_url de l'utilisateur.
+    
+    Args:
+        avatar_data: Données contenant l'URL de l'avatar
+    """
+    current_user.avatar_url = avatar_data.avatar_url
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

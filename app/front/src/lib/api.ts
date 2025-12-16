@@ -172,6 +172,26 @@ export const authApi = {
   },
 
   /**
+   * Met à jour les informations de l'utilisateur connecté.
+   */
+  async updateMe(data: UserUpdate): Promise<User> {
+    return apiFetch<User>("/auth/me", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Met à jour l'avatar de l'utilisateur connecté.
+   */
+  async updateAvatar(avatarUrl: string): Promise<User> {
+    return apiFetch<User>("/auth/me/avatar", {
+      method: "POST",
+      body: JSON.stringify({ avatar_url: avatarUrl }),
+    });
+  },
+
+  /**
    * Rafraîchit les tokens.
    * Utilise le refresh token stocké dans les cookies.
    */
