@@ -14,7 +14,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Suspense } from "react";
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { login, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   

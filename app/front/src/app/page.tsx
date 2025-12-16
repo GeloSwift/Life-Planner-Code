@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (

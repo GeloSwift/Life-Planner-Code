@@ -14,6 +14,7 @@
 import type {
   User,
   UserCreate,
+  UserUpdate,
   LoginRequest,
   TokenResponse,
   OAuthURLResponse,

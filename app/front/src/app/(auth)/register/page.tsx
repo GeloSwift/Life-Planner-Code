@@ -15,7 +15,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,6 @@ import { GoogleIcon } from "@/components/icons/oauth-icons";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 function RegisterContent() {
-  const router = useRouter();
   const { register, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [fullName, setFullName] = useState("");

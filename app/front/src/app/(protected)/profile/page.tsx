@@ -27,7 +27,6 @@ import {
   Calendar, 
   Shield, 
   ArrowLeft, 
-  Upload,
   Check,
   X,
   Camera
@@ -254,7 +253,7 @@ export default function ProfilePage() {
           <CardHeader>
             <CardTitle>Nom complet</CardTitle>
             <CardDescription>
-              Modifiez votre nom d'affichage
+              Modifiez votre nom d&apos;affichage
             </CardDescription>
           </CardHeader>
           <CardContent>

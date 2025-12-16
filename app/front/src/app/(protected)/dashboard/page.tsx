@@ -17,7 +17,6 @@ import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import {
   Loader2,
-  User,
   Dumbbell,
   Utensils,
   Wallet,
@@ -27,7 +26,7 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, logout, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
   // Redirige vers login si non authentifié (après le chargement)

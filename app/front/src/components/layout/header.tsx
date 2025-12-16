@@ -45,17 +45,19 @@ export function Header({ variant = "default" }: HeaderProps) {
             <>
               <Link
                 href="/profile"
-                className="flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+                className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
               >
                 {user.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={user.avatar_url}
                     alt={user.full_name || user.email}
-                    className="h-6 w-6 rounded-full"
+                    className="h-8 w-8 rounded-full border-2 border-primary/20 object-cover"
                   />
                 ) : (
-                  <User className="h-4 w-4" />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+                    <User className="h-4 w-4" />
+                  </div>
                 )}
                 <span className="hidden sm:inline">{user.full_name || user.email}</span>
               </Link>
