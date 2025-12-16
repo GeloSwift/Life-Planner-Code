@@ -127,7 +127,7 @@ export default function ProfilePage() {
 
     setIsSavingName(true);
     try {
-      await authApi.updateMe({ full_name: fullName.trim() || null });
+      await authApi.updateMe({ full_name: fullName.trim() || undefined });
       await refreshUser();
       setIsEditingName(false);
     } catch (error) {
