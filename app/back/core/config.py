@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
     
+    # MailerSend Configuration
+    # Get API key from: https://app.mailersend.com/api
+    MAILERSEND_API_KEY: str | None = None
+    # Email sender (must be verified in MailerSend)
+    MAILERSEND_FROM_EMAIL: str = "noreply@lifeplanner.app"
+    MAILERSEND_FROM_NAME: str = "Life Planner"
+    
     @property
     def database_url_sync(self) -> str:
         """

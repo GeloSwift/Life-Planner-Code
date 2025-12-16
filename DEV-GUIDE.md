@@ -39,6 +39,9 @@ Va dans Railway Dashboard → ton projet → Variables et ajoute :
 | `FRONTEND_URL` | `https://life-planner-code.vercel.app` |
 | `GOOGLE_CLIENT_ID` | *(ton ID Google OAuth)* |
 | `GOOGLE_CLIENT_SECRET` | *(ton secret Google OAuth)* |
+| `MAILERSEND_API_KEY` | *(ton API key MailerSend)* |
+| `MAILERSEND_FROM_EMAIL` | `noreply@lifeplanner.app` *(email vérifié dans MailerSend)* |
+| `MAILERSEND_FROM_NAME` | `Life Planner` |
 
 #### Vercel (Frontend)
 

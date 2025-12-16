@@ -43,6 +43,8 @@ from core.security import (
     decode_token,
     create_email_verification_token,
 )
+from core.email import get_email_service
+from core.email import get_email_service
 
 
 # Router avec préfixe /auth et tag pour la documentation
@@ -288,10 +290,7 @@ def send_verification_email(
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     """
-    Envoie un email de vérification à l'utilisateur connecté.
-    
-    Pour l'instant, cette route génère un token et retourne un message.
-    L'envoi d'email réel sera implémenté plus tard avec un service d'email.
+    Envoie un email de vérification à l'utilisateur connecté via MailerSend.
     
     Note: Les utilisateurs OAuth (Google) ont déjà leur email vérifié automatiquement.
     """
@@ -308,14 +307,32 @@ def send_verification_email(
         email=current_user.email,
     )
     
-    # TODO: Envoyer l'email avec le lien de vérification
-    # Pour l'instant, on retourne juste un message
-    # Le lien serait: {FRONTEND_URL}/auth/verify-email?token={verification_token}
+    # Construit l'URL de vérification
     verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verification_token}"
     
-    # En production, on enverrait l'email ici
-    # Pour l'instant, on log juste l'URL (à retirer en production)
-    print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    # Récupère le service email
+    email_service = get_email_service()
+    
+    if email_service:
+        # Envoie l'email via MailerSend
+        try:
+            email_service.send_verification_email(
+                to_email=current_user.email,
+                to_name=current_user.full_name,
+                verification_url=verification_url,
+            )
+        except Exception as e:
+            # Log l'erreur mais ne bloque pas la réponse
+            # En production, on pourrait logger dans un service de monitoring
+            print(f"[EMAIL] Failed to send verification email to {current_user.email}: {e}")
+            # En développement, on peut quand même retourner un succès
+            # En production, on pourrait lever une exception
+            if settings.DEBUG:
+                print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    else:
+        # MailerSend n'est pas configuré (mode dev)
+        # On log juste l'URL pour le développement
+        print(f"[DEV] MailerSend not configured. Email verification URL for {current_user.email}: {verification_url}")
     
     return MessageResponse(
         message="Verification email sent. Please check your inbox."
@@ -709,10 +726,7 @@ def send_verification_email(
     db: Session = Depends(get_db),
 ) -> MessageResponse:
     """
-    Envoie un email de vérification à l'utilisateur connecté.
-    
-    Pour l'instant, cette route génère un token et retourne un message.
-    L'envoi d'email réel sera implémenté plus tard avec un service d'email.
+    Envoie un email de vérification à l'utilisateur connecté via MailerSend.
     
     Note: Les utilisateurs OAuth (Google) ont déjà leur email vérifié automatiquement.
     """
@@ -729,14 +743,32 @@ def send_verification_email(
         email=current_user.email,
     )
     
-    # TODO: Envoyer l'email avec le lien de vérification
-    # Pour l'instant, on retourne juste un message
-    # Le lien serait: {FRONTEND_URL}/auth/verify-email?token={verification_token}
+    # Construit l'URL de vérification
     verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verification_token}"
     
-    # En production, on enverrait l'email ici
-    # Pour l'instant, on log juste l'URL (à retirer en production)
-    print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    # Récupère le service email
+    email_service = get_email_service()
+    
+    if email_service:
+        # Envoie l'email via MailerSend
+        try:
+            email_service.send_verification_email(
+                to_email=current_user.email,
+                to_name=current_user.full_name,
+                verification_url=verification_url,
+            )
+        except Exception as e:
+            # Log l'erreur mais ne bloque pas la réponse
+            # En production, on pourrait logger dans un service de monitoring
+            print(f"[EMAIL] Failed to send verification email to {current_user.email}: {e}")
+            # En développement, on peut quand même retourner un succès
+            # En production, on pourrait lever une exception
+            if settings.DEBUG:
+                print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    else:
+        # MailerSend n'est pas configuré (mode dev)
+        # On log juste l'URL pour le développement
+        print(f"[DEV] MailerSend not configured. Email verification URL for {current_user.email}: {verification_url}")
     
     return MessageResponse(
         message="Verification email sent. Please check your inbox."
