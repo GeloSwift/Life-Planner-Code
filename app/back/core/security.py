@@ -136,3 +136,34 @@ def decode_token(token: str) -> dict | None:
     except jwt.PyJWTError:
         return None
 
+
+def create_email_verification_token(user_id: int, email: str) -> str:
+    """
+    Crée un token JWT pour la vérification d'email.
+    
+    Le token expire après 24 heures.
+    
+    Args:
+        user_id: ID de l'utilisateur
+        email: Email à vérifier
+        
+    Returns:
+        Token JWT de vérification d'email
+    """
+    to_encode = {
+        "sub": str(user_id),
+        "email": email,
+        "type": "email_verification",
+    }
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    })
+    
+    return jwt.encode(
+        to_encode,
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALGORITHM,
+    )

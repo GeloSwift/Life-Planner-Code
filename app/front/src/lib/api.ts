@@ -234,6 +234,25 @@ export const authApi = {
     setStoredTokens(response.access_token, response.refresh_token);
     return response;
   },
+
+  /**
+   * Envoie un email de vérification à l'utilisateur connecté.
+   */
+  async sendVerificationEmail(): Promise<MessageResponse> {
+    return apiFetch<MessageResponse>("/auth/verify-email/send", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Vérifie l'email avec un token de vérification.
+   */
+  async verifyEmail(token: string): Promise<MessageResponse> {
+    const params = new URLSearchParams({ token });
+    return apiFetch<MessageResponse>(`/auth/verify-email?${params}`, {
+      skipAuth: true,
+    });
+  },
 };
 
 // =============================================================================

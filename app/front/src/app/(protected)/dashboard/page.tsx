@@ -23,6 +23,7 @@ import {
   CheckSquare,
   Calendar,
   TrendingUp,
+  Hand,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -88,8 +89,9 @@ export default function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         {/* Welcome Section */}
         <section className="mb-12">
-          <h2 className="text-3xl font-bold tracking-tight">
-            Bienvenue{user.full_name ? `, ${user.full_name.split(" ")[0]}` : ""} 👋
+          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            Bienvenue{user.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}
+            <Hand className="h-8 w-8 text-primary" />
           </h2>
           <p className="mt-2 text-muted-foreground">
             Voici un aperçu de votre journée. Prêt à atteindre vos objectifs ?

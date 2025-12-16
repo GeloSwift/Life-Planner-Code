@@ -37,7 +37,12 @@ from auth.schemas import (
 )
 from core.config import settings
 from core.db import get_db
-from core.security import create_access_token, create_refresh_token, decode_token
+from core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    create_email_verification_token,
+)
 
 
 # Router avec préfixe /auth et tag pour la documentation
@@ -268,6 +273,127 @@ def login(
     )
 
 
+# =============================================================================
+# ROUTES - Email Verification
+# =============================================================================
+
+@router.post(
+    "/verify-email/send",
+    response_model=MessageResponse,
+    summary="Send email verification",
+    description="Send a verification email to the current user.",
+)
+def send_verification_email(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Envoie un email de vérification à l'utilisateur connecté.
+    
+    Pour l'instant, cette route génère un token et retourne un message.
+    L'envoi d'email réel sera implémenté plus tard avec un service d'email.
+    
+    Note: Les utilisateurs OAuth (Google) ont déjà leur email vérifié automatiquement.
+    """
+    # Les utilisateurs OAuth ont déjà leur email vérifié
+    if current_user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already verified",
+        )
+    
+    # Génère un token de vérification
+    verification_token = create_email_verification_token(
+        user_id=current_user.id,
+        email=current_user.email,
+    )
+    
+    # TODO: Envoyer l'email avec le lien de vérification
+    # Pour l'instant, on retourne juste un message
+    # Le lien serait: {FRONTEND_URL}/auth/verify-email?token={verification_token}
+    verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verification_token}"
+    
+    # En production, on enverrait l'email ici
+    # Pour l'instant, on log juste l'URL (à retirer en production)
+    print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    
+    return MessageResponse(
+        message="Verification email sent. Please check your inbox."
+    )
+
+
+@router.get(
+    "/verify-email",
+    response_model=MessageResponse,
+    summary="Verify email",
+    description="Verify user email with a verification token.",
+)
+def verify_email(
+    token: str,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Vérifie l'email de l'utilisateur avec un token de vérification.
+    
+    Le token est reçu par email et contient l'ID utilisateur et l'email.
+    """
+    # Décode le token
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+    
+    # Vérifie que c'est bien un token de vérification d'email
+    if payload.get("type") != "email_verification":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type",
+        )
+    
+    # Récupère l'ID utilisateur
+    user_id_str: str | None = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token payload",
+        )
+    
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID in token",
+        )
+    
+    # Récupère l'utilisateur
+    user = service.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Vérifie que l'email correspond
+    token_email = payload.get("email")
+    if token_email != user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email mismatch",
+        )
+    
+    # Marque l'email comme vérifié
+    if user.is_email_verified:
+        return MessageResponse(message="Email already verified")
+    
+    user.is_email_verified = True
+    db.commit()
+    
+    return MessageResponse(message="Email verified successfully")
+
+
 @router.post(
     "/logout",
     response_model=MessageResponse,
@@ -436,10 +562,29 @@ def upload_avatar(
     Args:
         avatar_data: Données contenant l'URL de l'avatar
     """
-    current_user.avatar_url = avatar_data.avatar_url
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+    try:
+        # Valide que l'URL n'est pas trop longue (limite de la base de données: 500 caractères pour URL normale)
+        # Mais on accepte les data URLs base64 qui peuvent être plus longues
+        # On augmente la limite à 200KB pour les data URLs
+        if len(avatar_data.avatar_url) > 200 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Avatar image is too large. Please use a smaller image.",
+            )
+        
+        current_user.avatar_url = avatar_data.avatar_url
+        db.commit()
+        db.refresh(current_user)
+        return current_user
+    except HTTPException:
+        # Re-raise les HTTPException telles quelles
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating avatar: {str(e)}",
+        )
 
 
 # =============================================================================
@@ -547,4 +692,125 @@ async def google_callback(
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+# =============================================================================
+# ROUTES - Email Verification
+# =============================================================================
+
+@router.post(
+    "/verify-email/send",
+    response_model=MessageResponse,
+    summary="Send email verification",
+    description="Send a verification email to the current user.",
+)
+def send_verification_email(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Envoie un email de vérification à l'utilisateur connecté.
+    
+    Pour l'instant, cette route génère un token et retourne un message.
+    L'envoi d'email réel sera implémenté plus tard avec un service d'email.
+    
+    Note: Les utilisateurs OAuth (Google) ont déjà leur email vérifié automatiquement.
+    """
+    # Les utilisateurs OAuth ont déjà leur email vérifié
+    if current_user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already verified",
+        )
+    
+    # Génère un token de vérification
+    verification_token = create_email_verification_token(
+        user_id=current_user.id,
+        email=current_user.email,
+    )
+    
+    # TODO: Envoyer l'email avec le lien de vérification
+    # Pour l'instant, on retourne juste un message
+    # Le lien serait: {FRONTEND_URL}/auth/verify-email?token={verification_token}
+    verification_url = f"{settings.FRONTEND_URL}/auth/verify-email?token={verification_token}"
+    
+    # En production, on enverrait l'email ici
+    # Pour l'instant, on log juste l'URL (à retirer en production)
+    print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+    
+    return MessageResponse(
+        message="Verification email sent. Please check your inbox."
+    )
+
+
+@router.get(
+    "/verify-email",
+    response_model=MessageResponse,
+    summary="Verify email",
+    description="Verify user email with a verification token.",
+)
+def verify_email(
+    token: str,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Vérifie l'email de l'utilisateur avec un token de vérification.
+    
+    Le token est reçu par email et contient l'ID utilisateur et l'email.
+    """
+    # Décode le token
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+    
+    # Vérifie que c'est bien un token de vérification d'email
+    if payload.get("type") != "email_verification":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type",
+        )
+    
+    # Récupère l'ID utilisateur
+    user_id_str: str | None = payload.get("sub")
+    if not user_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token payload",
+        )
+    
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID in token",
+        )
+    
+    # Récupère l'utilisateur
+    user = service.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Vérifie que l'email correspond
+    token_email = payload.get("email")
+    if token_email != user.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email mismatch",
+        )
+    
+    # Marque l'email comme vérifié
+    if user.is_email_verified:
+        return MessageResponse(message="Email already verified")
+    
+    user.is_email_verified = True
+    db.commit()
+    
+    return MessageResponse(message="Email verified successfully")
 

@@ -26,12 +26,13 @@ import {
   Mail, 
   Calendar, 
   Shield, 
-  ArrowLeft, 
   Check,
   X,
-  Camera
+  Camera,
+  CheckCircle2,
+  XCircle,
+  Send
 } from "lucide-react";
-import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
@@ -76,6 +77,44 @@ export default function ProfilePage() {
 
   const isLocalAuth = user.auth_provider === "local";
 
+  // Fonction pour compresser l'image
+  const compressImage = (file: File, maxWidth: number = 400, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          // Calcule les nouvelles dimensions en gardant le ratio
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Impossible de créer le contexte canvas"));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL("image/jpeg", quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Gestion de l'upload d'avatar
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -95,26 +134,30 @@ export default function ProfilePage() {
 
     setIsUploadingAvatar(true);
     try {
-      // Convertit l'image en base64
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        try {
-          await authApi.updateAvatar(base64String);
-          await refreshUser();
-          alert("Photo de profil mise à jour avec succès !");
-        } catch (error) {
-          console.error("Erreur lors de la mise à jour de l'avatar:", error);
-          alert("Erreur lors de la mise à jour de la photo de profil");
-        } finally {
-          setIsUploadingAvatar(false);
-        }
-      };
-      reader.readAsDataURL(file);
+      // Compresse l'image avant l'upload (max 400px de largeur, qualité 80%)
+      const compressedBase64 = await compressImage(file, 400, 0.8);
+      
+      // Vérifie que la taille compressée n'est pas trop grande (max 200KB en base64 ≈ 150KB réels)
+      if (compressedBase64.length > 200 * 1024) {
+        // Re-compresse avec une qualité plus faible
+        const moreCompressed = await compressImage(file, 300, 0.6);
+        await authApi.updateAvatar(moreCompressed);
+      } else {
+        await authApi.updateAvatar(compressedBase64);
+      }
+      
+      await refreshUser();
+      alert("Photo de profil mise à jour avec succès !");
     } catch (error) {
-      console.error("Erreur lors de la lecture du fichier:", error);
-      alert("Erreur lors de la lecture du fichier");
+      console.error("Erreur lors de la mise à jour de l'avatar:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
+      alert(`Erreur lors de la mise à jour de la photo de profil: ${errorMessage}`);
+    } finally {
       setIsUploadingAvatar(false);
+      // Réinitialise l'input pour permettre de sélectionner le même fichier
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -184,13 +227,6 @@ export default function ProfilePage() {
       <main className="container mx-auto px-4 py-8">
         {/* Header de la page */}
         <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour au tableau de bord
-          </Link>
           <h1 className="text-3xl font-bold tracking-tight">Mon Profil</h1>
           <p className="mt-2 text-muted-foreground">
             Gérez vos informations personnelles et les paramètres de votre compte
@@ -461,24 +497,41 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Email vérifié</p>
-                <p className="mt-1 text-base font-medium">
+                <div className="mt-1 flex items-center gap-2">
                   {user.is_email_verified ? (
-                    <span className="text-green-600 dark:text-green-400">✅ Oui</span>
+                    <>
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <span className="text-base font-medium text-green-600 dark:text-green-400">Oui</span>
+                    </>
                   ) : (
-                    <span className="text-muted-foreground">❌ Non</span>
+                    <>
+                      <XCircle className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-base font-medium text-muted-foreground">Non</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-2"
+                        onClick={async () => {
+                          try {
+                            await authApi.sendVerificationEmail();
+                            alert("Email de vérification envoyé ! Vérifiez votre boîte de réception.");
+                          } catch (error) {
+                            console.error("Erreur lors de l'envoi de l'email:", error);
+                            alert("Erreur lors de l'envoi de l'email de vérification");
+                          }
+                        }}
+                      >
+                        <Send className="h-4 w-4 mr-1" />
+                        Vérifier
+                      </Button>
+                    </>
                   )}
-                </p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="mt-6 flex gap-4">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard">Retour au tableau de bord</Link>
-          </Button>
-        </div>
       </main>
 
       <Footer />

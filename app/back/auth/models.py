@@ -76,7 +76,7 @@ class User(Base):
         nullable=True,
         index=True,
     )
-    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500000), nullable=True)  # Supporte les data URLs base64 (max ~200KB)
     
     # Flags de statut
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
