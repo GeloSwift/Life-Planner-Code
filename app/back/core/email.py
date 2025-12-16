@@ -7,8 +7,11 @@ Documentation: https://developers.mailersend.com/api/v1/email.html
 
 from typing import Optional
 
-from mailersend import emails
-from mailersend.emails import EmailParams, MailerSendEmail
+try:
+    from mailersend import emails
+except ImportError:
+    # Fallback pour éviter les erreurs si le package n'est pas installé
+    emails = None  # type: ignore
 
 from core.config import settings
 
@@ -21,7 +24,11 @@ class EmailService:
         if not settings.MAILERSEND_API_KEY:
             raise ValueError("MAILERSEND_API_KEY is not configured")
         
-        self.mailersend = MailerSendEmail(settings.MAILERSEND_API_KEY)
+        if emails is None:
+            raise ImportError("mailersend package is not installed")
+        
+        # Initialise MailerSend avec la clé API
+        self.mailersend = emails.NewEmail(settings.MAILERSEND_API_KEY)
         self.from_email = settings.MAILERSEND_FROM_EMAIL
         self.from_name = settings.MAILERSEND_FROM_NAME
     
@@ -119,34 +126,32 @@ class EmailService:
         © {settings.MAILERSEND_FROM_NAME}
         """
         
-        # Configure l'email
-        email_params = EmailParams()
-        email_params.set_from(
+        # Configure l'email selon l'API MailerSend
+        mail_body = {}
+        
+        # Configure l'expéditeur
+        mail_from = {
+            "name": self.from_name,
+            "email": self.from_email,
+        }
+        self.mailersend.set_mail_from(mail_from, mail_body)
+        
+        # Configure le destinataire
+        recipients = [
             {
-                "email": self.from_email,
-                "name": self.from_name,
+                "name": to_name or to_email,
+                "email": to_email,
             }
-        )
-        email_params.set_reply_to(
-            {
-                "email": self.from_email,
-                "name": self.from_name,
-            }
-        )
-        email_params.set_to(
-            [
-                {
-                    "email": to_email,
-                    "name": to_name or to_email,
-                }
-            ]
-        )
-        email_params.set_subject("Vérifiez votre email - Life Planner")
-        email_params.set_html(html_content)
-        email_params.set_text(text_content)
+        ]
+        self.mailersend.set_mail_to(recipients, mail_body)
+        
+        # Configure le sujet et le contenu
+        self.mailersend.set_subject("Vérifiez votre email - Life Planner", mail_body)
+        self.mailersend.set_html_content(html_content, mail_body)
+        self.mailersend.set_plaintext_content(text_content, mail_body)
         
         # Envoie l'email
-        response = self.mailersend.send(email_params)
+        response = self.mailersend.send(mail_body)
         return response
 
 

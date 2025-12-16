@@ -15,7 +15,7 @@ import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, XCircle, Mail } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 
 function VerifyEmailContent() {
