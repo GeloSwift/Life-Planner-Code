@@ -14,9 +14,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Routes qui nécessitent d'être connecté
-// Note: /dashboard est protégé côté client (vérifie localStorage)
-// Le middleware ne peut pas accéder à localStorage, donc on ne protège que les routes critiques
-const protectedRoutes = ["/profile", "/settings"];
+// Note: /dashboard et /profile sont protégés côté client (vérifie localStorage)
+// Le middleware ne peut pas accéder à localStorage, donc on ne protège pas ces routes ici
+// La redirection est gérée côté client dans chaque page
+const protectedRoutes: string[] = [];
 
 // Routes qui nécessitent d'être déconnecté (auth pages)
 const authRoutes = ["/login", "/register"];
