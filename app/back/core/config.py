@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "https://life-planner-code.vercel.app",
+        "https://www.mylifeplanner.space"
     ]
     
     # Frontend URL (for OAuth redirects)
