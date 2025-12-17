@@ -63,7 +63,7 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center lg:py-32">
+      <section className="container mx-auto px-4 py-16 text-center lg:py-24">
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
             <Sparkles className="h-4 w-4" />
@@ -107,7 +107,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
+      <section className="container mx-auto px-4 pb-16 lg:pb-24">
         <div className="mb-12 text-center">
           <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Tout ce dont vous avez besoin
