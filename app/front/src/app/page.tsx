@@ -21,10 +21,11 @@ import {
   CheckSquare,
   ArrowRight,
   Sparkles,
+  GraduationCap,
 } from "lucide-react";
 
 export default function HomePage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -55,6 +56,11 @@ export default function HomePage() {
       title: "Habitudes",
       description: "Construisez des routines durables",
     },
+    {
+      icon: GraduationCap,
+      title: "Révision de cours",
+      description: "Résumez en cartes mentales et quizz interactifs",
+    },
   ];
 
   return (
@@ -63,25 +69,25 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 text-center lg:py-24">
-        <div className="mx-auto max-w-3xl space-y-6">
+      <section className="container mx-auto px-4 py-20 text-center lg:py-32">
+        <div className="mx-auto max-w-3xl space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
             <Sparkles className="h-4 w-4" />
             Votre assistant de vie personnel
           </div>
           
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             Organisez votre vie,{" "}
             <span className="gradient-text">atteignez vos objectifs</span>
-          </h2>
+          </h1>
           
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl">
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
             Life Planner regroupe tous les outils dont vous avez besoin pour 
-            planifier votre sport, gérer votre budget, suivre vos habitudes 
-            et atteindre vos objectifs.
+            planifier votre sport, gérer votre budget, suivre vos habitudes, 
+            réviser vos cours et atteindre vos objectifs.
           </p>
 
-          <div className="flex flex-col items-center justify-center gap-4 pt-4 sm:flex-row">
+          <div className="flex flex-col items-center justify-center gap-4 pt-2 sm:flex-row">
             {isAuthenticated ? (
               <Button size="lg" className="h-12 px-8 text-base" asChild>
                 <Link href="/dashboard">
@@ -107,28 +113,28 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 pb-16 lg:pb-24">
-        <div className="mb-12 text-center">
-          <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      <section className="container mx-auto px-4 py-16 lg:py-24">
+        <div className="mb-16 text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
             Tout ce dont vous avez besoin
-          </h3>
-          <p className="mt-2 text-muted-foreground">
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
             Une application, tous vos objectifs
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className="group rounded-2xl border bg-card p-6 transition-all hover:shadow-lg hover:-translate-y-1"
+              className="group flex flex-col rounded-2xl border bg-card p-6 transition-all hover:shadow-lg hover:-translate-y-1"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <div className="mb-4 inline-flex rounded-xl bg-primary/10 p-3">
+              <div className="mb-4 inline-flex w-fit rounded-xl bg-primary/10 p-3">
                 <feature.icon className="h-6 w-6 text-primary" />
               </div>
-              <h4 className="mb-2 font-semibold">{feature.title}</h4>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {feature.description}
               </p>
             </div>
