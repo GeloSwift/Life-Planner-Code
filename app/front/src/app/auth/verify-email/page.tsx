@@ -10,6 +10,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -21,6 +22,7 @@ import Link from "next/link";
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
 
@@ -38,10 +40,12 @@ function VerifyEmailContent() {
         const response = await authApi.verifyEmail(token);
         setStatus("success");
         setMessage(response.message);
-        // Redirige vers le profil après 3 secondes
+        // Rafraîchit les données utilisateur pour mettre à jour is_email_verified
+        await refreshUser();
+        // Redirige vers le profil après 2 secondes
         setTimeout(() => {
           router.push("/profile");
-        }, 3000);
+        }, 2000);
       } catch (error) {
         setStatus("error");
         setMessage(
@@ -53,7 +57,7 @@ function VerifyEmailContent() {
     };
 
     verify();
-  }, [searchParams, router]);
+  }, [searchParams, router, refreshUser]);
 
   return (
     <div className="min-h-screen overflow-hidden">

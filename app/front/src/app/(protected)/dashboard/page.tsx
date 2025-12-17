@@ -34,8 +34,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace("/login");
+      return;
     }
-  }, [isLoading, isAuthenticated, router]);
+    
+    // Redirige vers le profil si l'email n'est pas vérifié (sauf pour OAuth)
+    if (!isLoading && user && !user.is_email_verified && user.auth_provider === "local") {
+      router.replace("/profile");
+    }
+  }, [isLoading, isAuthenticated, user, router]);
 
   if (isLoading || !user) {
     return (

@@ -455,8 +455,8 @@ export default function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-6 sm:grid-cols-2">
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-primary/10 p-2">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
                 <Mail className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
@@ -465,20 +465,20 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-primary/10 p-2">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-muted-foreground">Méthode de connexion</p>
                 <p className="mt-1 text-base font-medium capitalize">
-                  {user.auth_provider === "google" ? "Google" : "Email et mot de passe"}
+                  {user.auth_provider === "google" ? "Google" : "Connexion Classique"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-primary/10 p-2">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
                 <Calendar className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
@@ -493,8 +493,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
-              <div className="rounded-full bg-primary/10 p-2">
+            <div className="flex items-center gap-4">
+              <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
                 <Shield className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
@@ -512,7 +512,7 @@ export default function ProfilePage() {
                       onClick={async () => {
                         try {
                           await authApi.sendVerificationEmail();
-                          success("Email de vérification envoyé ! Vérifiez votre boîte de réception.");
+                          success("Email de vérification envoyé ! Vérifiez votre boîte de réception (et vos spams).");
                         } catch (err) {
                           console.error("Erreur lors de l'envoi de l'email:", err);
                           error("Erreur lors de l'envoi de l'email de vérification");
