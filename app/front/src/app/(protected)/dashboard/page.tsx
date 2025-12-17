@@ -108,7 +108,7 @@ export default function DashboardPage() {
         <section className="mb-8 sm:mb-12 grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
-              <div className="rounded-full bg-primary/10 p-2 sm:p-3 flex-shrink-0">
+              <div className="rounded-full bg-primary/10 p-2 sm:p-3 shrink-0">
                 <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
               <div className="min-w-0 flex-1">
@@ -121,7 +121,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
-              <div className="rounded-full bg-green-500/10 p-2 sm:p-3 flex-shrink-0">
+              <div className="rounded-full bg-green-500/10 p-2 sm:p-3 shrink-0">
                 <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
               </div>
               <div className="min-w-0 flex-1">
@@ -132,7 +132,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
-              <div className="rounded-full bg-red-500/10 p-2 sm:p-3 flex-shrink-0">
+              <div className="rounded-full bg-red-500/10 p-2 sm:p-3 shrink-0">
                 <Dumbbell className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
               </div>
               <div className="min-w-0 flex-1">
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           </Card>
           <Card>
             <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
-              <div className="rounded-full bg-blue-500/10 p-2 sm:p-3 flex-shrink-0">
+              <div className="rounded-full bg-blue-500/10 p-2 sm:p-3 shrink-0">
                 <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
               </div>
               <div className="min-w-0 flex-1">
@@ -162,6 +162,7 @@ export default function DashboardPage() {
               <Card
                 key={feature.title}
                 className="group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+                onClick={() => router.push(feature.href)}
               >
                 <CardHeader>
                   <div className={`mb-2 w-fit rounded-lg p-2 ${feature.bgColor}`}>

@@ -286,19 +286,19 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
   - [x] Service layer avec logique métier
   - [x] Routes API complètes
   - [x] Migration Alembic
-- [ ] **2.2** Pages Workout Frontend
-  - [ ] Dashboard workout avec statistiques
-  - [ ] Liste des templates de séances
-  - [ ] Création/édition de templates
-  - [ ] Liste des exercices
-  - [ ] Création d'exercices personnalisés
-- [ ] **2.3** Interface de séance en cours
-  - [ ] Timer de séance
-  - [ ] Suivi des séries (cocher, modifier poids/reps)
-  - [ ] Repos entre séries avec timer
-  - [ ] Terminer/annuler la séance
-- [ ] **2.4** Calendrier des séances
-  - [ ] Vue calendrier mensuel
+- [x] **2.2** Pages Workout Frontend ✅
+  - [x] Dashboard workout avec statistiques (`/workout`)
+  - [x] Actions rapides (nouvelle séance, exercice, pesée)
+  - [x] Liste des exercices avec filtres (`/workout/exercises`)
+  - [x] Page objectifs avec progression (`/workout/goals`)
+  - [x] Graphique d'évolution du poids
+- [x] **2.3** Interface de séance en cours ✅
+  - [x] Timer de séance en temps réel
+  - [x] Suivi des séries (cocher, modifier poids/reps)
+  - [x] Timer de repos entre séries (avec notification)
+  - [x] Terminer/annuler la séance
+- [x] **2.4** Calendrier des séances ✅
+  - [x] Vue calendrier mensuel avec indicateurs de couleur
   - [ ] Planification de séances
   - [ ] Historique visuel
 - [ ] **2.5** Pesées et objectifs
