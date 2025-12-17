@@ -223,48 +223,48 @@ export default function ProfilePage() {
       <BackgroundDecorations />
       <Header variant="sticky" />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header de la page */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Mon Profil</h1>
-          <p className="mt-2 text-muted-foreground">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Mon Profil</h1>
+          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
             Gérez vos informations personnelles et les paramètres de votre compte
           </p>
         </div>
 
         {/* Avatar et nom */}
-        <Card className="mb-6">
+        <Card className="mb-4 sm:mb-6">
           <CardHeader>
-            <CardTitle>Photo de profil</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Photo de profil</CardTitle>
+            <CardDescription className="text-sm">
               Votre photo de profil est visible par vous uniquement
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-6">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+              <div className="relative flex-shrink-0">
                 {user.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={user.avatar_url}
                     alt={user.full_name || user.email}
-                    className="h-24 w-24 rounded-full border-2 border-primary/20 object-cover"
+                    className="h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-primary/20 object-cover"
                   />
                 ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground border-2 border-primary/20">
-                    <User className="h-12 w-12" />
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-full bg-primary text-xl sm:text-2xl font-bold text-primary-foreground border-2 border-primary/20">
+                    <User className="h-10 w-10 sm:h-12 sm:w-12" />
                   </div>
                 )}
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingAvatar}
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
                   title="Changer la photo"
                 >
                   {isUploadingAvatar ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   ) : (
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
                   )}
                 </button>
                 <input
@@ -275,25 +275,25 @@ export default function ProfilePage() {
                   className="hidden"
                 />
               </div>
-              <div>
-                <p className="text-lg font-semibold">{user.full_name || "Utilisateur"}</p>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-base sm:text-lg font-semibold truncate">{user.full_name || "Utilisateur"}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{user.email}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Formulaire de modification du nom */}
-        <Card className="mb-6">
+        <Card className="mb-4 sm:mb-6">
           <CardHeader>
-            <CardTitle>Nom complet</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Nom complet</CardTitle>
+            <CardDescription className="text-sm">
               Modifiez votre nom d&apos;affichage
             </CardDescription>
           </CardHeader>
           <CardContent>
             {isEditingName ? (
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1">
                   <Input
                     type="text"
@@ -301,40 +301,44 @@ export default function ProfilePage() {
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Votre nom complet"
                     disabled={isSavingName}
+                    className="text-sm sm:text-base"
                   />
                 </div>
-                <Button
-                  onClick={handleUpdateName}
-                  disabled={isSavingName}
-                  size="icon"
-                >
-                  {isSavingName ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  onClick={() => {
-                    setFullName(user.full_name || "");
-                    setIsEditingName(false);
-                  }}
-                  disabled={isSavingName}
-                  variant="outline"
-                  size="icon"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleUpdateName}
+                    disabled={isSavingName}
+                    size="icon"
+                  >
+                    {isSavingName ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setFullName(user.full_name || "");
+                      setIsEditingName(false);
+                    }}
+                    disabled={isSavingName}
+                    variant="outline"
+                    size="icon"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between">
-                <p className="text-base font-medium">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <p className="text-sm sm:text-base font-medium truncate flex-1 min-w-0">
                   {user.full_name || "Non renseigné"}
                 </p>
                 <Button
                   onClick={() => setIsEditingName(true)}
                   variant="outline"
                   size="sm"
+                  className="w-full sm:w-auto"
                 >
                   Modifier
                 </Button>
@@ -345,24 +349,24 @@ export default function ProfilePage() {
 
         {/* Réinitialisation du mot de passe (seulement pour les utilisateurs locaux) */}
         {isLocalAuth && (
-          <Card className="mb-6">
+          <Card className="mb-4 sm:mb-6">
             <CardHeader>
-              <CardTitle>Mot de passe</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Mot de passe</CardTitle>
+              <CardDescription className="text-sm">
                 Réinitialisez votre mot de passe en recevant un lien par email
               </CardDescription>
             </CardHeader>
             <CardContent>
               {passwordResetSent ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-950 p-4">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
-                    <div className="flex-1">
+                  <div className="flex items-start gap-3 rounded-lg bg-green-50 dark:bg-green-950 p-3 sm:p-4">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-green-900 dark:text-green-100">
                         Email envoyé !
                       </p>
-                      <p className="mt-1 text-sm text-green-700 dark:text-green-300">
-                        Un lien de réinitialisation a été envoyé à <strong>{user.email}</strong>.
+                      <p className="mt-1 text-xs sm:text-sm text-green-700 dark:text-green-300">
+                        Un lien de réinitialisation a été envoyé à <strong className="break-all">{user.email}</strong>.
                         Vérifiez votre boîte de réception (et vos spams).
                       </p>
                     </div>
@@ -376,13 +380,14 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-base font-medium">••••••••</p>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                  <p className="text-sm sm:text-base font-medium">••••••••</p>
                   <Button
                     onClick={handleRequestPasswordReset}
                     disabled={isSendingPasswordReset}
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                   >
                     {isSendingPasswordReset ? (
                       <>
@@ -405,41 +410,41 @@ export default function ProfilePage() {
         {/* Informations du compte */}
         <Card>
           <CardHeader>
-            <CardTitle>Informations du compte</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Informations du compte</CardTitle>
+            <CardDescription className="text-sm">
               Détails de votre compte et méthode de connexion
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 sm:grid-cols-2">
-            <div className="flex items-center gap-4">
+          <CardContent className="grid gap-4 sm:gap-6 sm:grid-cols-2">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
-                <Mail className="h-5 w-5 text-primary" />
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p className="mt-1 text-base font-medium">{user.email}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Email</p>
+                <p className="mt-1 text-sm sm:text-base font-medium break-all">{user.email}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
-                <Shield className="h-5 w-5 text-primary" />
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Méthode de connexion</p>
-                <p className="mt-1 text-base font-medium capitalize">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Méthode de connexion</p>
+                <p className="mt-1 text-sm sm:text-base font-medium capitalize">
                   {user.auth_provider === "google" ? "Google" : "Connexion Classique"}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
-                <Calendar className="h-5 w-5 text-primary" />
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Compte créé le</p>
-                <p className="mt-1 text-base font-medium">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Compte créé le</p>
+                <p className="mt-1 text-sm sm:text-base font-medium">
                   {new Date(user.created_at).toLocaleDateString("fr-FR", {
                     day: "numeric",
                     month: "long",
@@ -449,17 +454,17 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div className="rounded-full bg-primary/10 p-2 flex-shrink-0">
-                <Shield className="h-5 w-5 text-primary" />
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-muted-foreground">Email vérifié</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground">Email vérifié</p>
                 <div className="mt-1 flex items-center gap-2">
                   {user.is_email_verified ? (
                     <>
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                      <span className="text-base font-medium text-green-600 dark:text-green-400">Oui</span>
+                      <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="text-sm sm:text-base font-medium text-green-600 dark:text-green-400">Oui</span>
                     </>
                   ) : (
                     <Button
@@ -475,8 +480,9 @@ export default function ProfilePage() {
                           error("Erreur lors de l'envoi de l'email de vérification");
                         }
                       }}
+                      className="text-xs sm:text-sm"
                     >
-                      <Send className="h-4 w-4 mr-1" />
+                      <Send className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                       Vérifier mon email
                     </Button>
                   )}

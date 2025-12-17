@@ -69,27 +69,27 @@ export default function HomePage() {
       <Header />
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center lg:py-32">
-        <div className="mx-auto max-w-3xl space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            <Sparkles className="h-4 w-4" />
-            Votre assistant de vie personnel
+      <section className="container mx-auto px-4 py-12 sm:py-16 md:py-20 text-center lg:py-32">
+        <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 sm:px-4 text-xs sm:text-sm font-medium text-primary">
+            <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="whitespace-nowrap">Votre assistant de vie personnel</span>
           </div>
           
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
             Organisez votre vie,{" "}
             <span className="gradient-text">atteignez vos objectifs</span>
           </h1>
           
-          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl leading-relaxed text-muted-foreground px-2 sm:px-0">
             Life Planner regroupe tous les outils dont vous avez besoin pour 
             planifier votre sport, gérer votre budget, suivre vos habitudes, 
             réviser vos cours et atteindre vos objectifs.
           </p>
 
-          <div className="flex flex-col items-center justify-center gap-4 pt-2 sm:flex-row">
+          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 pt-2 sm:flex-row">
             {isAuthenticated ? (
-              <Button size="lg" className="h-12 px-8 text-base" asChild>
+              <Button size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                 <Link href="/dashboard">
                   Accéder au tableau de bord
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -97,13 +97,13 @@ export default function HomePage() {
               </Button>
             ) : (
               <>
-                <Button size="lg" className="h-12 px-8 text-base" asChild>
+                <Button size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                   <Link href="/register">
                     Créer un compte
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button variant="outline" size="lg" className="h-12 px-8 text-base" asChild>
+                <Button variant="outline" size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                   <Link href="/login">Se connecter</Link>
                 </Button>
               </>
@@ -113,17 +113,17 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="container mx-auto px-4 py-16 lg:py-24">
-        <div className="mb-16 text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-24">
+        <div className="mb-12 sm:mb-16 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
             Tout ce dont vous avez besoin
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground">
             Une application, tous vos objectifs
           </p>
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {features.map((feature, index) => (
             <div
               key={feature.title}

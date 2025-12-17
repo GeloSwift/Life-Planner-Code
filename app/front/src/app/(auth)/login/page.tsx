@@ -156,7 +156,7 @@ function LoginContent() {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex w-full items-center justify-center px-4 lg:w-1/2">
+      <div className="flex w-full items-center justify-center px-4 py-8 sm:py-12 lg:w-1/2 lg:py-0">
         <Card 
           className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${
             mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
@@ -164,18 +164,18 @@ function LoginContent() {
         >
           <CardHeader className="space-y-1 text-center">
             <Link href="/" className="mb-4 lg:hidden block">
-              <h1 className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
+              <h1 className="gradient-text text-xl sm:text-2xl font-bold hover:opacity-80 transition-opacity">
                 Life Planner
               </h1>
             </Link>
-            <CardTitle className="text-2xl font-bold tracking-tight">
+            <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
               Bon retour parmi nous
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm sm:text-base">
               Connectez-vous à votre compte pour continuer
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6">
             {/* OAuth Buttons */}
             {oauthProviders.google && (
               <div 
@@ -185,11 +185,11 @@ function LoginContent() {
               >
                 <Button
                   variant="outline"
-                  className="h-12 w-full gap-3 text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="h-11 sm:h-12 w-full gap-3 text-sm sm:text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
                   onClick={handleGoogleLogin}
                   disabled={isLoading}
                 >
-                  <GoogleIcon className="h-5 w-5" />
+                  <GoogleIcon className="h-4 w-4 sm:h-5 sm:w-5" />
                   Continuer avec Google
                 </Button>
 
@@ -231,7 +231,7 @@ function LoginContent() {
                     placeholder="vous@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
+                    className="h-11 sm:h-12 pl-10 text-sm sm:text-base transition-all focus:scale-[1.01]"
                     required
                     autoComplete="email"
                   />
@@ -255,7 +255,7 @@ function LoginContent() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
+                    className="h-11 sm:h-12 pl-10 text-sm sm:text-base transition-all focus:scale-[1.01]"
                     required
                     autoComplete="current-password"
                   />
@@ -264,7 +264,7 @@ function LoginContent() {
 
               <Button
                 type="submit"
-                className="h-12 w-full text-base font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="h-11 sm:h-12 w-full text-sm sm:text-base font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -283,7 +283,7 @@ function LoginContent() {
                 mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
               }`}
             >
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-xs sm:text-sm text-muted-foreground">
                 Pas encore de compte ?{" "}
                 <Link 
                   href="/register?from=login" 

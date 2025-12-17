@@ -92,63 +92,63 @@ export default function DashboardPage() {
       <Header variant="sticky" />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6 sm:py-8">
         {/* Welcome Section */}
-        <section className="mb-12">
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            Bienvenue{user.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}
-            <Hand className="h-8 w-8 text-primary" />
+        <section className="mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2 flex-wrap">
+            <span>Bienvenue{user.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}</span>
+            <Hand className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
           </h2>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
             Voici un aperçu de votre journée. Prêt à atteindre vos objectifs ?
           </p>
         </section>
 
         {/* Quick Stats */}
-        <section className="mb-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mb-8 sm:mb-12 grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Calendar className="h-6 w-6 text-primary" />
+            <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
+              <div className="rounded-full bg-primary/10 p-2 sm:p-3 flex-shrink-0">
+                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Jour actuel</p>
-                <p className="text-2xl font-bold">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground">Jour actuel</p>
+                <p className="text-xl sm:text-2xl font-bold truncate">
                   {new Date().toLocaleDateString("fr-FR", { weekday: "long" })}
                 </p>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-full bg-green-500/10 p-3">
-                <CheckSquare className="h-6 w-6 text-green-500" />
+            <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
+              <div className="rounded-full bg-green-500/10 p-2 sm:p-3 flex-shrink-0">
+                <CheckSquare className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Habitudes du jour</p>
-                <p className="text-2xl font-bold">0/0</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-full bg-red-500/10 p-3">
-                <Dumbbell className="h-6 w-6 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Séances cette semaine</p>
-                <p className="text-2xl font-bold">0</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground">Habitudes du jour</p>
+                <p className="text-xl sm:text-2xl font-bold">0/0</p>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className="rounded-full bg-blue-500/10 p-3">
-                <TrendingUp className="h-6 w-6 text-blue-500" />
+            <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
+              <div className="rounded-full bg-red-500/10 p-2 sm:p-3 flex-shrink-0">
+                <Dumbbell className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Série actuelle</p>
-                <p className="text-2xl font-bold">0 jours</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground">Séances cette semaine</p>
+                <p className="text-xl sm:text-2xl font-bold">0</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 sm:gap-4 p-4 sm:p-6">
+              <div className="rounded-full bg-blue-500/10 p-2 sm:p-3 flex-shrink-0">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground">Série actuelle</p>
+                <p className="text-xl sm:text-2xl font-bold">0 jours</p>
               </div>
             </CardContent>
           </Card>
@@ -156,8 +156,8 @@ export default function DashboardPage() {
 
         {/* Features Grid */}
         <section>
-          <h3 className="mb-6 text-xl font-semibold">Modules</h3>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <h3 className="mb-4 sm:mb-6 text-lg sm:text-xl font-semibold">Modules</h3>
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feature) => (
               <Card
                 key={feature.title}
