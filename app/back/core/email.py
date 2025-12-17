@@ -7,26 +7,22 @@ Documentation: https://developers.mailersend.com/api/v1/email.html
 
 from typing import Optional
 
-# Import du package mailersend
+# Import du package mailersend (version 2.0.0)
 try:
-    import mailersend
-    # Vérifie la structure du package
-    if hasattr(mailersend, 'emails'):
-        emails = mailersend.emails
-    elif hasattr(mailersend, 'NewEmail'):
-        # Le package a peut-être changé de structure
-        emails = mailersend
-    else:
-        # Essai d'import direct
-        from mailersend import emails  # type: ignore
+    from mailersend import MailerSendClient, EmailBuilder
+    mailersend_available = True
 except ImportError as e:
     # Fallback pour éviter les erreurs si le package n'est pas installé
     print(f"[EMAIL] Import error: {e}")
-    emails = None  # type: ignore
+    MailerSendClient = None  # type: ignore
+    EmailBuilder = None  # type: ignore
+    mailersend_available = False
 except Exception as e:
     # Si tout échoue, on met None
     print(f"[EMAIL] Failed to import mailersend: {e}")
-    emails = None  # type: ignore
+    MailerSendClient = None  # type: ignore
+    EmailBuilder = None  # type: ignore
+    mailersend_available = False
 
 from core.config import settings
 
@@ -39,32 +35,14 @@ class EmailService:
         if not settings.MAILERSEND_API_KEY:
             raise ValueError("MAILERSEND_API_KEY is not configured")
         
-        if emails is None:
-            # Diagnostic détaillé
-            try:
-                import mailersend
-                print(f"[EMAIL] mailersend module found: {mailersend}")
-                print(f"[EMAIL] mailersend dir: {dir(mailersend)}")
-            except Exception as e:
-                print(f"[EMAIL] Cannot import mailersend at all: {e}")
-            
+        if not mailersend_available or MailerSendClient is None or EmailBuilder is None:
             raise ImportError(
                 "mailersend package is not installed or cannot be imported. "
                 "Install it with: pip install mailersend==2.0.0"
             )
         
-        # Initialise MailerSend avec la clé API
-        try:
-            self.mailersend = emails.NewEmail(settings.MAILERSEND_API_KEY)
-        except AttributeError as e:
-            print(f"[EMAIL] emails object: {emails}")
-            print(f"[EMAIL] emails type: {type(emails)}")
-            print(f"[EMAIL] emails dir: {dir(emails)}")
-            raise ImportError(
-                f"Cannot use mailersend.emails.NewEmail: {e}. "
-                "The package structure may have changed."
-            )
-        
+        # Initialise MailerSend avec la clé API (nouvelle API v2.0.0)
+        self.client = MailerSendClient(api_token=settings.MAILERSEND_API_KEY)
         self.from_email = settings.MAILERSEND_FROM_EMAIL
         self.from_name = settings.MAILERSEND_FROM_NAME
     
@@ -162,32 +140,31 @@ class EmailService:
         © {settings.MAILERSEND_FROM_NAME}
         """
         
-        # Configure l'email selon l'API MailerSend
-        mail_body = {}
+        # Configure l'email selon l'API MailerSend v2.0.0
+        email_builder = EmailBuilder()
         
         # Configure l'expéditeur
-        mail_from = {
-            "name": self.from_name,
-            "email": self.from_email,
-        }
-        self.mailersend.set_mail_from(mail_from, mail_body)
+        email_builder.set_from(
+            email=self.from_email,
+            name=self.from_name
+        )
         
         # Configure le destinataire
-        recipients = [
-            {
-                "name": to_name or to_email,
-                "email": to_email,
-            }
-        ]
-        self.mailersend.set_mail_to(recipients, mail_body)
+        email_builder.add_recipient(
+            email=to_email,
+            name=to_name or to_email
+        )
         
         # Configure le sujet et le contenu
-        self.mailersend.set_subject("Vérifiez votre email - Life Planner", mail_body)
-        self.mailersend.set_html_content(html_content, mail_body)
-        self.mailersend.set_plaintext_content(text_content, mail_body)
+        email_builder.set_subject("Vérifiez votre email - Life Planner")
+        email_builder.set_html(html_content)
+        email_builder.set_text(text_content)
         
-        # Envoie l'email
-        response = self.mailersend.send(mail_body)
+        # Construit l'objet Email
+        email = email_builder.build()
+        
+        # Envoie l'email via le client
+        response = self.client.email.send(email)
         return response
 
 
