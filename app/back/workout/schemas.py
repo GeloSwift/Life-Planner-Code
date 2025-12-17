@@ -28,6 +28,7 @@ class ActivityTypeEnum(str, Enum):
     YOGA = "yoga"
     CROSSFIT = "crossfit"
     HIIT = "hiit"
+    DANSE = "danse"
     AUTRE = "autre"
 
 

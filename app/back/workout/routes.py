@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from core.db import get_db
-from auth.service import get_current_user
+from auth.routes import get_current_user
 from auth.models import User
 from workout.models import ActivityType, MuscleGroup, SessionStatus, GoalType
 from workout.schemas import (
@@ -30,7 +30,6 @@ from workout.schemas import (
     WorkoutTemplateCreate,
     WorkoutTemplateUpdate,
     WorkoutTemplateResponse,
-    WorkoutTemplateListResponse,
     TemplateExerciseCreate,
     TemplateExerciseResponse,
     # Session
@@ -38,8 +37,6 @@ from workout.schemas import (
     WorkoutSessionUpdate,
     WorkoutSessionResponse,
     WorkoutSessionListResponse,
-    SessionExerciseCreate,
-    SessionExerciseResponse,
     WorkoutSetCreate,
     WorkoutSetUpdate,
     WorkoutSetResponse,
@@ -866,8 +863,6 @@ def get_calendar(
     current_user: User = Depends(get_current_user),
 ):
     """Récupère les événements du calendrier pour un mois donné."""
-    from datetime import date
-    
     # Calculer les dates de début et fin du mois
     start_date = datetime(year, month, 1)
     if month == 12:

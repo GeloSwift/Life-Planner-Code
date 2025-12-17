@@ -23,7 +23,7 @@ def upgrade() -> None:
     activitytype_enum = sa.Enum(
         'musculation', 'course', 'cyclisme', 'natation', 'volleyball',
         'boxe', 'basketball', 'football', 'tennis', 'yoga', 'crossfit',
-        'hiit', 'autre',
+        'hiit', 'danse', 'autre',
         name='activitytype'
     )
     musclegroup_enum = sa.Enum(

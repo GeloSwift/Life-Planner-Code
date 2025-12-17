@@ -14,7 +14,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from sqlalchemy import func, and_, or_, desc
+from sqlalchemy import func, or_, desc
 from sqlalchemy.orm import Session, joinedload
 
 from workout.models import (
@@ -37,11 +37,8 @@ from workout.schemas import (
     WorkoutTemplateCreate,
     WorkoutTemplateUpdate,
     TemplateExerciseCreate,
-    TemplateExerciseUpdate,
     WorkoutSessionCreate,
     WorkoutSessionUpdate,
-    SessionExerciseCreate,
-    SessionExerciseUpdate,
     WorkoutSetCreate,
     WorkoutSetUpdate,
     WeightEntryCreate,

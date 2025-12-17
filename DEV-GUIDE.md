@@ -562,7 +562,7 @@ class Goal:
 
 # Enums disponibles (en français)
 ActivityType: musculation, course, cyclisme, natation, volleyball, boxe, 
-              basketball, football, tennis, yoga, crossfit, hiit, autre
+              basketball, football, tennis, yoga, crossfit, hiit, danse, autre
 
 MuscleGroup: poitrine, dos, epaules, biceps, triceps, avant_bras, 
              abdominaux, obliques, lombaires, quadriceps, ischio_jambiers,
