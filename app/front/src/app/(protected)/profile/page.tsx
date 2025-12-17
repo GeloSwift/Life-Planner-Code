@@ -45,12 +45,8 @@ export default function ProfilePage() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
   
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isEditingPassword, setIsEditingPassword] = useState(false);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState("");
+  const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
+  const [passwordResetSent, setPasswordResetSent] = useState(false);
   
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -206,41 +202,19 @@ export default function ProfilePage() {
     }
   };
 
-  // Gestion de la mise à jour du mot de passe
-  const handleUpdatePassword = async () => {
-    setPasswordError("");
-
-    // Validations
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError("Tous les champs sont requis");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordError("Le mot de passe doit contenir au moins 8 caractères");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setPasswordError("Les mots de passe ne correspondent pas");
-      return;
-    }
-
-    setIsSavingPassword(true);
+  // Gestion de l'envoi de l'email de réinitialisation de mot de passe
+  const handleRequestPasswordReset = async () => {
+    setIsSendingPasswordReset(true);
+    setPasswordResetSent(false);
     try {
-      // Note: L'API actuelle ne vérifie pas l'ancien mot de passe
-      // Pour une sécurité complète, il faudrait ajouter cette vérification côté backend
-      await authApi.updateMe({ password: newPassword });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setIsEditingPassword(false);
-      success("Mot de passe mis à jour avec succès !");
+      await authApi.requestPasswordReset(user.email);
+      setPasswordResetSent(true);
+      success("Email de réinitialisation envoyé ! Vérifiez votre boîte de réception (et vos spams).");
     } catch (err) {
-      console.error("Erreur lors de la mise à jour du mot de passe:", err);
-      setPasswordError("Erreur lors de la mise à jour du mot de passe");
+      console.error("Erreur lors de l'envoi de l'email de réinitialisation:", err);
+      error("Erreur lors de l'envoi de l'email de réinitialisation");
     } finally {
-      setIsSavingPassword(false);
+      setIsSendingPasswordReset(false);
     }
   };
 
@@ -369,99 +343,64 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Formulaire de modification du mot de passe (seulement pour les utilisateurs locaux) */}
+        {/* Réinitialisation du mot de passe (seulement pour les utilisateurs locaux) */}
         {isLocalAuth && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Mot de passe</CardTitle>
               <CardDescription>
-                Modifiez votre mot de passe (minimum 8 caractères)
+                Réinitialisez votre mot de passe en recevant un lien par email
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isEditingPassword ? (
+              {passwordResetSent ? (
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="current-password">Mot de passe actuel</Label>
-                    <Input
-                      id="current-password"
-                      type="password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder="Votre mot de passe actuel"
-                      disabled={isSavingPassword}
-                      className="mt-1"
-                    />
+                  <div className="flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-950 p-4">
+                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                        Email envoyé !
+                      </p>
+                      <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                        Un lien de réinitialisation a été envoyé à <strong>{user.email}</strong>.
+                        Vérifiez votre boîte de réception (et vos spams).
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="new-password">Nouveau mot de passe</Label>
-                    <Input
-                      id="new-password"
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 8 caractères"
-                      disabled={isSavingPassword}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="confirm-password">Confirmer le nouveau mot de passe</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirmez votre nouveau mot de passe"
-                      disabled={isSavingPassword}
-                      className="mt-1"
-                    />
-                  </div>
-                  {passwordError && (
-                    <p className="text-sm text-destructive">{passwordError}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleUpdatePassword}
-                      disabled={isSavingPassword}
-                    >
-                      {isSavingPassword ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Enregistrement...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Enregistrer
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setCurrentPassword("");
-                        setNewPassword("");
-                        setConfirmPassword("");
-                        setPasswordError("");
-                        setIsEditingPassword(false);
-                      }}
-                      disabled={isSavingPassword}
-                      variant="outline"
-                    >
-                      <X className="h-4 w-4" />
-                      Annuler
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={() => setPasswordResetSent(false)}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Envoyer un nouvel email
+                  </Button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-base font-medium">••••••••</p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-medium">Mot de passe</p>
+                      <p className="text-sm text-muted-foreground">
+                        Cliquez sur le bouton ci-dessous pour recevoir un lien de réinitialisation par email
+                      </p>
+                    </div>
+                  </div>
                   <Button
-                    onClick={() => setIsEditingPassword(true)}
-                    variant="outline"
-                    size="sm"
+                    onClick={handleRequestPasswordReset}
+                    disabled={isSendingPasswordReset}
+                    className="w-full"
                   >
-                    Modifier
+                    {isSendingPasswordReset ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Envoi en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Recevoir un lien de réinitialisation
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

@@ -56,7 +56,7 @@ export function Header({ variant = "default" }: HeaderProps) {
                   />
                 ) : (
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-                    <User className="h-4 w-4" />
+                  <User className="h-4 w-4" />
                   </div>
                 )}
                 <span className="hidden sm:inline">{user.full_name || user.email}</span>
