@@ -376,29 +376,23 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base font-medium">Mot de passe</p>
-                      <p className="text-sm text-muted-foreground">
-                        Cliquez sur le bouton ci-dessous pour recevoir un lien de réinitialisation par email
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-base font-medium">••••••••</p>
                   <Button
                     onClick={handleRequestPasswordReset}
                     disabled={isSendingPasswordReset}
-                    className="w-full"
+                    variant="outline"
+                    size="sm"
                   >
                     {isSendingPasswordReset ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Envoi en cours...
+                        Envoi...
                       </>
                     ) : (
                       <>
                         <Send className="mr-2 h-4 w-4" />
-                        Recevoir un lien de réinitialisation
+                        Réinitialiser
                       </>
                     )}
                   </Button>

@@ -479,7 +479,7 @@ def request_password_reset(
     )
     
     # Construit l'URL de réinitialisation
-    reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={reset_token}"
+    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
     
     # Récupère le service email
     email_service = get_email_service()
