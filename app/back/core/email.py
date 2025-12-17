@@ -172,6 +172,133 @@ class EmailService:
         # Envoie l'email via le client (méthode: client.emails.send)
         response = self.client.emails.send(email)
         return response
+    
+    def send_password_reset_email(
+        self,
+        to_email: str,
+        to_name: Optional[str],
+        reset_url: str,
+    ) -> dict:
+        """
+        Envoie un email de réinitialisation de mot de passe.
+        
+        Args:
+            to_email: Email du destinataire
+            to_name: Nom du destinataire (optionnel)
+            reset_url: URL de réinitialisation avec le token
+            
+        Returns:
+            Réponse de MailerSend
+            
+        Raises:
+            Exception: Si l'envoi échoue
+        """
+        # Template HTML de l'email de réinitialisation
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Réinitialisez votre mot de passe - Life Planner</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">Life Planner</h1>
+            </div>
+            
+            <div style="background: #ffffff; padding: 40px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">Réinitialisez votre mot de passe</h2>
+                
+                <p style="color: #666; font-size: 16px;">
+                    Bonjour{(' ' + to_name) if to_name else ''},
+                </p>
+                
+                <p style="color: #666; font-size: 16px;">
+                    Vous avez demandé à réinitialiser votre mot de passe. 
+                    Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe.
+                </p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; padding: 15px 30px; text-decoration: none; 
+                              border-radius: 5px; font-weight: bold; font-size: 16px;">
+                        Réinitialiser mon mot de passe
+                    </a>
+                </div>
+                
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :
+                </p>
+                <p style="color: #667eea; font-size: 12px; word-break: break-all;">
+                    {reset_url}
+                </p>
+                
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    Ce lien est valide pendant 1 heure.
+                </p>
+                
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet email. 
+                    Votre mot de passe ne sera pas modifié.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>© {settings.MAILERSEND_FROM_NAME} - Tous droits réservés</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Version texte de l'email (fallback)
+        text_content = f"""
+        Bonjour{(' ' + to_name) if to_name else ''},
+
+        Vous avez demandé à réinitialiser votre mot de passe. 
+        Cliquez sur le lien ci-dessous pour créer un nouveau mot de passe :
+
+        {reset_url}
+
+        Ce lien est valide pendant 1 heure.
+
+        Si vous n'avez pas demandé de réinitialisation, vous pouvez ignorer cet email. 
+        Votre mot de passe ne sera pas modifié.
+
+        © {settings.MAILERSEND_FROM_NAME}
+        """
+        
+        # Configure l'email selon l'API MailerSend v2.0.0
+        email_builder = EmailBuilder()
+        
+        # Configure l'expéditeur
+        email_builder.from_email(
+            email=self.from_email,
+            name=self.from_name
+        )
+        
+        # Configure le destinataire
+        email_builder.to(
+            email=to_email,
+            name=to_name or to_email
+        )
+        
+        # Configure le sujet
+        email_builder.subject("Réinitialisez votre mot de passe - Life Planner")
+        
+        # Configure le contenu HTML
+        email_builder.html(html_content)
+        
+        # Configure le contenu texte
+        email_builder.text(text_content)
+        
+        # Construit l'objet Email
+        email = email_builder.build()
+        
+        # Envoie l'email via le client
+        response = self.client.emails.send(email)
+        return response
 
 
 # Instance globale du service email

@@ -167,3 +167,35 @@ def create_email_verification_token(user_id: int, email: str) -> str:
         settings.JWT_SECRET,
         algorithm=settings.JWT_ALGORITHM,
     )
+
+
+def create_password_reset_token(user_id: int, email: str) -> str:
+    """
+    Crée un token JWT pour la réinitialisation de mot de passe.
+    
+    Le token expire après 1 heure.
+    
+    Args:
+        user_id: ID de l'utilisateur
+        email: Email de l'utilisateur
+        
+    Returns:
+        Token JWT de réinitialisation de mot de passe
+    """
+    to_encode = {
+        "sub": str(user_id),
+        "email": email,
+        "type": "password_reset",
+    }
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    to_encode.update({
+        "exp": expire,
+        "iat": datetime.now(timezone.utc),
+    })
+    
+    return jwt.encode(
+        to_encode,
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALGORITHM,
+    )

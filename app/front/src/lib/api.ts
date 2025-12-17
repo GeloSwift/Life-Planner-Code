@@ -253,6 +253,28 @@ export const authApi = {
       skipAuth: true,
     });
   },
+
+  /**
+   * Demande un email de réinitialisation de mot de passe.
+   */
+  async requestPasswordReset(email: string): Promise<MessageResponse> {
+    return apiFetch<MessageResponse>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+      skipAuth: true,
+    });
+  },
+
+  /**
+   * Réinitialise le mot de passe avec un token.
+   */
+  async resetPassword(token: string, newPassword: string): Promise<MessageResponse> {
+    return apiFetch<MessageResponse>("/auth/password-reset/reset", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword }),
+      skipAuth: true,
+    });
+  },
 };
 
 // =============================================================================

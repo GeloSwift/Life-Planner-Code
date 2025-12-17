@@ -34,6 +34,8 @@ from auth.schemas import (
     OAuthLoginRequest,
     OAuthURLResponse,
     AvatarUpdateRequest,
+    PasswordResetRequest,
+    PasswordReset,
 )
 from core.config import settings
 from core.db import get_db
@@ -42,6 +44,8 @@ from core.security import (
     create_refresh_token,
     decode_token,
     create_email_verification_token,
+    create_password_reset_token,
+    hash_password,
 )
 from core.email import get_email_service
 
@@ -436,6 +440,153 @@ def verify_email(
     db.commit()
     
     return MessageResponse(message="Email verified successfully")
+
+
+# =============================================================================
+# ROUTES - Password Reset
+# =============================================================================
+
+@router.post(
+    "/password-reset/request",
+    response_model=MessageResponse,
+    summary="Request password reset",
+    description="Send a password reset email to the user.",
+)
+def request_password_reset(
+    request: PasswordResetRequest,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Envoie un email de réinitialisation de mot de passe.
+    
+    Pour des raisons de sécurité, on retourne toujours un succès même si l'email
+    n'existe pas (pour éviter l'énumération d'emails).
+    """
+    # Récupère l'utilisateur par email
+    user = service.get_user_by_email(db, request.email)
+    
+    # Si l'utilisateur n'existe pas ou utilise OAuth, on retourne quand même un succès
+    # (pour éviter l'énumération d'emails)
+    if not user or user.auth_provider != AuthProvider.LOCAL:
+        return MessageResponse(
+            message="If an account with this email exists, a password reset link has been sent."
+        )
+    
+    # Génère un token de réinitialisation
+    reset_token = create_password_reset_token(
+        user_id=user.id,
+        email=user.email,
+    )
+    
+    # Construit l'URL de réinitialisation
+    reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={reset_token}"
+    
+    # Récupère le service email
+    email_service = get_email_service()
+    
+    if email_service:
+        # Envoie l'email via MailerSend
+        try:
+            response = email_service.send_password_reset_email(
+                to_email=user.email,
+                to_name=user.full_name,
+                reset_url=reset_url,
+            )
+            print(f"[EMAIL] Password reset email sent successfully to {user.email}")
+            print(f"[EMAIL] MailerSend response: {response}")
+        except Exception as e:
+            # Log l'erreur avec plus de détails
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"[EMAIL] Failed to send password reset email to {user.email}")
+            print(f"[EMAIL] Error: {str(e)}")
+            print(f"[EMAIL] Traceback: {error_details}")
+            # En production, on pourrait logger dans un service de monitoring
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to send password reset email: {str(e)}",
+            )
+    else:
+        # MailerSend n'est pas configuré (mode dev)
+        print(f"[DEV] MailerSend not configured. Password reset URL for {user.email}: {reset_url}")
+        if settings.DEBUG:
+            print(f"[DEV] Password reset URL for {user.email}: {reset_url}")
+    
+    return MessageResponse(
+        message="If an account with this email exists, a password reset link has been sent."
+    )
+
+
+@router.post(
+    "/password-reset/reset",
+    response_model=MessageResponse,
+    summary="Reset password",
+    description="Reset user password with a reset token.",
+)
+def reset_password(
+    request: PasswordReset,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """
+    Réinitialise le mot de passe de l'utilisateur avec un token.
+    
+    Le token est reçu par email et contient l'ID utilisateur et l'email.
+    """
+    # Décode le token
+    payload = decode_token(request.token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+    
+    # Vérifie que c'est bien un token de réinitialisation de mot de passe
+    if payload.get("type") != "password_reset":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token type",
+        )
+    
+    # Récupère l'ID utilisateur et l'email depuis le token
+    user_id = int(payload.get("sub"))
+    email = payload.get("email")
+    
+    if not user_id or not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid token payload",
+        )
+    
+    # Récupère l'utilisateur
+    user = service.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    
+    # Vérifie que l'email correspond
+    if user.email != email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email mismatch",
+        )
+    
+    # Vérifie que c'est un utilisateur local (pas OAuth)
+    if user.auth_provider != AuthProvider.LOCAL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset is not available for OAuth users",
+        )
+    
+    # Met à jour le mot de passe
+    user.hashed_password = hash_password(request.new_password)
+    db.commit()
+    db.refresh(user)
+    
+    return MessageResponse(
+        message="Password reset successfully. You can now login with your new password."
+    )
 
 
 @router.post(

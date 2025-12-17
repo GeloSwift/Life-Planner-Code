@@ -241,9 +241,12 @@ function LoginContent() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <span className="text-sm text-muted-foreground cursor-not-allowed opacity-50">
+                  <Link 
+                    href="/forgot-password" 
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
                     Mot de passe oublié ?
-                  </span>
+                  </Link>
                 </div>
                 <div className="relative group">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary z-10" />

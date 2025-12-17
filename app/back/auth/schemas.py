@@ -136,3 +136,22 @@ class OAuthURLResponse(BaseModel):
 class AvatarUpdateRequest(BaseModel):
     """Schema pour la mise à jour de l'avatar."""
     avatar_url: str = Field(..., description="URL de l'avatar (peut être une data URL base64)")
+
+
+# =============================================================================
+# PASSWORD RESET SCHEMAS
+# =============================================================================
+
+class PasswordResetRequest(BaseModel):
+    """Schema pour la demande de réinitialisation de mot de passe."""
+    email: EmailStr = Field(..., description="Email de l'utilisateur")
+
+
+class PasswordReset(BaseModel):
+    """Schema pour la réinitialisation de mot de passe."""
+    token: str = Field(..., description="Token de réinitialisation")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        description="Nouveau mot de passe (min. 8 caractères)",
+    )
