@@ -29,7 +29,13 @@ alembic upgrade head
 echo "✅ Database migrations completed!"
 
 # -----------------------------------------------------------------------------
-# Step 2: Start the API server
+# Step 2: Verify dependencies
+# -----------------------------------------------------------------------------
+echo "🔍 Verifying dependencies..."
+python -c "import mailersend; print('✅ mailersend package installed')" || echo "⚠️  mailersend package not found (emails will not work)"
+
+# -----------------------------------------------------------------------------
+# Step 3: Start the API server
 # -----------------------------------------------------------------------------
 echo "🌐 Starting Uvicorn server..."
 

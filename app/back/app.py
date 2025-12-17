@@ -36,6 +36,14 @@ async def lifespan(app: FastAPI):
     #   alembic upgrade head
     # Ne PAS utiliser create_all() ici pour garder le contrôle sur les migrations
     
+    # Vérifie que les dépendances critiques sont installées
+    try:
+        import mailersend  # noqa: F401
+        print("✅ mailersend package is installed")
+    except ImportError:
+        print("⚠️  WARNING: mailersend package is not installed. Email verification will not work.")
+        print("   Install it with: pip install mailersend==2.0.0")
+    
     yield
     
     # Shutdown

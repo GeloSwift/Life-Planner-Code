@@ -25,7 +25,10 @@ class EmailService:
             raise ValueError("MAILERSEND_API_KEY is not configured")
         
         if emails is None:
-            raise ImportError("mailersend package is not installed")
+            raise ImportError(
+                "mailersend package is not installed. "
+                "Install it with: pip install mailersend==2.0.0"
+            )
         
         # Initialise MailerSend avec la clé API
         self.mailersend = emails.NewEmail(settings.MAILERSEND_API_KEY)
