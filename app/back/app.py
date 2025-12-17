@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from auth.routes import router as auth_router
+from workout.routes import router as workout_router
 
 
 @asynccontextmanager
@@ -94,8 +95,9 @@ app.add_middleware(
 # =============================================================================
 
 # Inclut les routers des différents modules
-# Chaque router ajoute son préfixe (ex: /auth)
+# Chaque router ajoute son préfixe (ex: /auth, /workout)
 app.include_router(auth_router)
+app.include_router(workout_router)
 
 
 # =============================================================================

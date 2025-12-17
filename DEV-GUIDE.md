@@ -280,11 +280,32 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ## 🏋️ Phase 2 : Workout Planner (MVP)
 
-- [ ] **2.1** API Workout (models, routes, CRUD)
-- [ ] **2.2** Pages Workout (liste, création, détail)
-- [ ] **2.3** Interface mobile-first (cards, navigation)
-- [ ] **2.4** Historique des séances
-- [ ] **2.5** Programmes par jour/semaine
+- [x] **2.1** API Workout (models, routes, CRUD) ✅
+  - [x] Modèles SQLAlchemy (Exercise, Template, Session, Set, WeightEntry, Goal)
+  - [x] Schemas Pydantic pour validation
+  - [x] Service layer avec logique métier
+  - [x] Routes API complètes
+  - [x] Migration Alembic
+- [ ] **2.2** Pages Workout Frontend
+  - [ ] Dashboard workout avec statistiques
+  - [ ] Liste des templates de séances
+  - [ ] Création/édition de templates
+  - [ ] Liste des exercices
+  - [ ] Création d'exercices personnalisés
+- [ ] **2.3** Interface de séance en cours
+  - [ ] Timer de séance
+  - [ ] Suivi des séries (cocher, modifier poids/reps)
+  - [ ] Repos entre séries avec timer
+  - [ ] Terminer/annuler la séance
+- [ ] **2.4** Calendrier des séances
+  - [ ] Vue calendrier mensuel
+  - [ ] Planification de séances
+  - [ ] Historique visuel
+- [ ] **2.5** Pesées et objectifs
+  - [ ] Formulaire de pesée rapide
+  - [ ] Courbe d'évolution du poids
+  - [ ] Liste et suivi des objectifs
+  - [ ] Barre de progression
 
 ---
 
@@ -400,6 +421,161 @@ class User:
 
 ---
 
+## 📡 API Routes - Workout Planner
+
+### Exercices
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/exercises` | Liste des exercices (globaux + personnels) |
+| `GET` | `/workout/exercises/{id}` | Détail d'un exercice |
+| `POST` | `/workout/exercises` | Créer un exercice personnel |
+| `PUT` | `/workout/exercises/{id}` | Modifier un exercice |
+| `DELETE` | `/workout/exercises/{id}` | Supprimer un exercice |
+
+### Templates de séances
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/templates` | Liste des templates |
+| `GET` | `/workout/templates/{id}` | Détail d'un template |
+| `POST` | `/workout/templates` | Créer un template |
+| `PUT` | `/workout/templates/{id}` | Modifier un template |
+| `DELETE` | `/workout/templates/{id}` | Supprimer un template |
+| `POST` | `/workout/templates/{id}/exercises` | Ajouter un exercice au template |
+| `DELETE` | `/workout/templates/{id}/exercises/{ex_id}` | Retirer un exercice |
+
+### Sessions d'entraînement
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/sessions` | Liste des sessions |
+| `GET` | `/workout/sessions/active` | Session en cours |
+| `GET` | `/workout/sessions/{id}` | Détail d'une session |
+| `POST` | `/workout/sessions` | Créer une session |
+| `POST` | `/workout/sessions/{id}/start` | Démarrer une session |
+| `POST` | `/workout/sessions/{id}/end` | Terminer une session |
+| `POST` | `/workout/sessions/{id}/cancel` | Annuler une session |
+| `PUT` | `/workout/sessions/{id}` | Modifier une session |
+| `DELETE` | `/workout/sessions/{id}` | Supprimer une session |
+
+### Séries
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `POST` | `/workout/sessions/{id}/exercises/{ex_id}/sets` | Ajouter une série |
+| `PUT` | `/workout/sets/{id}` | Modifier une série |
+| `POST` | `/workout/sets/{id}/complete` | Marquer comme complétée |
+
+### Pesées
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/weight` | Historique des pesées |
+| `GET` | `/workout/weight/latest` | Dernière pesée |
+| `GET` | `/workout/weight/progress` | Évolution avec stats |
+| `POST` | `/workout/weight` | Enregistrer une pesée |
+| `PUT` | `/workout/weight/{id}` | Modifier une pesée |
+| `DELETE` | `/workout/weight/{id}` | Supprimer une pesée |
+
+### Objectifs
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/goals` | Liste des objectifs |
+| `GET` | `/workout/goals/{id}` | Détail d'un objectif |
+| `POST` | `/workout/goals` | Créer un objectif |
+| `PUT` | `/workout/goals/{id}` | Modifier un objectif |
+| `DELETE` | `/workout/goals/{id}` | Supprimer un objectif |
+
+### Stats & Dashboard
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/stats` | Statistiques globales |
+| `GET` | `/workout/dashboard` | Données du dashboard |
+| `GET` | `/workout/calendar` | Calendrier des séances |
+
+### Enums
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/enums/activity-types` | Types d'activités |
+| `GET` | `/workout/enums/muscle-groups` | Groupes musculaires |
+| `GET` | `/workout/enums/goal-types` | Types d'objectifs |
+
+### Modèles principaux
+
+```python
+class Exercise:
+    id: int
+    name: str
+    description: str | None
+    video_url: str | None
+    activity_type: ActivityType  # musculation, course, cyclisme, natation, boxe...
+    muscle_group: MuscleGroup | None  # poitrine, dos, epaules, biceps...
+    difficulty: int  # 1-5
+    user_id: int | None  # None = global
+
+class WorkoutTemplate:
+    id: int
+    name: str  # "Push Day", "Leg Day"
+    description: str | None
+    activity_type: ActivityType
+    color: str | None  # #FF5733
+    user_id: int
+    exercises: list[WorkoutTemplateExercise]
+
+class WorkoutSession:
+    id: int
+    name: str
+    status: SessionStatus  # planifiee, en_cours, terminee, annulee
+    started_at: datetime | None
+    ended_at: datetime | None
+    duration_seconds: int | None
+    exercises: list[WorkoutSessionExercise]
+
+class WorkoutSet:
+    id: int
+    set_number: int
+    weight: float | None  # kg
+    reps: int | None
+    is_completed: bool
+    is_warmup: bool
+    is_dropset: bool
+    rpe: int | None  # 1-10
+
+class WeightEntry:
+    id: int
+    weight: float  # kg
+    body_fat_percentage: float | None
+    measured_at: datetime
+
+class Goal:
+    id: int
+    name: str  # "Bench 100kg"
+    goal_type: GoalType  # poids_corporel, poids_exercice, distance...
+    target_value: float
+    current_value: float
+    unit: str  # kg, reps, km
+    is_achieved: bool
+
+# Enums disponibles (en français)
+ActivityType: musculation, course, cyclisme, natation, volleyball, boxe, 
+              basketball, football, tennis, yoga, crossfit, hiit, autre
+
+MuscleGroup: poitrine, dos, epaules, biceps, triceps, avant_bras, 
+             abdominaux, obliques, lombaires, quadriceps, ischio_jambiers,
+             fessiers, mollets, adducteurs, corps_complet, cardio
+
+GoalType: poids_corporel, poids_exercice, repetitions, temps_exercice,
+          distance, temps, nombre_seances, serie_consecutive
+
+SessionStatus: planifiee, en_cours, terminee, annulee
+```
+
+---
+
 ## 🎨 Composants Frontend
 
 ### Pages
@@ -445,7 +621,12 @@ Life-Planner-Code/
 │   └── back/               # FastAPI (Railway)
 │       ├── core/           # Config, DB, Security, Email (MailerSend)
 │       ├── auth/           # Module authentification (routes, models, schemas, service, oauth)
-│       ├── workout/        # Module workout (à créer)
+│       ├── workout/        # Module workout ✅
+│       │   ├── __init__.py
+│       │   ├── models.py   # Exercise, Template, Session, Set, WeightEntry, Goal
+│       │   ├── schemas.py  # Pydantic schemas
+│       │   ├── service.py  # Logique métier
+│       │   └── routes.py   # Endpoints API
 │       ├── recipes/        # Module recettes (à créer)
 │       ├── budget/         # Module budget (à créer)
 │       ├── habits/         # Module habitudes (à créer)
