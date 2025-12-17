@@ -269,11 +269,12 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 - [x] **1.8** Page de profil utilisateur
 - [x] **1.9** Upload de photo de profil (stockée en base64 dans la BD)
 - [x] **1.10** Modification du nom complet
-- [x] **1.11** Modification du mot de passe (utilisateurs locaux uniquement)
+- [x] **1.11** Modification du mot de passe via email (réinitialisation par lien)
 - [x] **1.12** Système de vérification d'email (MailerSend)
 - [x] **1.13** Affichage de l'avatar dans le header
 - [x] **1.14** Notifications toast (remplacement des alert())
 - [x] **1.15** Configuration domaine personnalisé (OAuth + MailerSend)
+- [x] **1.16** Système de réinitialisation de mot de passe par email (forgot/reset password)
 
 ---
 
@@ -327,13 +328,14 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-## 📚 Phase 7 : Fiches de cours
+## 📚 Phase 7 : Système de révision de cours
 
 - [ ] **7.1** API Courses (models, routes)
 - [ ] **7.2** Upload de cours (texte, PDF)
-- [ ] **7.3** Génération automatique de fiches de révision
-- [ ] **7.4** Vue carte mentale
-- [ ] **7.5** Intégration IA pour synthèse
+- [ ] **7.3** Génération automatique de fiches de révision (résumé style carte mentale)
+- [ ] **7.4** Quizz interactif sur le cours
+- [ ] **7.5** Vue carte mentale
+- [ ] **7.6** Intégration IA pour synthèse
 
 ---
 
@@ -368,6 +370,8 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 | `POST` | `/auth/google/callback` | Callback Google OAuth |
 | `GET` | `/auth/providers` | Liste des providers OAuth configurés |
 | `GET` | `/auth/verify-email` | Vérifier l'email avec un token |
+| `POST` | `/auth/password-reset/request` | Demander un email de réinitialisation de mot de passe |
+| `POST` | `/auth/password-reset/reset` | Réinitialiser le mot de passe avec un token |
 
 ### Endpoints protégés (nécessitent authentification)
 
@@ -403,6 +407,8 @@ class User:
 - `/` - Page d'accueil (landing page)
 - `/login` - Connexion
 - `/register` - Inscription
+- `/forgot-password` - Demande de réinitialisation de mot de passe
+- `/reset-password` - Réinitialisation de mot de passe (avec token)
 - `/dashboard` - Tableau de bord (protégé)
 - `/profile` - Profil utilisateur (protégé)
 - `/auth/callback/google` - Callback OAuth Google
