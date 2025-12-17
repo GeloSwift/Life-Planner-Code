@@ -42,28 +42,8 @@ class EmailService:
             )
         
         # Initialise MailerSend avec la clé API (nouvelle API v2.0.0)
-        # Essayons différentes façons d'initialiser le client
-        try:
-            # Méthode 1: avec api_token
-            self.client = MailerSendClient(api_token=settings.MAILERSEND_API_KEY)
-        except TypeError:
-            try:
-                # Méthode 2: avec api_key
-                self.client = MailerSendClient(api_key=settings.MAILERSEND_API_KEY)
-            except TypeError:
-                try:
-                    # Méthode 3: avec token directement
-                    self.client = MailerSendClient(settings.MAILERSEND_API_KEY)
-                except Exception as e:
-                    print(f"[EMAIL] Failed to initialize MailerSendClient: {e}")
-                    print(f"[EMAIL] Trying to inspect MailerSendClient.__init__ signature...")
-                    import inspect
-                    try:
-                        sig = inspect.signature(MailerSendClient.__init__)
-                        print(f"[EMAIL] MailerSendClient.__init__ signature: {sig}")
-                    except:
-                        pass
-                    raise
+        # D'après la documentation, MailerSendClient prend api_key comme paramètre
+        self.client = MailerSendClient(api_key=settings.MAILERSEND_API_KEY)
         
         self.from_email = settings.MAILERSEND_FROM_EMAIL
         self.from_name = settings.MAILERSEND_FROM_NAME
@@ -163,47 +143,35 @@ class EmailService:
         """
         
         # Configure l'email selon l'API MailerSend v2.0.0
-        try:
-            email_builder = EmailBuilder()
-            
-            # Configure l'expéditeur
-            email_builder.set_from(
-                email=self.from_email,
-                name=self.from_name
-            )
-            
-            # Configure le destinataire
-            email_builder.add_recipient(
-                email=to_email,
-                name=to_name or to_email
-            )
-            
-            # Configure le sujet et le contenu
-            email_builder.set_subject("Vérifiez votre email - Life Planner")
-            email_builder.set_html(html_content)
-            email_builder.set_text(text_content)
-            
-            # Construit l'objet Email
-            email = email_builder.build()
-            
-            # Envoie l'email via le client
-            # Essayons différentes méthodes
-            try:
-                response = self.client.email.send(email)
-            except AttributeError:
-                # Peut-être que c'est directement sur le client
-                try:
-                    response = self.client.send(email)
-                except AttributeError:
-                    # Ou peut-être une autre méthode
-                    response = self.client.emails.send(email)
-            
-            return response
-        except Exception as e:
-            print(f"[EMAIL] Error building/sending email: {e}")
-            print(f"[EMAIL] EmailBuilder methods: {dir(EmailBuilder())}")
-            print(f"[EMAIL] Client methods: {dir(self.client)}")
-            raise
+        email_builder = EmailBuilder()
+        
+        # Configure l'expéditeur (méthode: from_email)
+        email_builder.from_email(
+            email=self.from_email,
+            name=self.from_name
+        )
+        
+        # Configure le destinataire (méthode: to)
+        email_builder.to(
+            email=to_email,
+            name=to_name or to_email
+        )
+        
+        # Configure le sujet (méthode: subject)
+        email_builder.subject("Vérifiez votre email - Life Planner")
+        
+        # Configure le contenu HTML (méthode: html)
+        email_builder.html(html_content)
+        
+        # Configure le contenu texte (méthode: text)
+        email_builder.text(text_content)
+        
+        # Construit l'objet Email
+        email = email_builder.build()
+        
+        # Envoie l'email via le client (méthode: client.emails.send)
+        response = self.client.emails.send(email)
+        return response
 
 
 # Instance globale du service email
