@@ -35,12 +35,12 @@ Va dans Railway Dashboard → ton projet → Variables et ajoute :
 |----------|--------|
 | `DATABASE_URL` | *(fourni automatiquement par Railway)* |
 | `JWT_SECRET` | `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `CORS_ORIGINS` | `["http://localhost:3000","https://life-planner-code.vercel.app"]` |
-| `FRONTEND_URL` | `https://life-planner-code.vercel.app` |
+| `CORS_ORIGINS` | `["http://localhost:3000","https://life-planner-code.vercel.app","https://www.mylifeplanner.space","https://mylifeplanner.space"]` |
+| `FRONTEND_URL` | `https://www.mylifeplanner.space` *(ou ton domaine principal)* |
 | `GOOGLE_CLIENT_ID` | *(ton ID Google OAuth)* |
 | `GOOGLE_CLIENT_SECRET` | *(ton secret Google OAuth)* |
-| `MAILERSEND_API_KEY` | *(ton API key MailerSend)* |
-| `MAILERSEND_FROM_EMAIL` | `noreply@lifeplanner.app` *(email vérifié dans MailerSend)* |
+| `MAILERSEND_API_KEY` | *(ton API key MailerSend - commence par `mlsn.`)* |
+| `MAILERSEND_FROM_EMAIL` | `noreply@mylifeplanner.space` *(email du domaine vérifié dans MailerSend)* |
 | `MAILERSEND_FROM_NAME` | `Life Planner` |
 
 #### Vercel (Frontend)
@@ -60,10 +60,35 @@ Va dans Vercel Dashboard → ton projet → Settings → Environment Variables :
 4. Ajoute les **Origines JavaScript autorisées** :
    - `http://localhost:3000`
    - `https://life-planner-code.vercel.app`
+   - `https://www.mylifeplanner.space`
+   - `https://mylifeplanner.space` *(sans www)*
 5. Ajoute les **URI de redirection autorisés** :
    - `http://localhost:3000/auth/callback/google`
    - `https://life-planner-code.vercel.app/auth/callback/google`
+   - `https://www.mylifeplanner.space/auth/callback/google`
+   - `https://mylifeplanner.space/auth/callback/google` *(sans www)*
 6. Copie le Client ID et le Client Secret dans Railway
+
+**⚠️ Important** : `FRONTEND_URL` doit être une **string** (pas un tableau JSON). Utilise ton domaine principal.
+
+### Configuration MailerSend (Vérification d'email)
+
+1. **Crée un compte** sur [MailerSend](https://www.mailersend.com/)
+2. **Vérifie un domaine** :
+   - Va dans **Domains** → **Add Domain**
+   - Entre ton domaine (ex: `mylifeplanner.space`)
+   - Configure les enregistrements DNS (SPF, DKIM, DMARC) dans Cloudflare ou ton registrar
+   - Attends la vérification (5-15 minutes)
+3. **Génère un token API** :
+   - Va dans **Domains** → ton domaine → **API token**
+   - Clique sur **"Generate new token"** ou utilise un token existant
+   - Copie le token (commence par `mlsn.`)
+4. **Configure dans Railway** :
+   - `MAILERSEND_API_KEY` : ton token API
+   - `MAILERSEND_FROM_EMAIL` : `noreply@mylifeplanner.space` *(utilise ton domaine vérifié)*
+   - `MAILERSEND_FROM_NAME` : `Life Planner`
+
+**Note** : Limite gratuite de 100 emails/jour avec le plan gratuit MailerSend.
 
 ---
 
@@ -169,6 +194,7 @@ docker compose exec api <commande>
 | Service | URL |
 |---------|-----|
 | Frontend (Vercel) | https://life-planner-code.vercel.app |
+| Frontend (Domaine) | https://www.mylifeplanner.space |
 | API (Railway) | https://life-planner-code-production.up.railway.app |
 | API Docs | https://life-planner-code-production.up.railway.app/docs |
 
@@ -240,6 +266,14 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 - [x] **1.5** OAuth Google (configuration complète)
 - [x] **1.6** Mode sombre avec toggle
 - [x] **1.7** Animations de transition
+- [x] **1.8** Page de profil utilisateur
+- [x] **1.9** Upload de photo de profil (stockée en base64 dans la BD)
+- [x] **1.10** Modification du nom complet
+- [x] **1.11** Modification du mot de passe (utilisateurs locaux uniquement)
+- [x] **1.12** Système de vérification d'email (MailerSend)
+- [x] **1.13** Affichage de l'avatar dans le header
+- [x] **1.14** Notifications toast (remplacement des alert())
+- [x] **1.15** Configuration domaine personnalisé (OAuth + MailerSend)
 
 ---
 
@@ -321,6 +355,73 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## 📡 API Routes - Authentification
+
+### Endpoints publics
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `POST` | `/auth/register` | Inscription d'un nouvel utilisateur |
+| `POST` | `/auth/login` | Connexion (email/password) |
+| `POST` | `/auth/refresh` | Rafraîchir le token d'accès |
+| `GET` | `/auth/google/url` | Obtenir l'URL d'autorisation Google OAuth |
+| `POST` | `/auth/google/callback` | Callback Google OAuth |
+| `GET` | `/auth/providers` | Liste des providers OAuth configurés |
+| `GET` | `/auth/verify-email` | Vérifier l'email avec un token |
+
+### Endpoints protégés (nécessitent authentification)
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/auth/me` | Obtenir les informations de l'utilisateur connecté |
+| `PUT` | `/auth/me` | Mettre à jour le profil (nom, mot de passe) |
+| `POST` | `/auth/me/avatar` | Upload/modifier la photo de profil |
+| `POST` | `/auth/verify-email/send` | Envoyer un email de vérification |
+| `POST` | `/auth/logout` | Déconnexion |
+
+### Modèle User
+
+```python
+class User:
+    id: int
+    email: str
+    full_name: str | None
+    avatar_url: str | None  # Base64 data URL (max 500KB)
+    auth_provider: AuthProvider  # "local" | "google"
+    provider_user_id: str | None
+    is_email_verified: bool
+    created_at: datetime
+    updated_at: datetime
+```
+
+---
+
+## 🎨 Composants Frontend
+
+### Pages
+
+- `/` - Page d'accueil (landing page)
+- `/login` - Connexion
+- `/register` - Inscription
+- `/dashboard` - Tableau de bord (protégé)
+- `/profile` - Profil utilisateur (protégé)
+- `/auth/callback/google` - Callback OAuth Google
+- `/auth/verify-email` - Vérification d'email
+
+### Composants UI
+
+- `Header` - En-tête avec navigation et avatar utilisateur
+- `Footer` - Pied de page
+- `Toast` - Notifications toast (success, error, info, warning)
+- `Card`, `Button`, `Input`, `Label` - Composants shadcn/ui
+
+### Contextes
+
+- `AuthProvider` - Gestion de l'état d'authentification global
+- `ThemeProvider` - Gestion du thème clair/sombre
+
+---
+
 # 🏗️ Architecture du projet
 
 ```
@@ -330,13 +431,14 @@ Life-Planner-Code/
 │   │   ├── src/
 │   │   │   ├── app/        # Pages (App Router)
 │   │   │   ├── components/ # Composants React
-│   │   │   ├── lib/        # Utilitaires, API client
+│   │   │   ├── lib/        # Utilitaires, API client, auth-context
+│   │   │   ├── components/ # Composants React (ui, layout)
 │   │   │   └── hooks/      # Custom hooks
 │   │   ├── Dockerfile
 │   │   └── package.json
 │   └── back/               # FastAPI (Railway)
-│       ├── core/           # Config, DB, Security
-│       ├── auth/           # Module authentification
+│       ├── core/           # Config, DB, Security, Email (MailerSend)
+│       ├── auth/           # Module authentification (routes, models, schemas, service, oauth)
 │       ├── workout/        # Module workout (à créer)
 │       ├── recipes/        # Module recettes (à créer)
 │       ├── budget/         # Module budget (à créer)

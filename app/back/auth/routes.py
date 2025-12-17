@@ -333,23 +333,33 @@ def send_verification_email(
     if email_service:
         # Envoie l'email via MailerSend
         try:
-            email_service.send_verification_email(
+            response = email_service.send_verification_email(
                 to_email=current_user.email,
                 to_name=current_user.full_name,
                 verification_url=verification_url,
             )
+            print(f"[EMAIL] Verification email sent successfully to {current_user.email}")
+            print(f"[EMAIL] MailerSend response: {response}")
         except Exception as e:
-            # Log l'erreur mais ne bloque pas la réponse
+            # Log l'erreur avec plus de détails
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"[EMAIL] Failed to send verification email to {current_user.email}")
+            print(f"[EMAIL] Error: {str(e)}")
+            print(f"[EMAIL] Traceback: {error_details}")
             # En production, on pourrait logger dans un service de monitoring
-            print(f"[EMAIL] Failed to send verification email to {current_user.email}: {e}")
-            # En développement, on peut quand même retourner un succès
-            # En production, on pourrait lever une exception
-            if settings.DEBUG:
-                print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
+            # Pour l'instant, on lève l'exception pour que l'utilisateur soit informé
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to send verification email: {str(e)}",
+            )
     else:
         # MailerSend n'est pas configuré (mode dev)
         # On log juste l'URL pour le développement
         print(f"[DEV] MailerSend not configured. Email verification URL for {current_user.email}: {verification_url}")
+        # En développement, on peut quand même retourner un succès
+        if settings.DEBUG:
+            print(f"[DEV] Email verification URL for {current_user.email}: {verification_url}")
     
     return MessageResponse(
         message="Verification email sent. Please check your inbox."

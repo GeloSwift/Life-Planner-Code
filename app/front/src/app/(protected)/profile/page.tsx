@@ -30,13 +30,14 @@ import {
   X,
   Camera,
   CheckCircle2,
-  XCircle,
   Send
 } from "lucide-react";
+import { useToast, ToastContainer } from "@/components/ui/toast";
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
+  const { toasts, success, error, closeToast } = useToast();
   
   // États pour les formulaires
   const [fullName, setFullName] = useState("");
@@ -122,13 +123,13 @@ export default function ProfilePage() {
 
     // Vérifie le type de fichier
     if (!file.type.startsWith("image/")) {
-      alert("Veuillez sélectionner une image");
+      error("Veuillez sélectionner une image");
       return;
     }
 
     // Vérifie la taille (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      alert("L'image ne doit pas dépasser 5MB");
+      error("L'image ne doit pas dépasser 5MB");
       return;
     }
 
@@ -147,11 +148,11 @@ export default function ProfilePage() {
       }
       
       await refreshUser();
-      alert("Photo de profil mise à jour avec succès !");
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour de l'avatar:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
-      alert(`Erreur lors de la mise à jour de la photo de profil: ${errorMessage}`);
+      success("Photo de profil mise à jour avec succès !");
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour de l'avatar:", err);
+      const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      error(`Erreur lors de la mise à jour de la photo de profil: ${errorMessage}`);
     } finally {
       setIsUploadingAvatar(false);
       // Réinitialise l'input pour permettre de sélectionner le même fichier
@@ -173,9 +174,10 @@ export default function ProfilePage() {
       await authApi.updateMe({ full_name: fullName.trim() || undefined });
       await refreshUser();
       setIsEditingName(false);
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du nom:", error);
-      alert("Erreur lors de la mise à jour du nom");
+      success("Nom mis à jour avec succès !");
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour du nom:", err);
+      error("Erreur lors de la mise à jour du nom");
     } finally {
       setIsSavingName(false);
     }
@@ -210,9 +212,9 @@ export default function ProfilePage() {
       setNewPassword("");
       setConfirmPassword("");
       setIsEditingPassword(false);
-      alert("Mot de passe mis à jour avec succès !");
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour du mot de passe:", error);
+      success("Mot de passe mis à jour avec succès !");
+    } catch (err) {
+      console.error("Erreur lors de la mise à jour du mot de passe:", err);
       setPasswordError("Erreur lors de la mise à jour du mot de passe");
     } finally {
       setIsSavingPassword(false);
@@ -504,27 +506,22 @@ export default function ProfilePage() {
                       <span className="text-base font-medium text-green-600 dark:text-green-400">Oui</span>
                     </>
                   ) : (
-                    <>
-                      <XCircle className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-base font-medium text-muted-foreground">Non</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-2"
-                        onClick={async () => {
-                          try {
-                            await authApi.sendVerificationEmail();
-                            alert("Email de vérification envoyé ! Vérifiez votre boîte de réception.");
-                          } catch (error) {
-                            console.error("Erreur lors de l'envoi de l'email:", error);
-                            alert("Erreur lors de l'envoi de l'email de vérification");
-                          }
-                        }}
-                      >
-                        <Send className="h-4 w-4 mr-1" />
-                        Vérifier
-                      </Button>
-                    </>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await authApi.sendVerificationEmail();
+                          success("Email de vérification envoyé ! Vérifiez votre boîte de réception.");
+                        } catch (err) {
+                          console.error("Erreur lors de l'envoi de l'email:", err);
+                          error("Erreur lors de l'envoi de l'email de vérification");
+                        }
+                      }}
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      Vérifier mon email
+                    </Button>
                   )}
                 </div>
               </div>
@@ -535,6 +532,7 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+      <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
   );
 }
