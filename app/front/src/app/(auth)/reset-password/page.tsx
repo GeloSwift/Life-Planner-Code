@@ -10,6 +10,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authApi } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -18,13 +19,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Loader2, CheckCircle2, XCircle, Lock, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, Lock, AlertCircle, Check } from "lucide-react";
 import Link from "next/link";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { logout } = useAuth();
   const { toasts, success, error, closeToast } = useToast();
   
   const [token, setToken] = useState<string | null>(null);
@@ -34,6 +36,16 @@ function ResetPasswordContent() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+
+  // Validation du mot de passe (identique à register)
+  const passwordRequirements = [
+    { met: newPassword.length >= 8, label: "Au moins 8 caractères" },
+    { met: /[A-Z]/.test(newPassword), label: "Une lettre majuscule" },
+    { met: /[a-z]/.test(newPassword), label: "Une lettre minuscule" },
+    { met: /[0-9]/.test(newPassword), label: "Un chiffre" },
+  ];
+  const isPasswordValid = passwordRequirements.every((req) => req.met);
+  const doPasswordsMatch = newPassword === confirmPassword && newPassword.length > 0;
 
   useEffect(() => {
     const tokenParam = searchParams.get("token");
@@ -58,12 +70,12 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setPasswordError("Le mot de passe doit contenir au moins 8 caractères");
+    if (!isPasswordValid) {
+      setPasswordError("Le mot de passe ne respecte pas les critères requis");
       return;
     }
 
-    if (newPassword !== confirmPassword) {
+    if (!doPasswordsMatch) {
       setPasswordError("Les mots de passe ne correspondent pas");
       return;
     }
@@ -79,10 +91,19 @@ function ResetPasswordContent() {
       setStatus("success");
       setMessage(response.message);
       success("Mot de passe réinitialisé avec succès !");
-      // Redirige vers login après 3 secondes
+      
+      // Déconnecte l'utilisateur et redirige vers login
+      try {
+        await logout();
+      } catch (logoutErr) {
+        // Ignore les erreurs de logout (peut-être pas connecté)
+        console.log("Logout error (ignored):", logoutErr);
+      }
+      
+      // Redirige vers login après 2 secondes
       setTimeout(() => {
         router.push("/login");
-      }, 3000);
+      }, 2000);
     } catch (err) {
       setStatus("error");
       const errorMessage = err instanceof Error ? err.message : "Erreur lors de la réinitialisation";
@@ -158,14 +179,39 @@ function ResetPasswordContent() {
                     <Label htmlFor="new-password">Nouveau mot de passe</Label>
                     <PasswordInput
                       id="new-password"
-                      placeholder="Minimum 8 caractères"
+                      placeholder="••••••••"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       disabled={isLoading}
-                      className="h-12"
+                      className={`h-12 transition-all ${
+                        newPassword.length > 0 && !isPasswordValid
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                       required
                       autoComplete="new-password"
                     />
+                    {/* Password requirements with animation */}
+                    {newPassword.length > 0 && (
+                      <div className="mt-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {passwordRequirements.map((req, index) => (
+                          <div
+                            key={req.label}
+                            className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                              req.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                            }`}
+                            style={{ transitionDelay: `${index * 50}ms` }}
+                          >
+                            <div className={`rounded-full p-0.5 transition-all ${
+                              req.met ? "bg-green-600 dark:bg-green-400" : "bg-muted"
+                            }`}>
+                              <Check className={`h-2 w-2 text-white transition-all ${req.met ? "scale-100" : "scale-0"}`} />
+                            </div>
+                            {req.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -176,10 +222,25 @@ function ResetPasswordContent() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       disabled={isLoading}
-                      className="h-12"
+                      className={`h-12 transition-all ${
+                        confirmPassword.length > 0 && !doPasswordsMatch
+                          ? "border-destructive focus-visible:ring-destructive"
+                          : ""
+                      }`}
                       required
                       autoComplete="new-password"
                     />
+                    {confirmPassword.length > 0 && !doPasswordsMatch && (
+                      <p className="text-xs text-destructive animate-in fade-in slide-in-from-top-1 duration-200">
+                        Les mots de passe ne correspondent pas
+                      </p>
+                    )}
+                    {confirmPassword.length > 0 && doPasswordsMatch && (
+                      <p className="text-xs text-green-600 dark:text-green-400 animate-in fade-in slide-in-from-top-1 duration-200 flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Les mots de passe correspondent
+                      </p>
+                    )}
                   </div>
 
                   {passwordError && (
@@ -191,8 +252,8 @@ function ResetPasswordContent() {
 
                   <Button
                     type="submit"
-                    className="h-12 w-full text-base font-medium"
-                    disabled={isLoading}
+                    className="h-12 w-full text-base font-medium transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    disabled={isLoading || !isPasswordValid || !doPasswordsMatch}
                   >
                     {isLoading ? (
                       <>
@@ -209,7 +270,8 @@ function ResetPasswordContent() {
               {status === "success" && (
                 <div className="space-y-4">
                   <p className="text-center text-sm text-muted-foreground">
-                    Redirection vers la page de connexion dans quelques secondes...
+                    Votre mot de passe a été réinitialisé avec succès. 
+                    Vous allez être redirigé vers la page de connexion pour vous reconnecter avec votre nouveau mot de passe.
                   </p>
                   <Button asChild className="w-full">
                     <Link href="/login">Se connecter maintenant</Link>
