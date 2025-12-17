@@ -1,7 +1,7 @@
 """Add workout planner tables
 
-Revision ID: 20251218_000000
-Revises: 20251209_000000_increase_avatar_url_size
+Revision ID: 5f6d91509219
+Revises: 4b5c90498108
 Create Date: 2024-12-18 00:00:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '20251218_000000'
-down_revision: Union[str, None] = '20251209_000000_increase_avatar_url_size'
+revision: str = '5f6d91509219'
+down_revision: Union[str, None] = '4b5c90498108'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
