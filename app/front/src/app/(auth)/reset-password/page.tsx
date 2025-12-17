@@ -92,7 +92,7 @@ function ResetPasswordContent() {
       setMessage(response.message);
       success("Mot de passe réinitialisé avec succès !");
       
-      // Déconnecte l'utilisateur et redirige vers login
+      // Déconnecte l'utilisateur et redirige immédiatement vers login
       try {
         await logout();
       } catch (logoutErr) {
@@ -100,10 +100,8 @@ function ResetPasswordContent() {
         console.log("Logout error (ignored):", logoutErr);
       }
       
-      // Redirige vers login après 2 secondes
-      setTimeout(() => {
-        router.push("/login");
-      }, 2000);
+      // Redirige immédiatement vers login
+      router.replace("/login");
     } catch (err) {
       setStatus("error");
       const errorMessage = err instanceof Error ? err.message : "Erreur lors de la réinitialisation";
@@ -269,13 +267,12 @@ function ResetPasswordContent() {
               
               {status === "success" && (
                 <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground">
-                    Votre mot de passe a été réinitialisé avec succès. 
-                    Vous allez être redirigé vers la page de connexion pour vous reconnecter avec votre nouveau mot de passe.
-                  </p>
-                  <Button asChild className="w-full">
-                    <Link href="/login">Se connecter maintenant</Link>
-                  </Button>
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-center text-sm text-muted-foreground">
+                      Mot de passe réinitialisé avec succès. Redirection en cours...
+                    </p>
+                  </div>
                 </div>
               )}
               
