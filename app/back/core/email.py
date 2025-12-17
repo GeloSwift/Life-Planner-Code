@@ -7,10 +7,25 @@ Documentation: https://developers.mailersend.com/api/v1/email.html
 
 from typing import Optional
 
+# Import du package mailersend
 try:
-    from mailersend import emails
-except ImportError:
+    import mailersend
+    # Vérifie la structure du package
+    if hasattr(mailersend, 'emails'):
+        emails = mailersend.emails
+    elif hasattr(mailersend, 'NewEmail'):
+        # Le package a peut-être changé de structure
+        emails = mailersend
+    else:
+        # Essai d'import direct
+        from mailersend import emails  # type: ignore
+except ImportError as e:
     # Fallback pour éviter les erreurs si le package n'est pas installé
+    print(f"[EMAIL] Import error: {e}")
+    emails = None  # type: ignore
+except Exception as e:
+    # Si tout échoue, on met None
+    print(f"[EMAIL] Failed to import mailersend: {e}")
     emails = None  # type: ignore
 
 from core.config import settings
@@ -25,13 +40,31 @@ class EmailService:
             raise ValueError("MAILERSEND_API_KEY is not configured")
         
         if emails is None:
+            # Diagnostic détaillé
+            try:
+                import mailersend
+                print(f"[EMAIL] mailersend module found: {mailersend}")
+                print(f"[EMAIL] mailersend dir: {dir(mailersend)}")
+            except Exception as e:
+                print(f"[EMAIL] Cannot import mailersend at all: {e}")
+            
             raise ImportError(
-                "mailersend package is not installed. "
+                "mailersend package is not installed or cannot be imported. "
                 "Install it with: pip install mailersend==2.0.0"
             )
         
         # Initialise MailerSend avec la clé API
-        self.mailersend = emails.NewEmail(settings.MAILERSEND_API_KEY)
+        try:
+            self.mailersend = emails.NewEmail(settings.MAILERSEND_API_KEY)
+        except AttributeError as e:
+            print(f"[EMAIL] emails object: {emails}")
+            print(f"[EMAIL] emails type: {type(emails)}")
+            print(f"[EMAIL] emails dir: {dir(emails)}")
+            raise ImportError(
+                f"Cannot use mailersend.emails.NewEmail: {e}. "
+                "The package structure may have changed."
+            )
+        
         self.from_email = settings.MAILERSEND_FROM_EMAIL
         self.from_name = settings.MAILERSEND_FROM_NAME
     
