@@ -9,7 +9,7 @@
  * - Mot de passe (si connecté avec email/password)
  */
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi } from "@/lib/api";
@@ -37,7 +37,8 @@ import { useToast, ToastContainer } from "@/components/ui/toast";
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
   const router = useRouter();
-  const { toasts, success, error, closeToast } = useToast();
+  const searchParams = useSearchParams();
+  const { toasts, success, error, warning, closeToast } = useToast();
   
   // États pour les formulaires
   const [fullName, setFullName] = useState("");
@@ -53,6 +54,7 @@ export default function ProfilePage() {
   
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const verifyEmailButtonRef = useRef<HTMLButtonElement>(null);
   
   // Initialise les valeurs depuis l'utilisateur
   useEffect(() => {
@@ -67,6 +69,27 @@ export default function ProfilePage() {
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Gère la redirection depuis d'autres pages (email non vérifié)
+  useEffect(() => {
+    const emailNotVerified = searchParams.get("email_not_verified");
+    
+    if (emailNotVerified === "true" && user && !user.is_email_verified && user.auth_provider === "local") {
+      // Affiche un toast de warning
+      warning("Veuillez vérifier votre email pour accéder à toutes les fonctionnalités.");
+      
+      // Scroll vers le bouton de vérification après un court délai
+      setTimeout(() => {
+        verifyEmailButtonRef.current?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+      }, 300);
+      
+      // Nettoie l'URL pour éviter de réafficher le toast au rechargement
+      router.replace("/profile", { scroll: false });
+    }
+  }, [searchParams, user, warning, router]);
 
   if (isLoading || !user) {
     return (
@@ -507,6 +530,7 @@ export default function ProfilePage() {
                     </>
                   ) : (
                     <Button
+                      ref={verifyEmailButtonRef}
                       variant="outline"
                       size="sm"
                       onClick={async () => {

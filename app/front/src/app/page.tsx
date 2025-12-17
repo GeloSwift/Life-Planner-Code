@@ -136,58 +136,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/80 px-8 py-16 text-center text-primary-foreground sm:px-16">
-          <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
-          <div className="relative z-10">
-            {isAuthenticated && user ? (
-              <>
-                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Bienvenue, {user.full_name || "Champion"} ! 🎉
-                </h3>
-                <p className="mx-auto mt-4 max-w-xl opacity-90">
-                  Votre compte est prêt. Accédez à votre tableau de bord pour 
-                  commencer à planifier votre vie et atteindre vos objectifs.
-                </p>
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="mt-8 h-12 px-8 text-base"
-                  asChild
-                >
-                  <Link href="/dashboard">
-                    Mon tableau de bord
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <h3 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Prêt à transformer votre vie ?
-                </h3>
-                <p className="mx-auto mt-4 max-w-xl opacity-90">
-                  Rejoignez des milliers de personnes qui utilisent Life Planner 
-                  pour atteindre leurs objectifs au quotidien.
-                </p>
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="mt-8 h-12 px-8 text-base"
-                  asChild
-                >
-                  <Link href="/register">
-                    Commencer gratuitement
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
-
       <Footer />
     </div>
   );

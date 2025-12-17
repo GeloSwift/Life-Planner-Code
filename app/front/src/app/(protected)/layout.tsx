@@ -32,7 +32,8 @@ export default function ProtectedLayout({
 
     // Redirige vers le profil si l'email n'est pas vérifié (utilisateurs locaux uniquement)
     if (!isLoading && user && !user.is_email_verified && user.auth_provider === "local") {
-      router.replace("/profile");
+      // Ajoute un paramètre pour indiquer qu'on a été redirigé
+      router.replace("/profile?email_not_verified=true");
     }
   }, [isLoading, user, router, pathname]);
 
