@@ -19,12 +19,13 @@ interface WeightChartProps {
 const MIN_WEIGHT = 70;
 const MAX_WEIGHT = 90;
 const WEIGHT_RANGE = MAX_WEIGHT - MIN_WEIGHT;
-const CHART_HEIGHT = 160;
-const CHART_PADDING = { top: 10, bottom: 30, left: 45, right: 15 };
+const CHART_HEIGHT = 180;
+const CHART_PADDING = { top: 20, bottom: 35, left: 40, right: 20 };
 
 export function WeightChart({ latestWeight }: WeightChartProps) {
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hoveredPoint, setHoveredPoint] = useState<{ entry: WeightEntry; x: number; y: number } | null>(null);
 
   useEffect(() => {
     const loadEntries = async () => {
@@ -88,7 +89,7 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
 
   // Calculer les positions des points
   const getX = (index: number) => {
-    if (sortedEntries.length === 1) return chartWidth / 2;
+    if (sortedEntries.length === 1) return CHART_PADDING.left + chartInnerWidth / 2;
     return CHART_PADDING.left + (index / (sortedEntries.length - 1)) * chartInnerWidth;
   };
 
@@ -169,12 +170,12 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
           <defs>
             {/* Gradient bleu pour l'aire */}
             <linearGradient id="weightAreaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.05" />
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
             </linearGradient>
             {/* Glow effect */}
             <filter id="glow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
               <feMerge>
                 <feMergeNode in="coloredBlur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -191,33 +192,23 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
                 x2={chartWidth - CHART_PADDING.right}
                 y2={getY(label)}
                 stroke="currentColor"
-                strokeOpacity="0.1"
-                strokeDasharray="4 4"
+                strokeOpacity="0.08"
+                strokeWidth="1"
               />
               <text
-                x={CHART_PADDING.left - 8}
+                x={CHART_PADDING.left - 10}
                 y={getY(label)}
                 fill="currentColor"
-                fillOpacity="0.5"
+                fillOpacity="0.4"
                 fontSize="11"
                 textAnchor="end"
                 dominantBaseline="middle"
+                fontFamily="system-ui"
               >
                 {label}
               </text>
             </g>
           ))}
-
-          {/* Label kg */}
-          <text
-            x={10}
-            y={CHART_PADDING.top}
-            fill="currentColor"
-            fillOpacity="0.5"
-            fontSize="10"
-          >
-            kg
-          </text>
 
           {/* Aire sous la courbe */}
           <path
@@ -230,28 +221,72 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
             d={createSmoothPath()}
             fill="none"
             stroke="#3b82f6"
-            strokeWidth="3"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#glow)"
           />
 
-          {/* Points */}
-          {sortedEntries.map((entry, i) => (
-            <g key={entry.id}>
-              <circle
-                cx={getX(i)}
-                cy={getY(entry.weight)}
-                r="5"
-                fill="#1e293b"
-                stroke="#3b82f6"
-                strokeWidth="2"
-              />
-              {/* Tooltip au survol (simplifié) */}
-              <title>{`${entry.weight} kg - ${new Date(entry.measured_at).toLocaleDateString("fr-FR")}`}</title>
-            </g>
-          ))}
+          {/* Points interactifs */}
+          {sortedEntries.map((entry, i) => {
+            const cx = getX(i);
+            const cy = getY(entry.weight);
+            const isHovered = hoveredPoint?.entry.id === entry.id;
+            
+            return (
+              <g 
+                key={entry.id}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHoveredPoint({ entry, x: cx, y: cy })}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
+                {/* Zone de survol plus grande pour faciliter l'interaction */}
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r="15"
+                  fill="transparent"
+                />
+                {/* Point visible */}
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={isHovered ? 7 : 5}
+                  fill={isHovered ? "#3b82f6" : "#1e293b"}
+                  stroke="#3b82f6"
+                  strokeWidth="2"
+                  style={{ transition: "all 0.15s ease" }}
+                />
+              </g>
+            );
+          })}
         </svg>
+
+        {/* Tooltip au survol */}
+        {hoveredPoint && (
+          <div
+            className="absolute pointer-events-none bg-popover border rounded-lg shadow-lg px-3 py-2 text-sm z-10"
+            style={{
+              left: `${(hoveredPoint.x / chartWidth) * 100}%`,
+              top: `${(hoveredPoint.y / CHART_HEIGHT) * 100}%`,
+              transform: "translate(-50%, -120%)",
+            }}
+          >
+            <p className="font-bold text-lg">{hoveredPoint.entry.weight} kg</p>
+            <p className="text-muted-foreground text-xs">
+              {new Date(hoveredPoint.entry.measured_at).toLocaleDateString("fr-FR", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+            {hoveredPoint.entry.notes && (
+              <p className="text-xs text-blue-400 mt-1">{hoveredPoint.entry.notes}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Dates */}

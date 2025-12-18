@@ -47,6 +47,7 @@ export default function WeightPage() {
   // Formulaire
   const [newWeight, setNewWeight] = useState("");
   const [newDate, setNewDate] = useState(new Date().toISOString().split("T")[0]);
+  const [newTime, setNewTime] = useState(new Date().toTimeString().slice(0, 5));
   const [newNotes, setNewNotes] = useState("");
 
   const loadEntries = useCallback(async () => {
@@ -73,15 +74,17 @@ export default function WeightPage() {
 
     setIsSubmitting(true);
     try {
+      const dateTime = new Date(`${newDate}T${newTime}:00`);
       await workoutApi.weight.create({
         weight,
-        measured_at: new Date(newDate).toISOString(),
+        measured_at: dateTime.toISOString(),
         notes: newNotes || undefined,
       });
       success(`Pesée enregistrée : ${weight} kg`);
       setShowNewEntry(false);
       setNewWeight("");
       setNewNotes("");
+      setNewTime(new Date().toTimeString().slice(0, 5));
       loadEntries();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
@@ -91,8 +94,6 @@ export default function WeightPage() {
   };
 
   const handleDelete = async (entry: WeightEntry) => {
-    if (!confirm(`Supprimer la pesée du ${new Date(entry.measured_at).toLocaleDateString("fr-FR")} ?`)) return;
-
     try {
       await workoutApi.weight.delete(entry.id);
       success("Pesée supprimée");
@@ -170,20 +171,31 @@ export default function WeightPage() {
                       onChange={(e) => setNewWeight(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="date">Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={newDate}
+                        onChange={(e) => setNewDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="time">Heure</Label>
+                      <Input
+                        id="time"
+                        type="time"
+                        value={newTime}
+                        onChange={(e) => setNewTime(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes">Notes (optionnel)</Label>
                     <Input
                       id="notes"
-                      placeholder="Ex: Après le sport..."
+                      placeholder="Ex: Après le sport, à jeun..."
                       value={newNotes}
                       onChange={(e) => setNewNotes(e.target.value)}
                     />

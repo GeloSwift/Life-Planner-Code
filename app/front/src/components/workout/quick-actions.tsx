@@ -42,7 +42,19 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
   const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewWeight, setShowNewWeight] = useState(false);
+  
+  // Formulaire pesée
   const [weight, setWeight] = useState("");
+  const [weightDate, setWeightDate] = useState(new Date().toISOString().split("T")[0]);
+  const [weightTime, setWeightTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [weightNotes, setWeightNotes] = useState("");
+
+  const resetWeightForm = () => {
+    setWeight("");
+    setWeightDate(new Date().toISOString().split("T")[0]);
+    setWeightTime(new Date().toTimeString().slice(0, 5));
+    setWeightNotes("");
+  };
 
   const handleAddWeight = async () => {
     const weightValue = parseFloat(weight);
@@ -53,14 +65,17 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
 
     setIsLoading(true);
     try {
+      const dateTime = new Date(`${weightDate}T${weightTime}:00`);
       await workoutApi.weight.create({
         weight: weightValue,
+        measured_at: dateTime.toISOString(),
+        notes: weightNotes || undefined,
       });
 
       success(`Pesée enregistrée ⚖️ ${weightValue} kg`);
 
       setShowNewWeight(false);
-      setWeight("");
+      resetWeightForm();
       onActionComplete?.();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
@@ -101,7 +116,10 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
           </Button>
 
           {/* Nouvelle pesée */}
-          <Dialog open={showNewWeight} onOpenChange={setShowNewWeight}>
+          <Dialog open={showNewWeight} onOpenChange={(open) => {
+            setShowNewWeight(open);
+            if (!open) resetWeightForm();
+          }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
                 <Scale className="h-4 w-4" />
@@ -113,19 +131,48 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
               <DialogHeader>
                 <DialogTitle>Nouvelle pesée</DialogTitle>
                 <DialogDescription>
-                  Enregistrez votre poids du jour
+                  Enregistrez votre poids
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="weight">Poids (kg)</Label>
+                  <Label htmlFor="quick-weight">Poids (kg)</Label>
                   <Input
-                    id="weight"
+                    id="quick-weight"
                     type="number"
                     step="0.1"
                     placeholder="Ex: 75.5"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-date">Date</Label>
+                    <Input
+                      id="quick-date"
+                      type="date"
+                      value={weightDate}
+                      onChange={(e) => setWeightDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-time">Heure</Label>
+                    <Input
+                      id="quick-time"
+                      type="time"
+                      value={weightTime}
+                      onChange={(e) => setWeightTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quick-notes">Notes (optionnel)</Label>
+                  <Input
+                    id="quick-notes"
+                    placeholder="Ex: Après le sport, à jeun..."
+                    value={weightNotes}
+                    onChange={(e) => setWeightNotes(e.target.value)}
                   />
                 </div>
               </div>
