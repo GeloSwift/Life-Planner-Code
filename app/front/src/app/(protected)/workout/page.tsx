@@ -190,7 +190,7 @@ export default function WorkoutPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Calendrier */}
           <section>
-            <Card>
+            <Card className="h-full">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base sm:text-lg flex items-center gap-2">
@@ -219,8 +219,9 @@ export default function WorkoutPage() {
             </Card>
           </section>
 
-          {/* Objectifs */}
-          <section>
+          {/* Objectifs + Évolution du poids */}
+          <section className="space-y-6">
+            {/* Objectifs */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -243,38 +244,36 @@ export default function WorkoutPage() {
                 <GoalsProgress goals={dashboard?.active_goals ?? []} />
               </CardContent>
             </Card>
+
+            {/* Évolution du poids */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-blue-500" />
+                    Évolution du poids
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push("/workout/weight")}
+                  >
+                    Historique
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+                <CardDescription>
+                  {dashboard?.latest_weight
+                    ? `Dernier poids : ${dashboard.latest_weight.weight} kg`
+                    : "Aucune pesée enregistrée"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <WeightChart latestWeight={dashboard?.latest_weight} />
+              </CardContent>
+            </Card>
           </section>
         </div>
-
-        {/* Évolution du poids */}
-        <section className="mt-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
-                  Évolution du poids
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push("/workout/weight")}
-                >
-                  Historique
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
-              </div>
-              <CardDescription>
-                {dashboard?.latest_weight
-                  ? `Dernier poids : ${dashboard.latest_weight.weight} kg`
-                  : "Aucune pesée enregistrée"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WeightChart latestWeight={dashboard?.latest_weight} />
-            </CardContent>
-          </Card>
-        </section>
 
         {/* Liens rapides */}
         <section className="mt-6 sm:mt-8">

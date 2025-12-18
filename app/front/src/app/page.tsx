@@ -40,26 +40,31 @@ export default function HomePage() {
       icon: Dumbbell,
       title: "Sport & Fitness",
       description: "Planifiez vos séances et suivez vos progrès",
+      href: "/workout",
     },
     {
       icon: Utensils,
       title: "Nutrition",
       description: "Gérez vos repas et listes de courses",
+      href: "/recipes",
     },
     {
       icon: Wallet,
       title: "Budget",
       description: "Suivez vos finances et économisez",
+      href: "/budget",
     },
     {
       icon: CheckSquare,
       title: "Habitudes",
       description: "Construisez des routines durables",
+      href: "/habits",
     },
     {
       icon: GraduationCap,
       title: "Révision de cours",
       description: "Résumez en cartes mentales et quizz interactifs",
+      href: "/revision",
     },
   ];
 
@@ -125,9 +130,10 @@ export default function HomePage() {
 
         <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {features.map((feature, index) => (
-            <div
+            <Link
               key={feature.title}
-              className="group flex flex-col rounded-2xl border bg-card p-6 transition-all hover:shadow-lg hover:-translate-y-1"
+              href={isAuthenticated ? feature.href : "/login"}
+              className="group flex flex-col rounded-2xl border bg-card p-6 transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="mb-4 inline-flex w-fit rounded-xl bg-primary/10 p-3">
@@ -137,7 +143,7 @@ export default function HomePage() {
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {feature.description}
               </p>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
