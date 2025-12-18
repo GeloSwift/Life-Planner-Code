@@ -51,7 +51,7 @@ import {
 
 export default function GoalsPage() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { success, error: showError } = useToast();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,21 +88,14 @@ export default function GoalsPage() {
 
   const handleCreateGoal = async () => {
     if (!newGoal.name?.trim() || !newGoal.target_value) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
-        variant: "destructive",
-      });
+      showError("Veuillez remplir tous les champs obligatoires");
       return;
     }
 
     setIsSubmitting(true);
     try {
       await workoutApi.goals.create(newGoal as GoalCreate);
-      toast({
-        title: "Objectif créé ! 🎯",
-        description: newGoal.name,
-      });
+      success(`Objectif créé ! 🎯 ${newGoal.name}`);
       setShowNewGoal(false);
       setNewGoal({
         name: "",
@@ -112,11 +105,7 @@ export default function GoalsPage() {
       });
       loadGoals();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de la création",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
       setIsSubmitting(false);
     }
@@ -125,17 +114,10 @@ export default function GoalsPage() {
   const handleUpdateProgress = async (goal: Goal, newValue: number) => {
     try {
       await workoutApi.goals.updateProgress(goal.id, newValue);
-      toast({
-        title: "Progression mise à jour",
-        description: `${goal.name}: ${newValue} ${goal.unit}`,
-      });
+      success(`Progression mise à jour : ${goal.name}: ${newValue} ${goal.unit}`);
       loadGoals();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de la mise à jour",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
     }
   };
 
@@ -144,17 +126,10 @@ export default function GoalsPage() {
 
     try {
       await workoutApi.goals.delete(goal.id);
-      toast({
-        title: "Objectif supprimé",
-        description: goal.name,
-      });
+      success(`Objectif supprimé : ${goal.name}`);
       loadGoals();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de la suppression",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
     }
   };
 

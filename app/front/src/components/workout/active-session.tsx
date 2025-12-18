@@ -30,7 +30,7 @@ interface ActiveSessionProps {
 
 export function ActiveSession({ session, onUpdate }: ActiveSessionProps) {
   const router = useRouter();
-  const { toast } = useToast();
+  const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -68,18 +68,10 @@ export function ActiveSession({ session, onUpdate }: ActiveSessionProps) {
     setIsLoading(true);
     try {
       await workoutApi.sessions.complete(session.id);
-      toast({
-        title: "Séance terminée ! 🎉",
-        description: `${session.name} - ${formatTime(elapsedTime)}`,
-      });
+      success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
       onUpdate?.();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description:
-          err instanceof Error ? err.message : "Erreur lors de la complétion",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la complétion");
     } finally {
       setIsLoading(false);
     }
@@ -91,18 +83,10 @@ export function ActiveSession({ session, onUpdate }: ActiveSessionProps) {
     setIsLoading(true);
     try {
       await workoutApi.sessions.cancel(session.id);
-      toast({
-        title: "Séance annulée",
-        description: session.name,
-      });
+      success(`Séance annulée : ${session.name}`);
       onUpdate?.();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description:
-          err instanceof Error ? err.message : "Erreur lors de l'annulation",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de l'annulation");
     } finally {
       setIsLoading(false);
     }

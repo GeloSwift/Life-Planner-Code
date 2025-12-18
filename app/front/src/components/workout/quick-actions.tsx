@@ -52,7 +52,7 @@ interface QuickActionsProps {
 }
 
 export function QuickActions({ onActionComplete }: QuickActionsProps) {
-  const { toast } = useToast();
+  const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Dialog states
@@ -74,11 +74,7 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
 
   const handleCreateSession = async (startImmediately = false) => {
     if (!sessionName.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un nom pour la séance",
-        variant: "destructive",
-      });
+      showError("Veuillez entrer un nom pour la séance");
       return;
     }
 
@@ -91,26 +87,16 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
 
       if (startImmediately) {
         await workoutApi.sessions.start(session.id);
-        toast({
-          title: "Séance lancée ! 💪",
-          description: `${sessionName} a commencé`,
-        });
+        success(`Séance lancée ! 💪 ${sessionName} a commencé`);
       } else {
-        toast({
-          title: "Séance créée",
-          description: `${sessionName} a été ajoutée à votre planning`,
-        });
+        success(`Séance créée : ${sessionName}`);
       }
 
       setShowNewSession(false);
       setSessionName("");
       onActionComplete?.();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de la création",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
       setIsLoading(false);
     }
@@ -118,11 +104,7 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
 
   const handleCreateExercise = async () => {
     if (!exerciseName.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un nom pour l'exercice",
-        variant: "destructive",
-      });
+      showError("Veuillez entrer un nom pour l'exercice");
       return;
     }
 
@@ -134,21 +116,14 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
         muscle_group: exerciseMuscle || undefined,
       });
 
-      toast({
-        title: "Exercice créé",
-        description: `${exerciseName} a été ajouté`,
-      });
+      success(`Exercice créé : ${exerciseName}`);
 
       setShowNewExercise(false);
       setExerciseName("");
       setExerciseMuscle("");
       onActionComplete?.();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de la création",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
       setIsLoading(false);
     }
@@ -157,11 +132,7 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
   const handleAddWeight = async () => {
     const weightValue = parseFloat(weight);
     if (isNaN(weightValue) || weightValue <= 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un poids valide",
-        variant: "destructive",
-      });
+      showError("Veuillez entrer un poids valide");
       return;
     }
 
@@ -171,20 +142,13 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
         weight: weightValue,
       });
 
-      toast({
-        title: "Pesée enregistrée ⚖️",
-        description: `${weightValue} kg`,
-      });
+      success(`Pesée enregistrée ⚖️ ${weightValue} kg`);
 
       setShowNewWeight(false);
       setWeight("");
       onActionComplete?.();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur lors de l'enregistrement",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
     } finally {
       setIsLoading(false);
     }

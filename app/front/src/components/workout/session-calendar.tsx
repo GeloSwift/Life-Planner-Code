@@ -9,7 +9,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { WorkoutSession } from "@/lib/workout-types";
-import { ACTIVITY_TYPE_LABELS, SESSION_STATUS_LABELS } from "@/lib/workout-types";
+import { SESSION_STATUS_LABELS } from "@/lib/workout-types";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -21,7 +21,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const { days, firstDayOfWeek, daysInMonth } = useMemo(() => {
+  const days = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     
@@ -35,19 +35,19 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     const daysInMonth = lastDay.getDate();
     
     // Créer le tableau des jours
-    const days: (number | null)[] = [];
+    const daysArray: (number | null)[] = [];
     
     // Jours vides avant le premier jour du mois
     for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push(null);
+      daysArray.push(null);
     }
     
     // Jours du mois
     for (let i = 1; i <= daysInMonth; i++) {
-      days.push(i);
+      daysArray.push(i);
     }
     
-    return { days, firstDayOfWeek, daysInMonth };
+    return daysArray;
   }, [currentDate]);
 
   // Mapper les séances par jour

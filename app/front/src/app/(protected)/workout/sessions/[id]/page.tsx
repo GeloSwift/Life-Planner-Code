@@ -46,7 +46,7 @@ interface PageProps {
 export default function SessionPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
-  const { toast } = useToast();
+  const { success, error: showError, info } = useToast();
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [exercises, setExercises] = useState<WorkoutSessionExercise[]>([]);
@@ -60,7 +60,7 @@ export default function SessionPage({ params }: PageProps) {
   // Timer de repos
   const [restTimer, setRestTimer] = useState(0);
   const [isResting, setIsResting] = useState(false);
-  const [restDuration, setRestDuration] = useState(90);
+  const restDuration = 90;
 
   // Exercice étendu
   const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
@@ -127,10 +127,7 @@ export default function SessionPage({ params }: PageProps) {
           if ("vibrate" in navigator) {
             navigator.vibrate([200, 100, 200]);
           }
-          toast({
-            title: "Repos terminé ! 💪",
-            description: "C'est reparti !",
-          });
+          info("Repos terminé ! 💪 C'est reparti !");
           return 0;
         }
         return prev - 1;
@@ -138,7 +135,7 @@ export default function SessionPage({ params }: PageProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isResting, restTimer, toast]);
+  }, [isResting, restTimer, info]);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -169,16 +166,9 @@ export default function SessionPage({ params }: PageProps) {
     try {
       const updated = await workoutApi.sessions.start(session.id);
       setSession(updated);
-      toast({
-        title: "Séance lancée ! 🚀",
-        description: session.name,
-      });
+      success(`Séance lancée ! 🚀 ${session.name}`);
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setIsSubmitting(false);
     }
@@ -189,17 +179,10 @@ export default function SessionPage({ params }: PageProps) {
     setIsSubmitting(true);
     try {
       await workoutApi.sessions.complete(session.id);
-      toast({
-        title: "Séance terminée ! 🎉",
-        description: `${session.name} - ${formatTime(elapsedTime)}`,
-      });
+      success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
       router.push("/workout");
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setIsSubmitting(false);
     }
@@ -213,11 +196,7 @@ export default function SessionPage({ params }: PageProps) {
       // Lancer le timer de repos automatiquement
       startRest();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur");
     }
   };
 
@@ -228,11 +207,7 @@ export default function SessionPage({ params }: PageProps) {
     const reps = parseInt(newSetData.reps);
 
     if (isNaN(reps) || reps <= 0) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un nombre de répétitions valide",
-        variant: "destructive",
-      });
+      showError("Veuillez entrer un nombre de répétitions valide");
       return;
     }
 
@@ -248,11 +223,7 @@ export default function SessionPage({ params }: PageProps) {
       setNewSetData({ exerciseId: null, weight: "", reps: "" });
       await loadSession();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur");
     }
   };
 
@@ -262,11 +233,7 @@ export default function SessionPage({ params }: PageProps) {
       await workoutApi.sessions.deleteSet(session.id, exerciseId, setId);
       await loadSession();
     } catch (err) {
-      toast({
-        title: "Erreur",
-        description: err instanceof Error ? err.message : "Erreur",
-        variant: "destructive",
-      });
+      showError(err instanceof Error ? err.message : "Erreur");
     }
   };
 
