@@ -10,11 +10,11 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import type { WorkoutSession } from "@/lib/workout-types";
-import { ACTIVITY_TYPE_LABELS, SESSION_STATUS_LABELS } from "@/lib/workout-types";
+import { ACTIVITY_TYPE_LABELS } from "@/lib/workout-types";
 import {
   Loader2,
   ArrowLeft,

@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
 import {
-  Plus,
   Scale,
   Dumbbell,
   Loader2,

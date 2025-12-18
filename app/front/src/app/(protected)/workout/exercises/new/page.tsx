@@ -40,7 +40,6 @@ import {
   ArrowLeft,
   Dumbbell,
   Plus,
-  X,
 } from "lucide-react";
 
 // Types d'activités disponibles avec leurs champs spécifiques
@@ -174,16 +173,7 @@ export default function NewExercisePage() {
 
     setIsLoading(true);
     try {
-      // Préparer les données selon le type d'activité
-      const exerciseData: Record<string, unknown> = {
-        name,
-        description: description || undefined,
-        activity_type: activityType === "marche_inclinee" ? "course" : activityType as ActivityType,
-        muscle_group: muscleGroup || undefined,
-        difficulty,
-      };
-
-      // Ajouter les métadonnées des champs dynamiques dans le champ equipment ou instructions
+      // Ajouter les métadonnées des champs dynamiques dans le champ instructions
       const dynamicFields = Object.entries(fieldValues)
         .filter(([, value]) => value)
         .map(([key, value]) => {
@@ -191,11 +181,18 @@ export default function NewExercisePage() {
           return `${config?.label || key}: ${value}${config?.unit ? ` ${config.unit}` : ""}`;
         });
 
-      if (dynamicFields.length > 0) {
-        exerciseData.instructions = dynamicFields.join("\n");
-      }
-
-      await workoutApi.exercises.create(exerciseData as Parameters<typeof workoutApi.exercises.create>[0]);
+      // Préparer les données selon le type d'activité
+      const finalActivityType = activityType === "marche_inclinee" ? "course" : activityType;
+      
+      await workoutApi.exercises.create({
+        name,
+        description: description || undefined,
+        activity_type: finalActivityType as ActivityType,
+        muscle_group: muscleGroup || undefined,
+        difficulty,
+        instructions: dynamicFields.length > 0 ? dynamicFields.join("\n") : undefined,
+      });
+      
       success(`Exercice "${name}" créé avec succès`);
       router.push("/workout/exercises");
     } catch (err) {

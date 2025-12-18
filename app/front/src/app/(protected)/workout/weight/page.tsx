@@ -32,7 +32,6 @@ import {
   Plus,
   ArrowLeft,
   Trash2,
-  Edit,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
