@@ -159,10 +159,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Nettoie le state
       sessionStorage.removeItem("oauth_state");
       
+      // Récupère l'URL de redirection personnalisée si elle existe
+      const customRedirect = sessionStorage.getItem("oauth_redirect");
+      sessionStorage.removeItem("oauth_redirect");
+      
       // Utilise replace pour éviter le flash et l'historique
       // Utilise setTimeout pour éviter les erreurs de rendu
       setTimeout(() => {
-        router.replace("/");
+        router.replace(customRedirect || "/");
       }, 0);
     } finally {
       setIsLoading(false);

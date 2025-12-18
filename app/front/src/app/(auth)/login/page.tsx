@@ -14,7 +14,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import { Suspense } from "react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { login, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [email, setEmail] = useState("");
@@ -39,6 +40,9 @@ function LoginContent() {
   
   // Direction de l'animation (from=register signifie qu'on vient de register, donc animation vers la gauche)
   const fromRegister = searchParams.get("from") === "register";
+  
+  // URL de redirection après connexion
+  const redirectUrl = searchParams.get("redirect") || "/";
 
   // Animation d'entrée
   useEffect(() => {
@@ -85,6 +89,10 @@ function LoginContent() {
 
     try {
       await login(email, password);
+      // Rediriger vers l'URL demandée après connexion
+      setTimeout(() => {
+        router.replace(redirectUrl);
+      }, 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
@@ -95,6 +103,10 @@ function LoginContent() {
   const handleGoogleLogin = async () => {
     setError(null);
     try {
+      // Stocker l'URL de redirection pour après le callback OAuth
+      if (redirectUrl !== "/") {
+        sessionStorage.setItem("oauth_redirect", redirectUrl);
+      }
       await loginWithGoogle();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur avec Google");
