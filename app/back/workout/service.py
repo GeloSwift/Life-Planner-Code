@@ -30,6 +30,9 @@ from workout.models import (
     MuscleGroup,
     SessionStatus,
     GoalType,
+    UserActivityType,
+    CustomFieldDefinition,
+    ExerciseFieldValue,
 )
 from workout.schemas import (
     ExerciseCreate,
@@ -69,7 +72,10 @@ class ExerciseService:
         """
         Récupère les exercices (globaux + personnels de l'utilisateur).
         """
-        query = db.query(Exercise).filter(
+        query = db.query(Exercise).options(
+            joinedload(Exercise.custom_activity_type),
+            joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
+        ).filter(
             or_(
                 Exercise.user_id.is_(None),  # Exercices globaux
                 Exercise.user_id == user_id,  # Exercices personnels
@@ -95,7 +101,10 @@ class ExerciseService:
     @staticmethod
     def get_exercise(db: Session, exercise_id: int, user_id: int) -> Optional[Exercise]:
         """Récupère un exercice par son ID."""
-        return db.query(Exercise).filter(
+        return db.query(Exercise).options(
+            joinedload(Exercise.custom_activity_type),
+            joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
+        ).filter(
             Exercise.id == exercise_id,
             or_(Exercise.user_id.is_(None), Exercise.user_id == user_id),
         ).first()
@@ -113,15 +122,28 @@ class ExerciseService:
             instructions=exercise.instructions,
             video_url=exercise.video_url,
             image_url=exercise.image_url,
+            gif_data=exercise.gif_data,
             activity_type=ActivityType(exercise.activity_type.value),
+            custom_activity_type_id=exercise.custom_activity_type_id,
             muscle_group=MuscleGroup(exercise.muscle_group.value) if exercise.muscle_group else None,
             secondary_muscles=secondary_muscles_json,
             equipment=exercise.equipment,
-            difficulty=exercise.difficulty,
-            is_compound=exercise.is_compound,
+            is_compound=exercise.is_compound if exercise.is_compound is not None else True,
             user_id=user_id,
         )
         db.add(db_exercise)
+        db.flush()  # Pour obtenir l'ID de l'exercice
+        
+        # Créer les valeurs des champs personnalisés
+        if exercise.field_values:
+            for field_value in exercise.field_values:
+                db_field_value = ExerciseFieldValue(
+                    exercise_id=db_exercise.id,
+                    field_id=field_value.field_id,
+                    value=field_value.value,
+                )
+                db.add(db_field_value)
+        
         db.commit()
         db.refresh(db_exercise)
         return db_exercise
@@ -144,6 +166,9 @@ class ExerciseService:
         
         update_data = exercise_update.model_dump(exclude_unset=True)
         
+        # Gérer les field_values séparément (ne pas les mettre dans update_data)
+        field_values_to_update = update_data.pop("field_values", None)
+        
         if "secondary_muscles" in update_data and update_data["secondary_muscles"]:
             update_data["secondary_muscles"] = json.dumps(update_data["secondary_muscles"])
         
@@ -153,11 +178,36 @@ class ExerciseService:
         if "muscle_group" in update_data and update_data["muscle_group"]:
             update_data["muscle_group"] = MuscleGroup(update_data["muscle_group"].value)
         
+        # Mettre à jour les champs simples
         for key, value in update_data.items():
             setattr(db_exercise, key, value)
         
+        # Mettre à jour les valeurs des champs personnalisés
+        if field_values_to_update is not None:
+            # Supprimer les anciennes valeurs
+            db.query(ExerciseFieldValue).filter(
+                ExerciseFieldValue.exercise_id == exercise_id
+            ).delete()
+            
+            # Créer les nouvelles valeurs
+            # field_values_to_update est une liste de dicts après model_dump()
+            for field_value in field_values_to_update:
+                db_field_value = ExerciseFieldValue(
+                    exercise_id=exercise_id,
+                    field_id=field_value.get("field_id") if isinstance(field_value, dict) else field_value.field_id,
+                    value=field_value.get("value") if isinstance(field_value, dict) else field_value.value,
+                )
+                db.add(db_field_value)
+        
         db.commit()
         db.refresh(db_exercise)
+        
+        # Recharger les relations après la mise à jour
+        db_exercise = db.query(Exercise).options(
+            joinedload(Exercise.custom_activity_type),
+            joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
+        ).filter(Exercise.id == exercise_id).first()
+        
         return db_exercise
     
     @staticmethod
@@ -171,6 +221,12 @@ class ExerciseService:
         if not db_exercise:
             return False
         
+        # Supprimer d'abord les valeurs des champs personnalisés
+        db.query(ExerciseFieldValue).filter(
+            ExerciseFieldValue.exercise_id == exercise_id
+        ).delete()
+        
+        # Puis supprimer l'exercice
         db.delete(db_exercise)
         db.commit()
         return True
@@ -1029,3 +1085,229 @@ class StatsService:
             favorite_activity=favorite_activity,
             favorite_muscle_group=None,  # TODO: Implémenter
         )
+
+
+# =============================================================================
+# ACTIVITY TYPE SERVICE
+# =============================================================================
+
+class ActivityTypeService:
+    """Service pour la gestion des types d'activités personnalisées."""
+    
+    @staticmethod
+    def get_activity_types(
+        db: Session,
+        user_id: int,
+    ) -> list[UserActivityType]:
+        """
+        Récupère les types d'activités (par défaut + personnels de l'utilisateur).
+        """
+        return db.query(UserActivityType).options(
+            joinedload(UserActivityType.custom_fields)
+        ).filter(
+            or_(
+                UserActivityType.is_default == True,  # Activités par défaut
+                UserActivityType.user_id == user_id,  # Activités personnelles
+            )
+        ).order_by(UserActivityType.is_default.desc(), UserActivityType.name).all()
+    
+    @staticmethod
+    def get_activity_type(
+        db: Session,
+        activity_type_id: int,
+        user_id: int,
+    ) -> Optional[UserActivityType]:
+        """Récupère un type d'activité par son ID."""
+        return db.query(UserActivityType).options(
+            joinedload(UserActivityType.custom_fields)
+        ).filter(
+            UserActivityType.id == activity_type_id,
+            or_(
+                UserActivityType.is_default == True,
+                UserActivityType.user_id == user_id,
+            ),
+        ).first()
+    
+    @staticmethod
+    def create_activity_type(
+        db: Session,
+        name: str,
+        user_id: int,
+        icon: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> UserActivityType:
+        """Crée un nouveau type d'activité personnalisé."""
+        activity_type = UserActivityType(
+            name=name,
+            icon=icon,
+            color=color,
+            is_default=False,
+            user_id=user_id,
+        )
+        db.add(activity_type)
+        db.commit()
+        db.refresh(activity_type)
+        return activity_type
+    
+    @staticmethod
+    def update_activity_type(
+        db: Session,
+        activity_type_id: int,
+        user_id: int,
+        name: Optional[str] = None,
+        icon: Optional[str] = None,
+        color: Optional[str] = None,
+    ) -> Optional[UserActivityType]:
+        """Met à jour un type d'activité (seulement les personnalisés)."""
+        activity_type = db.query(UserActivityType).filter(
+            UserActivityType.id == activity_type_id,
+            UserActivityType.user_id == user_id,  # Seulement ses propres activités
+            UserActivityType.is_default == False,  # Pas les activités par défaut
+        ).first()
+        
+        if not activity_type:
+            return None
+        
+        if name is not None:
+            activity_type.name = name
+        if icon is not None:
+            activity_type.icon = icon
+        if color is not None:
+            activity_type.color = color
+        
+        db.commit()
+        db.refresh(activity_type)
+        return activity_type
+    
+    @staticmethod
+    def delete_activity_type(
+        db: Session,
+        activity_type_id: int,
+        user_id: int,
+    ) -> bool:
+        """Supprime un type d'activité personnalisé."""
+        activity_type = db.query(UserActivityType).filter(
+            UserActivityType.id == activity_type_id,
+            UserActivityType.user_id == user_id,  # Seulement ses propres activités
+            UserActivityType.is_default == False,  # Pas les activités par défaut
+        ).first()
+        
+        if not activity_type:
+            return False
+        
+        db.delete(activity_type)
+        db.commit()
+        return True
+    
+    @staticmethod
+    def add_field(
+        db: Session,
+        activity_type_id: int,
+        user_id: int,
+        name: str,
+        field_type: str = "text",
+        options: Optional[list[str]] = None,
+        unit: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        default_value: Optional[str] = None,
+        is_required: bool = False,
+        order: int = 0,
+    ) -> Optional[CustomFieldDefinition]:
+        """Ajoute un champ personnalisé à un type d'activité."""
+        # Vérifier que l'utilisateur a accès à ce type d'activité
+        activity_type = db.query(UserActivityType).filter(
+            UserActivityType.id == activity_type_id,
+            or_(
+                UserActivityType.is_default == True,
+                UserActivityType.user_id == user_id,
+            ),
+        ).first()
+        
+        if not activity_type:
+            return None
+        
+        field = CustomFieldDefinition(
+            activity_type_id=activity_type_id,
+            name=name,
+            field_type=field_type,
+            options=json.dumps(options) if options else None,
+            unit=unit,
+            placeholder=placeholder,
+            default_value=default_value,
+            is_required=is_required,
+            order=order,
+        )
+        db.add(field)
+        db.commit()
+        db.refresh(field)
+        return field
+    
+    @staticmethod
+    def update_field(
+        db: Session,
+        field_id: int,
+        user_id: int,
+        name: Optional[str] = None,
+        field_type: Optional[str] = None,
+        options: Optional[list[str]] = None,
+        unit: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        default_value: Optional[str] = None,
+        is_required: Optional[bool] = None,
+        order: Optional[int] = None,
+    ) -> Optional[CustomFieldDefinition]:
+        """Met à jour un champ personnalisé."""
+        # Récupérer le champ avec son type d'activité
+        field = db.query(CustomFieldDefinition).join(UserActivityType).filter(
+            CustomFieldDefinition.id == field_id,
+            or_(
+                UserActivityType.is_default == True,
+                UserActivityType.user_id == user_id,
+            ),
+        ).first()
+        
+        if not field:
+            return None
+        
+        if name is not None:
+            field.name = name
+        if field_type is not None:
+            field.field_type = field_type
+        if options is not None:
+            field.options = json.dumps(options)
+        if unit is not None:
+            field.unit = unit
+        if placeholder is not None:
+            field.placeholder = placeholder
+        if default_value is not None:
+            field.default_value = default_value
+        if is_required is not None:
+            field.is_required = is_required
+        if order is not None:
+            field.order = order
+        
+        db.commit()
+        db.refresh(field)
+        return field
+    
+    @staticmethod
+    def delete_field(
+        db: Session,
+        field_id: int,
+        user_id: int,
+    ) -> bool:
+        """Supprime un champ personnalisé."""
+        field = db.query(CustomFieldDefinition).join(UserActivityType).filter(
+            CustomFieldDefinition.id == field_id,
+            or_(
+                UserActivityType.is_default == True,
+                UserActivityType.user_id == user_id,
+            ),
+        ).first()
+        
+        if not field:
+            return False
+        
+        db.delete(field)
+        db.commit()
+        return True

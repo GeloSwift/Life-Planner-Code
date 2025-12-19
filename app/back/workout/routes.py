@@ -54,6 +54,12 @@ from workout.schemas import (
     DashboardResponse,
     CalendarResponse,
     CalendarEventResponse,
+    # Activity Types
+    UserActivityTypeCreate,
+    UserActivityTypeUpdate,
+    UserActivityTypeResponse,
+    CustomFieldDefinitionCreate,
+    CustomFieldDefinitionResponse,
     # Enums
     ActivityTypeEnum,
     MuscleGroupEnum,
@@ -67,6 +73,7 @@ from workout.service import (
     WeightService,
     GoalService,
     StatsService,
+    ActivityTypeService,
 )
 
 
@@ -905,15 +912,171 @@ def get_calendar(
 
 
 # =============================================================================
+# ACTIVITY TYPE ROUTES (Activités personnalisées)
+# =============================================================================
+
+@router.get(
+    "/activity-types",
+    response_model=list[UserActivityTypeResponse],
+    summary="Liste des types d'activités",
+    description="Récupère les types d'activités (par défaut + personnels).",
+)
+def get_user_activity_types(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Liste les types d'activités disponibles."""
+    return ActivityTypeService.get_activity_types(db, current_user.id)
+
+
+@router.get(
+    "/activity-types/{activity_type_id}",
+    response_model=UserActivityTypeResponse,
+    summary="Détail d'un type d'activité",
+)
+def get_user_activity_type(
+    activity_type_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Récupère un type d'activité par son ID."""
+    activity_type = ActivityTypeService.get_activity_type(
+        db, activity_type_id, current_user.id
+    )
+    if not activity_type:
+        raise HTTPException(status_code=404, detail="Type d'activité non trouvé")
+    return activity_type
+
+
+@router.post(
+    "/activity-types",
+    response_model=UserActivityTypeResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer un type d'activité",
+)
+def create_user_activity_type(
+    activity_type: UserActivityTypeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Crée un nouveau type d'activité personnalisé."""
+    return ActivityTypeService.create_activity_type(
+        db,
+        name=activity_type.name,
+        user_id=current_user.id,
+        icon=activity_type.icon,
+        color=activity_type.color,
+    )
+
+
+@router.put(
+    "/activity-types/{activity_type_id}",
+    response_model=UserActivityTypeResponse,
+    summary="Modifier un type d'activité",
+)
+def update_user_activity_type(
+    activity_type_id: int,
+    activity_type: UserActivityTypeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour un type d'activité personnalisé."""
+    updated = ActivityTypeService.update_activity_type(
+        db,
+        activity_type_id,
+        current_user.id,
+        name=activity_type.name,
+        icon=activity_type.icon,
+        color=activity_type.color,
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=404,
+            detail="Type d'activité non trouvé ou non modifiable (activité par défaut)"
+        )
+    return updated
+
+
+@router.delete(
+    "/activity-types/{activity_type_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Supprimer un type d'activité",
+)
+def delete_user_activity_type(
+    activity_type_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Supprime un type d'activité personnalisé (sans confirmation)."""
+    if not ActivityTypeService.delete_activity_type(
+        db, activity_type_id, current_user.id
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="Type d'activité non trouvé ou non supprimable (activité par défaut)"
+        )
+
+
+# =============================================================================
+# CUSTOM FIELD ROUTES (Champs personnalisés)
+# =============================================================================
+
+@router.post(
+    "/activity-types/{activity_type_id}/fields",
+    response_model=CustomFieldDefinitionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Ajouter un champ personnalisé",
+)
+def add_custom_field(
+    activity_type_id: int,
+    field: CustomFieldDefinitionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Ajoute un champ personnalisé à un type d'activité."""
+    result = ActivityTypeService.add_field(
+        db,
+        activity_type_id,
+        current_user.id,
+        name=field.name,
+        field_type=field.field_type.value if hasattr(field.field_type, 'value') else field.field_type,
+        options=field.options,
+        unit=field.unit,
+        placeholder=field.placeholder,
+        default_value=field.default_value,
+        is_required=field.is_required,
+        order=field.order,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Type d'activité non trouvé")
+    return result
+
+
+@router.delete(
+    "/fields/{field_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Supprimer un champ personnalisé",
+)
+def delete_custom_field(
+    field_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Supprime un champ personnalisé."""
+    if not ActivityTypeService.delete_field(db, field_id, current_user.id):
+        raise HTTPException(status_code=404, detail="Champ non trouvé")
+
+
+# =============================================================================
 # ENUM ROUTES (pour le frontend)
 # =============================================================================
 
 @router.get(
     "/enums/activity-types",
-    summary="Types d'activités disponibles",
+    summary="Types d'activités disponibles (legacy)",
 )
 def get_activity_types():
-    """Liste des types d'activités."""
+    """Liste des types d'activités (enum legacy)."""
     return [
         {"value": t.value, "label": t.name.replace("_", " ").title()}
         for t in ActivityType

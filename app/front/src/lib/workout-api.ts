@@ -5,7 +5,7 @@
  * exercices, objectifs, poids, etc.
  */
 
-import { getStoredToken } from "./api";
+import { getStoredToken, setStoredTokens, clearStoredTokens, authApi } from "./api";
 import type {
   Exercise,
   ExerciseCreate,
@@ -33,6 +33,11 @@ import type {
   EnumOption,
   ActivityType,
   MuscleGroup,
+  UserActivityType,
+  UserActivityTypeCreate,
+  UserActivityTypeUpdate,
+  CustomFieldDefinition,
+  CustomFieldDefinitionCreate,
 } from "./workout-types";
 
 // =============================================================================
@@ -45,6 +50,38 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // FETCH WRAPPER
 // =============================================================================
 
+/**
+ * Rafraîchit le token automatiquement en cas d'expiration.
+ */
+let isRefreshing = false;
+let refreshPromise: Promise<any> | null = null;
+
+async function refreshTokenIfNeeded(): Promise<void> {
+  if (isRefreshing && refreshPromise) {
+    await refreshPromise;
+    return;
+  }
+
+  isRefreshing = true;
+  refreshPromise = authApi.refresh().then((response) => {
+    setStoredTokens(response.access_token, response.refresh_token);
+    return response;
+  }).catch((error) => {
+    // Si le refresh échoue, on supprime les tokens
+    clearStoredTokens();
+    throw error;
+  }).finally(() => {
+    isRefreshing = false;
+    refreshPromise = null;
+  });
+
+  await refreshPromise;
+}
+
+/**
+ * Wrapper autour de fetch avec gestion automatique des erreurs et des tokens.
+ * Rafraîchit automatiquement le token en cas d'expiration (401).
+ */
 async function workoutFetch<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -61,11 +98,32 @@ async function workoutFetch<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...options,
     headers,
     credentials: "include",
   });
+
+  // Si 401 (Unauthorized) et qu'on n'est pas en train de rafraîchir, on essaie de rafraîchir le token
+  if (!response.ok && response.status === 401 && !isRefreshing) {
+    try {
+      await refreshTokenIfNeeded();
+      
+      // Réessaie la requête avec le nouveau token
+      const newToken = getStoredToken();
+      if (newToken) {
+        (headers as Record<string, string>)["Authorization"] = `Bearer ${newToken}`;
+      }
+      
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+    } catch {
+      // Si le refresh échoue, on continue avec l'erreur 401 originale
+    }
+  }
 
   if (!response.ok) {
     let error;
@@ -457,6 +515,53 @@ export const statsApi = {
 };
 
 // =============================================================================
+// ACTIVITY TYPES API (Custom user activities)
+// =============================================================================
+
+export const activityTypesApi = {
+  async list(): Promise<UserActivityType[]> {
+    return workoutFetch<UserActivityType[]>("/workout/activity-types");
+  },
+
+  async get(id: number): Promise<UserActivityType> {
+    return workoutFetch<UserActivityType>(`/workout/activity-types/${id}`);
+  },
+
+  async create(data: UserActivityTypeCreate): Promise<UserActivityType> {
+    return workoutFetch<UserActivityType>("/workout/activity-types", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async update(id: number, data: UserActivityTypeUpdate): Promise<UserActivityType> {
+    return workoutFetch<UserActivityType>(`/workout/activity-types/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async delete(id: number): Promise<void> {
+    await workoutFetch<void>(`/workout/activity-types/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  async addField(activityTypeId: number, data: CustomFieldDefinitionCreate): Promise<CustomFieldDefinition> {
+    return workoutFetch<CustomFieldDefinition>(`/workout/activity-types/${activityTypeId}/fields`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteField(fieldId: number): Promise<void> {
+    await workoutFetch<void>(`/workout/fields/${fieldId}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+// =============================================================================
 // ENUMS API
 // =============================================================================
 
@@ -490,6 +595,7 @@ export const workoutApi = {
   goals: goalsApi,
   stats: statsApi,
   enums: enumsApi,
+  activityTypes: activityTypesApi,
 };
 
 export default workoutApi;

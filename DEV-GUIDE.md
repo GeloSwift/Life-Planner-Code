@@ -94,25 +94,42 @@ Va dans Vercel Dashboard → ton projet → Settings → Environment Variables :
 
 ## 📋 Commandes de développement
 
-### Démarrage rapide (Windows)
+### 🚀 Démarrage rapide - UNE SEULE COMMANDE !
 
-```bash
-# 1. Ouvre VS Code / Cursor
+```powershell
+# Windows (PowerShell) - Lance tout l'environnement
+.\dev.ps1
 
-# 2. Lance Docker Desktop
+# Linux/Mac - Lance tout l'environnement
+./dev.sh
+```
 
-# 3. Terminal 1 : Base de données + API
-cd infra && docker compose up db api
+**C'est tout !** Le script :
+- ✅ Vérifie que Docker est lancé
+- ✅ Crée les fichiers `.env` automatiquement si absents
+- ✅ Lance la DB + API + Frontend
+- ✅ Active le hot-reload sur tout
 
-# 4. Terminal 2 : Frontend (hot-reload rapide)
+### Options des scripts de développement
+
+| Commande | Description |
+|----------|-------------|
+| `.\dev.ps1` ou `./dev.sh` | Lance tout (DB + API + Front) |
+| `.\dev.ps1 -Backend` ou `./dev.sh --backend` | Lance seulement DB + API |
+| `.\dev.ps1 -Stop` ou `./dev.sh --stop` | Arrête tous les services |
+| `.\dev.ps1 -Reset` ou `./dev.sh --reset` | Reset la DB et relance |
+| `.\dev.ps1 -Logs` ou `./dev.sh --logs` | Affiche les logs de l'API |
+| `.\dev.ps1 -Build` ou `./dev.sh --build` | Force rebuild des images |
+| `.\dev.ps1 -Help` ou `./dev.sh --help` | Affiche l'aide |
+
+### Mode recommandé (Frontend en local = hot-reload plus rapide)
+
+```powershell
+# Terminal 1 : Backend Docker
+.\dev.ps1 -Backend
+
+# Terminal 2 : Frontend local (hot-reload ultra-rapide)
 cd app/front && pnpm dev
-
-# 5. Code ! (hot-reload automatique)
-
-# 6. Quand c'est prêt :
-git add . && git commit -m "message" && git push
-
-# 7. Vérifie sur Vercel/Railway que le déploiement est OK
 ```
 
 ### URLs en développement
@@ -123,6 +140,20 @@ git add . && git commit -m "message" && git push
 | API | http://localhost:8000 |
 | API Docs (Swagger) | http://localhost:8000/docs |
 | PostgreSQL | localhost:5433 |
+
+### Workflow de test local avant push
+
+```powershell
+# 1. Lance l'environnement
+.\dev.ps1
+
+# 2. Teste tes fonctionnalités sur http://localhost:3000
+
+# 3. Quand tout est OK :
+git add . && git commit -m "message" && git push
+
+# 4. Le déploiement se fait automatiquement sur Vercel/Railway
+```
 
 ---
 
@@ -278,6 +309,37 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## 🎯 Fonctionnalités Récentes (Décembre 2025)
+
+### 🏋️ Système d'Exercices Personnalisés Avancé
+
+**Backend :**
+- ✅ Modèles `UserActivityType` et `CustomFieldDefinition` pour la personnalisation
+- ✅ Support de champs personnalisés dynamiques (select, multi-select, text, number, checkbox, date, duration)
+- ✅ Upload de GIF/images en Base64 pour illustrer les exercices
+- ✅ API complète pour la gestion des types d'activités et champs personnalisés
+- ✅ Migration Alembic pour la nouvelle structure
+
+**Frontend :**
+- ✅ Interface de création d'exercices avec sélection d'activité personnalisée
+- ✅ Création/suppression d'activités personnalisées avec sélection d'icônes React
+- ✅ Gestion des champs personnalisés liés aux activités
+- ✅ Upload de GIF avec aperçu
+- ✅ Duplication d'exercices avec redirection vers l'édition
+- ✅ Liste d'exercices avec filtres personnalisés dynamiques
+- ✅ Tri alphabétique (A-Z / Z-A)
+- ✅ Affichage amélioré : tous les paramètres personnalisés visibles
+- ✅ Design responsive et alignement uniforme des cartes
+
+### 📊 Suivi du Poids
+
+- ✅ Graphique d'évolution du poids avec Recharts
+- ✅ Page dédiée `/workout/weight` avec historique
+- ✅ Statistiques (moyenne, min, max) sur la période sélectionnée
+- ✅ Formulaire de pesée rapide depuis le dashboard
+
+---
+
 ## 🏋️ Phase 2 : Workout Planner (MVP)
 
 - [x] **2.1** API Workout (models, routes, CRUD) ✅
@@ -291,7 +353,7 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
   - [x] Actions rapides (nouvelle séance, exercice, pesée)
   - [x] Liste des exercices avec filtres (`/workout/exercises`)
   - [x] Page objectifs avec progression (`/workout/goals`)
-  - [x] Graphique d'évolution du poids
+  - [x] Graphique d'évolution du poids (`/workout/weight`)
 - [x] **2.3** Interface de séance en cours ✅
   - [x] Timer de séance en temps réel
   - [x] Suivi des séries (cocher, modifier poids/reps)
@@ -301,11 +363,25 @@ uvicorn app:app --reload --host 0.0.0.0 --port 8000
   - [x] Vue calendrier mensuel avec indicateurs de couleur
   - [ ] Planification de séances
   - [ ] Historique visuel
-- [ ] **2.5** Pesées et objectifs
-  - [ ] Formulaire de pesée rapide
-  - [ ] Courbe d'évolution du poids
-  - [ ] Liste et suivi des objectifs
-  - [ ] Barre de progression
+- [x] **2.5** Pesées et objectifs ✅
+  - [x] Formulaire de pesée rapide
+  - [x] Courbe d'évolution du poids (graphique avec Recharts)
+  - [x] Liste et suivi des objectifs
+  - [x] Barre de progression
+- [x] **2.6** Système d'exercices personnalisés avancé ✅
+  - [x] Types d'activités personnalisables (`UserActivityType`) avec icônes React (Lucide)
+  - [x] Activités par défaut : Musculation, Course à pied, Danse, Volleyball
+  - [x] Création/suppression d'activités personnalisées par l'utilisateur
+  - [x] Champs personnalisés dynamiques (`CustomFieldDefinition`) liés aux types d'activités
+  - [x] Types de champs supportés : select, multi-select, text, number, checkbox, date, duration
+  - [x] Upload de GIF pour illustrer les exercices (stockage Base64)
+  - [x] Suppression du champ "difficulty" (niveau de difficulté)
+  - [x] Système de duplication d'exercices avec redirection vers l'édition
+  - [x] Filtres personnalisés dynamiques sur la page de liste
+  - [x] Tri alphabétique (A-Z / Z-A)
+  - [x] Affichage amélioré : tous les paramètres personnalisés visibles (plus de "+n autres")
+  - [x] Masquage conditionnel de la section "Informations" si vide
+  - [x] Design responsive et alignement uniforme des cartes d'exercices
 
 ---
 
@@ -433,6 +509,23 @@ class User:
 | `PUT` | `/workout/exercises/{id}` | Modifier un exercice |
 | `DELETE` | `/workout/exercises/{id}` | Supprimer un exercice |
 
+### Types d'activités personnalisés
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/workout/activity-types` | Liste des types d'activités (défaut + personnels) |
+| `GET` | `/workout/activity-types/{id}` | Détail d'un type d'activité |
+| `POST` | `/workout/activity-types` | Créer un type d'activité personnalisé |
+| `PUT` | `/workout/activity-types/{id}` | Modifier un type d'activité |
+| `DELETE` | `/workout/activity-types/{id}` | Supprimer un type d'activité |
+
+### Champs personnalisés
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `POST` | `/workout/activity-types/{activity_type_id}/fields` | Ajouter un champ personnalisé à un type d'activité |
+| `DELETE` | `/workout/fields/{field_id}` | Supprimer un champ personnalisé |
+
 ### Templates de séances
 
 | Méthode | Route | Description |
@@ -471,9 +564,9 @@ class User:
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
-| `GET` | `/workout/weight` | Historique des pesées |
+| `GET` | `/workout/weight` | Historique des pesées (avec filtres date) |
 | `GET` | `/workout/weight/latest` | Dernière pesée |
-| `GET` | `/workout/weight/progress` | Évolution avec stats |
+| `GET` | `/workout/weight/progress` | Évolution avec stats (moyenne, min, max) |
 | `POST` | `/workout/weight` | Enregistrer une pesée |
 | `PUT` | `/workout/weight/{id}` | Modifier une pesée |
 | `DELETE` | `/workout/weight/{id}` | Supprimer une pesée |
@@ -496,26 +589,59 @@ class User:
 | `GET` | `/workout/dashboard` | Données du dashboard |
 | `GET` | `/workout/calendar` | Calendrier des séances |
 
-### Enums
+### Enums (Legacy - pour compatibilité)
 
 | Méthode | Route | Description |
 |---------|-------|-------------|
-| `GET` | `/workout/enums/activity-types` | Types d'activités |
+| `GET` | `/workout/enums/activity-types` | Types d'activités (legacy, utilisez `/workout/activity-types`) |
 | `GET` | `/workout/enums/muscle-groups` | Groupes musculaires |
 | `GET` | `/workout/enums/goal-types` | Types d'objectifs |
 
 ### Modèles principaux
 
 ```python
+class UserActivityType:
+    id: int
+    name: str  # "Musculation", "Course à pied", "Danse", etc.
+    icon: str | None  # Nom de l'icône Lucide React (ex: "Dumbbell", "Footprints")
+    color: str | None  # Code couleur hexadécimal
+    is_default: bool  # True pour les activités par défaut
+    user_id: int | None  # None pour les activités par défaut
+    custom_fields: list[CustomFieldDefinition]  # Champs personnalisés liés
+
+class CustomFieldDefinition:
+    id: int
+    activity_type_id: int  # Lié à UserActivityType
+    name: str  # "Poids", "Nombre de séries", "Muscles travaillés", etc.
+    field_type: str  # "select", "multi_select", "text", "number", "checkbox", "date", "duration"
+    options: str | None  # JSON array pour select/multi_select (ex: ["Pectoraux", "Dos", "Biceps"])
+    unit: str | None  # "kg", "reps", "min", etc.
+    placeholder: str | None
+    default_value: str | None
+    is_required: bool
+    order: int  # Ordre d'affichage
+
+class ExerciseFieldValue:
+    id: int
+    exercise_id: int  # Lié à Exercise
+    field_id: int  # Lié à CustomFieldDefinition
+    value: str  # Valeur du champ (JSON string pour multi_select)
+
 class Exercise:
     id: int
     name: str
     description: str | None
+    instructions: str | None
     video_url: str | None
-    activity_type: ActivityType  # musculation, course, cyclisme, natation, boxe...
-    muscle_group: MuscleGroup | None  # poitrine, dos, epaules, biceps...
-    difficulty: int  # 1-5
+    image_url: str | None
+    gif_data: str | None  # Base64 data URL pour GIF/image uploadée
+    activity_type: ActivityType  # Legacy enum (pour compatibilité)
+    custom_activity_type_id: int | None  # Lié à UserActivityType (nouveau système)
+    custom_activity_type: UserActivityType | None
+    muscle_group: MuscleGroup | None  # Legacy, peut être un champ personnalisé
+    equipment: str | None  # Peut être un champ personnalisé
     user_id: int | None  # None = global
+    field_values: list[ExerciseFieldValue]  # Valeurs des champs personnalisés
 
 class WorkoutTemplate:
     id: int
@@ -595,7 +721,13 @@ SessionStatus: planifiee, en_cours, terminee, annulee
 - `Header` - En-tête avec navigation et avatar utilisateur
 - `Footer` - Pied de page
 - `Toast` - Notifications toast (success, error, info, warning)
-- `Card`, `Button`, `Input`, `Label` - Composants shadcn/ui
+- `Card`, `Button`, `Input`, `Label`, `Select`, `Dialog`, `Badge`, `Popover`, `MultiSelect` - Composants shadcn/ui
+- `ActivityIcon` - Composant pour afficher les icônes d'activités (Lucide React)
+- `WeightChart` - Graphique d'évolution du poids (Recharts)
+- `SessionCalendar` - Calendrier des séances avec indicateurs
+- `GoalsProgress` - Affichage de la progression des objectifs
+- `ActiveSession` - Interface de séance en cours avec timer
+- `QuickActions` - Actions rapides du dashboard workout
 
 ### Contextes
 

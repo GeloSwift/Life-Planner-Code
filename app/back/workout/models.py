@@ -97,6 +97,17 @@ class GoalType(str, Enum):
     SERIE_CONSECUTIVE = "serie_consecutive"     # Série consécutive (ex: 30 jours d'affilée)
 
 
+class CustomFieldType(str, Enum):
+    """Types de champs personnalisés pour les exercices."""
+    TEXT = "text"                    # Champ de texte simple
+    NUMBER = "number"                # Nombre (int ou float)
+    SELECT = "select"                # Liste déroulante (une seule valeur)
+    MULTI_SELECT = "multi_select"    # Liste déroulante multi-sélection
+    CHECKBOX = "checkbox"            # Case à cocher (booléen)
+    DATE = "date"                    # Date
+    DURATION = "duration"            # Durée (en secondes)
+
+
 class SessionStatus(str, Enum):
     """Statut d'une session d'entraînement."""
     PLANIFIEE = "planifiee"       # Planifiée (dans le calendrier)
@@ -122,11 +133,12 @@ class Exercise(Base):
         description: Description détaillée
         instructions: Instructions d'exécution
         video_url: URL vers une vidéo/GIF démonstratif
-        activity_type: Type d'activité (musculation, running, etc.)
+        gif_data: GIF en base64 (data URL)
+        activity_type: Type d'activité (enum legacy)
+        custom_activity_type_id: Référence vers UserActivityType (nouveau)
         muscle_group: Groupe musculaire principal (pour musculation)
         secondary_muscles: Groupes musculaires secondaires (JSON array)
         equipment: Équipement nécessaire
-        difficulty: Difficulté (1-5)
         is_compound: Exercice polyarticulaire ou isolation
         user_id: NULL = global, sinon = exercice personnel
     """
@@ -143,13 +155,22 @@ class Exercise(Base):
     # Media
     video_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    # GIF stocké en base64 (comme l'avatar utilisateur) - max ~2MB
+    gif_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
-    # Catégorisation
+    # Catégorisation - Legacy enum (gardé pour compatibilité)
     activity_type: Mapped[ActivityType] = mapped_column(
         SQLEnum(ActivityType, values_callable=lambda x: [e.value for e in x], name='activitytype'),
         default=ActivityType.MUSCULATION,
         nullable=False,
     )
+    # Nouveau: référence vers UserActivityType pour les activités personnalisées
+    custom_activity_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("user_activity_types.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    
     muscle_group: Mapped[Optional[MuscleGroup]] = mapped_column(
         SQLEnum(MuscleGroup, values_callable=lambda x: [e.value for e in x], name='musclegroup'),
         nullable=True,
@@ -161,7 +182,7 @@ class Exercise(Base):
     
     # Métadonnées
     equipment: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    difficulty: Mapped[int] = mapped_column(Integer, default=3)  # 1-5
+    # difficulty supprimé selon la demande utilisateur
     is_compound: Mapped[bool] = mapped_column(Boolean, default=True)
     
     # Propriétaire (NULL = global)
@@ -184,6 +205,7 @@ class Exercise(Base):
     
     # Relations
     user = relationship("User", backref="custom_exercises")
+    custom_activity_type = relationship("UserActivityType")
     
     __table_args__ = (
         Index('ix_exercises_activity_muscle', 'activity_type', 'muscle_group'),
@@ -673,3 +695,175 @@ class Goal(Base):
         
         # Si l'objectif est d'augmenter
         return min(100, (self.current_value / self.target_value) * 100)
+
+
+# =============================================================================
+# USER ACTIVITY TYPE MODEL (Activités personnalisées)
+# =============================================================================
+
+class UserActivityType(Base):
+    """
+    Type d'activité personnalisé par utilisateur.
+    
+    Permet à chaque utilisateur de définir ses propres types d'activités
+    en plus des activités par défaut (musculation, course, danse, volleyball).
+    
+    Attributs:
+        name: Nom de l'activité (ex: "Escalade", "Ski")
+        icon: Emoji ou icône (optionnel)
+        color: Couleur hex (optionnel)
+        is_default: True si c'est une activité par défaut du système
+        user_id: NULL = activité par défaut, sinon = activité personnelle
+    """
+    
+    __tablename__ = "user_activity_types"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    icon: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Nom d'icône React (ex: "Dumbbell")
+    color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)  # #FF5733
+    
+    # Activité par défaut ou personnalisée
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    user = relationship("User", backref="custom_activity_types")
+    custom_fields = relationship(
+        "CustomFieldDefinition",
+        back_populates="activity_type",
+        cascade="all, delete-orphan",
+    )
+    
+    __table_args__ = (
+        Index('ix_user_activity_types_user', 'user_id'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<UserActivityType(id={self.id}, name={self.name})>"
+
+
+# =============================================================================
+# CUSTOM FIELD DEFINITION MODEL (Définition des champs personnalisés)
+# =============================================================================
+
+class CustomFieldDefinition(Base):
+    """
+    Définition d'un champ personnalisé pour un type d'activité.
+    
+    Permet de définir les champs spécifiques à chaque type d'activité
+    (ex: pour "Course" -> distance, temps, vitesse).
+    
+    Attributs:
+        name: Nom du champ (ex: "Distance", "Temps")
+        field_type: Type de champ (text, number, select, multi_select, etc.)
+        options: Options pour les champs select/multi_select (JSON array)
+        unit: Unité de mesure (km, min, kg, etc.)
+        is_required: Champ obligatoire ou non
+        order: Ordre d'affichage
+    """
+    
+    __tablename__ = "custom_field_definitions"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    activity_type_id: Mapped[int] = mapped_column(
+        ForeignKey("user_activity_types.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Utilise String au lieu d'Enum pour éviter les problèmes de migration
+    # Valeurs valides: text, number, select, multi_select, checkbox, date, duration
+    field_type: Mapped[str] = mapped_column(String(50), default="text", nullable=False)
+    
+    # Options pour select/multi_select (JSON array: '["Option 1", "Option 2"]')
+    options: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Métadonnées
+    unit: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # kg, km, min, etc.
+    placeholder: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    default_value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    order: Mapped[int] = mapped_column(Integer, default=0)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    activity_type = relationship("UserActivityType", back_populates="custom_fields")
+    
+    def __repr__(self) -> str:
+        return f"<CustomFieldDefinition(id={self.id}, name={self.name}, type={self.field_type})>"
+
+
+# =============================================================================
+# EXERCISE FIELD VALUE MODEL (Valeurs des champs personnalisés)
+# =============================================================================
+
+class ExerciseFieldValue(Base):
+    """
+    Valeur d'un champ personnalisé pour un exercice.
+    
+    Stocke les valeurs des champs personnalisés définis pour chaque exercice.
+    
+    Attributs:
+        exercise_id: Exercice concerné
+        field_id: Définition du champ
+        value: Valeur du champ (stockée en string, convertie selon le type)
+    """
+    
+    __tablename__ = "exercise_field_values"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercises.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    field_id: Mapped[int] = mapped_column(
+        ForeignKey("custom_field_definitions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    # Valeur stockée en string (convertie selon field_type)
+    value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    exercise = relationship("Exercise", backref="field_values")
+    field = relationship("CustomFieldDefinition")
+    
+    __table_args__ = (
+        Index('ix_exercise_field_values_exercise_field', 'exercise_id', 'field_id', unique=True),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<ExerciseFieldValue(exercise_id={self.exercise_id}, field_id={self.field_id})>"

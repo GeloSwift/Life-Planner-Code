@@ -4,11 +4,12 @@ Pydantic schemas for Workout Planner.
 Schemas pour valider les requêtes et sérialiser les réponses.
 """
 
+import json
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # =============================================================================
@@ -69,6 +70,118 @@ class SessionStatusEnum(str, Enum):
     ANNULEE = "annulee"
 
 
+class CustomFieldTypeEnum(str, Enum):
+    TEXT = "text"
+    NUMBER = "number"
+    SELECT = "select"
+    MULTI_SELECT = "multi_select"
+    CHECKBOX = "checkbox"
+    DATE = "date"
+    DURATION = "duration"
+
+
+# =============================================================================
+# USER ACTIVITY TYPE SCHEMAS
+# =============================================================================
+
+class CustomFieldDefinitionBase(BaseModel):
+    """Base schema pour CustomFieldDefinition."""
+    name: str = Field(..., min_length=1, max_length=100)
+    field_type: CustomFieldTypeEnum = CustomFieldTypeEnum.TEXT
+    options: Optional[list[str]] = None  # Pour select/multi_select
+    unit: Optional[str] = Field(None, max_length=20)
+    placeholder: Optional[str] = Field(None, max_length=100)
+    default_value: Optional[str] = Field(None, max_length=255)
+    is_required: bool = False
+    order: int = 0
+
+
+class CustomFieldDefinitionCreate(CustomFieldDefinitionBase):
+    """Schema pour créer un champ personnalisé."""
+    pass
+
+
+class CustomFieldDefinitionResponse(CustomFieldDefinitionBase):
+    """Schema de réponse pour un champ personnalisé."""
+    id: int
+    activity_type_id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator('options', mode='before')
+    @classmethod
+    def parse_options(cls, v: Any) -> Optional[list[str]]:
+        """Parse les options depuis une chaîne JSON si nécessaire."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else None
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return None
+
+
+class UserActivityTypeBase(BaseModel):
+    """Base schema pour UserActivityType."""
+    name: str = Field(..., min_length=1, max_length=100)
+    icon: Optional[str] = Field(None, max_length=50)  # Nom d'icône React (ex: "Dumbbell", "Run")
+    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+
+
+class UserActivityTypeCreate(UserActivityTypeBase):
+    """Schema pour créer un type d'activité."""
+    custom_fields: Optional[list[CustomFieldDefinitionCreate]] = None
+
+
+class UserActivityTypeUpdate(BaseModel):
+    """Schema pour mettre à jour un type d'activité."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    icon: Optional[str] = Field(None, max_length=10)
+    color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
+
+
+class UserActivityTypeResponse(UserActivityTypeBase):
+    """Schema de réponse pour un type d'activité."""
+    id: int
+    is_default: bool
+    user_id: Optional[int] = None
+    custom_fields: list[CustomFieldDefinitionResponse] = []
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# EXERCISE FIELD VALUE SCHEMAS
+# =============================================================================
+
+class ExerciseFieldValueBase(BaseModel):
+    """Base schema pour ExerciseFieldValue."""
+    field_id: int
+    value: Optional[str] = None
+
+
+class ExerciseFieldValueCreate(ExerciseFieldValueBase):
+    """Schema pour créer une valeur de champ."""
+    pass
+
+
+class ExerciseFieldValueResponse(ExerciseFieldValueBase):
+    """Schema de réponse pour une valeur de champ."""
+    id: int
+    exercise_id: int
+    field: CustomFieldDefinitionResponse
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
 # =============================================================================
 # EXERCISE SCHEMAS
 # =============================================================================
@@ -81,16 +194,17 @@ class ExerciseBase(BaseModel):
     video_url: Optional[str] = Field(None, max_length=1000)
     image_url: Optional[str] = Field(None, max_length=1000)
     activity_type: ActivityTypeEnum = ActivityTypeEnum.MUSCULATION
+    custom_activity_type_id: Optional[int] = None
     muscle_group: Optional[MuscleGroupEnum] = None
     secondary_muscles: Optional[list[str]] = None
     equipment: Optional[str] = Field(None, max_length=255)
-    difficulty: int = Field(3, ge=1, le=5)
     is_compound: bool = True
 
 
 class ExerciseCreate(ExerciseBase):
     """Schema pour créer un exercice."""
-    pass
+    gif_data: Optional[str] = None  # Base64 encoded GIF
+    field_values: Optional[list[ExerciseFieldValueCreate]] = None
 
 
 class ExerciseUpdate(BaseModel):
@@ -100,18 +214,23 @@ class ExerciseUpdate(BaseModel):
     instructions: Optional[str] = None
     video_url: Optional[str] = Field(None, max_length=1000)
     image_url: Optional[str] = Field(None, max_length=1000)
+    gif_data: Optional[str] = None  # Base64 encoded GIF
     activity_type: Optional[ActivityTypeEnum] = None
+    custom_activity_type_id: Optional[int] = None
     muscle_group: Optional[MuscleGroupEnum] = None
     secondary_muscles: Optional[list[str]] = None
     equipment: Optional[str] = Field(None, max_length=255)
-    difficulty: Optional[int] = Field(None, ge=1, le=5)
     is_compound: Optional[bool] = None
+    field_values: Optional[list[ExerciseFieldValueCreate]] = None
 
 
 class ExerciseResponse(ExerciseBase):
     """Schema de réponse pour un exercice."""
     id: int
     user_id: Optional[int] = None
+    gif_data: Optional[str] = None
+    custom_activity_type: Optional[UserActivityTypeResponse] = None
+    field_values: list[ExerciseFieldValueResponse] = []
     created_at: datetime
     updated_at: datetime
     

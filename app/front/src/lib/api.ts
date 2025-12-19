@@ -63,7 +63,36 @@ interface FetchOptions extends RequestInit {
 }
 
 /**
+ * Rafraîchit le token automatiquement en cas d'expiration.
+ */
+let isRefreshing = false;
+let refreshPromise: Promise<TokenResponse> | null = null;
+
+async function refreshTokenIfNeeded(): Promise<void> {
+  if (isRefreshing && refreshPromise) {
+    await refreshPromise;
+    return;
+  }
+
+  isRefreshing = true;
+  refreshPromise = authApi.refresh().then((response) => {
+    setStoredTokens(response.access_token, response.refresh_token);
+    return response;
+  }).catch((error) => {
+    // Si le refresh échoue, on supprime les tokens
+    clearStoredTokens();
+    throw error;
+  }).finally(() => {
+    isRefreshing = false;
+    refreshPromise = null;
+  });
+
+  await refreshPromise;
+}
+
+/**
  * Wrapper autour de fetch avec gestion automatique des erreurs et des tokens.
+ * Rafraîchit automatiquement le token en cas d'expiration (401).
  */
 async function apiFetch<T>(
   endpoint: string,
@@ -86,11 +115,32 @@ async function apiFetch<T>(
     }
   }
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     ...fetchOptions,
     headers,
     credentials: "include", // Garde les cookies pour compatibilité
   });
+
+  // Si 401 (Unauthorized) et qu'on n'est pas en train de rafraîchir, on essaie de rafraîchir le token
+  if (!response.ok && response.status === 401 && !skipAuth && !isRefreshing) {
+    try {
+      await refreshTokenIfNeeded();
+      
+      // Réessaie la requête avec le nouveau token
+      const newToken = getStoredToken();
+      if (newToken) {
+        (headers as Record<string, string>)["Authorization"] = `Bearer ${newToken}`;
+      }
+      
+      response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+        credentials: "include",
+      });
+    } catch {
+      // Si le refresh échoue, on continue avec l'erreur 401 originale
+    }
+  }
 
   // Gestion des erreurs HTTP
   if (!response.ok) {
@@ -197,9 +247,12 @@ export const authApi = {
    * Utilise le refresh token stocké dans les cookies.
    */
   async refresh(): Promise<TokenResponse> {
-    return apiFetch<TokenResponse>("/auth/refresh", {
+    const response = await apiFetch<TokenResponse>("/auth/refresh", {
       method: "POST",
     });
+    // Met à jour les tokens stockés
+    setStoredTokens(response.access_token, response.refresh_token);
+    return response;
   },
 
   /**

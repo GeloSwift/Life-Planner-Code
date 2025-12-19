@@ -117,6 +117,80 @@ export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
 };
 
 // =============================================================================
+// CUSTOM FIELD TYPES (Notion-like)
+// =============================================================================
+
+export type CustomFieldType =
+  | "text"
+  | "number"
+  | "select"
+  | "multi_select"
+  | "checkbox"
+  | "date"
+  | "duration";
+
+export interface CustomFieldDefinition {
+  id: number;
+  activity_type_id: number;
+  name: string;
+  field_type: CustomFieldType;
+  options: string[] | null; // Liste d'options pour select/multi_select
+  unit: string | null;
+  placeholder: string | null;
+  default_value: string | null;
+  is_required: boolean;
+  order: number;
+  created_at: string;
+}
+
+export interface CustomFieldDefinitionCreate {
+  name: string;
+  field_type: CustomFieldType;
+  options?: string[];
+  unit?: string;
+  placeholder?: string;
+  default_value?: string;
+  is_required?: boolean;
+  order?: number;
+}
+
+export interface UserActivityType {
+  id: number;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  is_default: boolean;
+  user_id: number | null;
+  created_at: string;
+  custom_fields: CustomFieldDefinition[];
+}
+
+export interface UserActivityTypeCreate {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface UserActivityTypeUpdate {
+  name?: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface ExerciseFieldValue {
+  id: number;
+  exercise_id: number;
+  field_id: number;
+  value: string | null;
+  field?: CustomFieldDefinition;
+}
+
+export interface ExerciseFieldValueCreate {
+  field_id: number;
+  value: string;
+}
+
+// =============================================================================
 // EXERCISE TYPES
 // =============================================================================
 
@@ -127,13 +201,16 @@ export interface Exercise {
   instructions: string | null;
   video_url: string | null;
   image_url: string | null;
+  gif_data: string | null;  // Base64 encoded GIF
   activity_type: ActivityType;
+  custom_activity_type_id: number | null;
+  custom_activity_type: UserActivityType | null;
   muscle_group: MuscleGroup | null;
   secondary_muscles: string | null;
   equipment: string | null;
-  difficulty: number;
   is_compound: boolean;
   user_id: number | null;
+  field_values: ExerciseFieldValue[];
   created_at: string;
   updated_at: string;
 }
@@ -144,12 +221,14 @@ export interface ExerciseCreate {
   instructions?: string;
   video_url?: string;
   image_url?: string;
+  gif_data?: string;  // Base64 encoded GIF
   activity_type: ActivityType;
+  custom_activity_type_id?: number;
   muscle_group?: MuscleGroup;
   secondary_muscles?: string;
   equipment?: string;
-  difficulty?: number;
   is_compound?: boolean;
+  field_values?: ExerciseFieldValueCreate[];
 }
 
 export interface ExerciseUpdate {
@@ -158,12 +237,14 @@ export interface ExerciseUpdate {
   instructions?: string;
   video_url?: string;
   image_url?: string;
+  gif_data?: string;  // Base64 encoded GIF
   activity_type?: ActivityType;
+  custom_activity_type_id?: number;
   muscle_group?: MuscleGroup;
   secondary_muscles?: string;
   equipment?: string;
-  difficulty?: number;
   is_compound?: boolean;
+  field_values?: ExerciseFieldValueCreate[];
 }
 
 // =============================================================================

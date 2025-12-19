@@ -1,18 +1,13 @@
 "use client";
 
 /**
- * Page de création d'exercice avec activités personnalisées et champs dynamiques.
+ * Page d'édition d'exercice avec activités personnalisées et champs dynamiques.
  * 
- * Fonctionnalités :
- * - Types d'activités personnalisables (par défaut : musculation, course, danse, volleyball)
- * - Possibilité d'ajouter/supprimer des activités personnelles
- * - Upload de GIF pour illustrer l'exercice
- * - Champs personnalisés par type d'activité (style Notion)
- * - Icônes React (Lucide) au lieu d'emojis
+ * Réutilise la logique de création mais charge les données existantes.
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -42,6 +37,7 @@ import type {
   CustomFieldDefinition,
   CustomFieldType,
   ExerciseFieldValueCreate,
+  Exercise,
 } from "@/lib/workout-types";
 import {
   Loader2,
@@ -52,7 +48,6 @@ import {
   X,
   Image as ImageIcon,
   Trash2,
-  // Icônes d'activités sportives
   Activity,
   Bike,
   Footprints,
@@ -121,10 +116,13 @@ function ActivityIcon({ iconName, className = "h-5 w-5" }: { iconName: string | 
   return IconComponent ? <IconComponent className={className} /> : <Activity className={className} />;
 }
 
-export default function NewExercisePage() {
+export default function EditExercisePage() {
   const router = useRouter();
+  const params = useParams();
+  const exerciseId = parseInt(params.id as string);
   const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingExercise, setIsLoadingExercise] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Formulaire principal
@@ -156,21 +154,53 @@ export default function NewExercisePage() {
     try {
       const types = await workoutApi.activityTypes.list();
       setActivityTypes(types);
-      // Sélectionner la première activité par défaut
-      if (types.length > 0 && !selectedActivityId) {
-        setSelectedActivityId(types[0].id);
-      }
     } catch (err) {
       showError("Erreur lors du chargement des activités");
       console.error(err);
     } finally {
       setLoadingActivities(false);
     }
-  }, [selectedActivityId, showError]);
+  }, [showError]);
+
+  // Charger l'exercice existant
+  const loadExercise = useCallback(async () => {
+    try {
+      setIsLoadingExercise(true);
+      const exercise = await workoutApi.exercises.get(exerciseId);
+      
+      setName(exercise.name);
+      setDescription(exercise.description || "");
+      setSelectedActivityId(exercise.custom_activity_type_id || null);
+      
+      // Charger le GIF si présent
+      if (exercise.gif_data) {
+        setGifData(exercise.gif_data);
+        setGifPreview(exercise.gif_data);
+      }
+      
+      // Charger les valeurs des champs personnalisés
+      if (exercise.field_values) {
+        const values: Record<number, string> = {};
+        exercise.field_values.forEach(fv => {
+          if (fv.field_id) {
+            values[fv.field_id] = fv.value || "";
+          }
+        });
+        setFieldValues(values);
+      }
+    } catch (err) {
+      showError("Erreur lors du chargement de l'exercice");
+      console.error(err);
+      router.push("/workout/exercises");
+    } finally {
+      setIsLoadingExercise(false);
+    }
+  }, [exerciseId, showError, router]);
 
   useEffect(() => {
     loadActivityTypes();
-  }, [loadActivityTypes]);
+    loadExercise();
+  }, [loadActivityTypes, loadExercise]);
 
   // Activité sélectionnée
   const selectedActivity = activityTypes.find(a => a.id === selectedActivityId);
@@ -178,11 +208,9 @@ export default function NewExercisePage() {
 
   // Fonction pour obtenir l'icône d'une activité
   const getActivityIcon = (activity: UserActivityType): string => {
-    // Si l'icône est définie et existe dans notre map
     if (activity.icon && ACTIVITY_ICONS[activity.icon]) {
       return activity.icon;
     }
-    // Sinon, essayer de trouver une icône par défaut basée sur le nom
     return DEFAULT_ACTIVITY_ICONS[activity.name] || "Activity";
   };
 
@@ -191,13 +219,11 @@ export default function NewExercisePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Vérifier le type
     if (!file.type.includes("gif") && !file.type.includes("image")) {
       showError("Veuillez sélectionner un fichier GIF ou image");
       return;
     }
 
-    // Vérifier la taille (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       showError("Le fichier ne doit pas dépasser 2MB");
       return;
@@ -262,7 +288,6 @@ export default function NewExercisePage() {
       await workoutApi.activityTypes.delete(activityId);
       setActivityTypes(prev => prev.filter(a => a.id !== activityId));
       
-      // Sélectionner une autre activité si c'était celle sélectionnée
       if (selectedActivityId === activityId) {
         const remaining = activityTypes.filter(a => a.id !== activityId);
         setSelectedActivityId(remaining[0]?.id || null);
@@ -294,7 +319,6 @@ export default function NewExercisePage() {
         options,
       });
 
-      // Mettre à jour l'activité avec le nouveau champ
       setActivityTypes(prev => prev.map(a => {
         if (a.id === selectedActivityId) {
           return {
@@ -322,13 +346,11 @@ export default function NewExercisePage() {
     try {
       await workoutApi.activityTypes.deleteField(fieldId);
       
-      // Mettre à jour localement
       setActivityTypes(prev => prev.map(a => ({
         ...a,
         custom_fields: a.custom_fields?.filter(f => f.id !== fieldId) || [],
       })));
       
-      // Supprimer la valeur du champ
       setFieldValues(prev => {
         const updated = { ...prev };
         delete updated[fieldId];
@@ -364,7 +386,7 @@ export default function NewExercisePage() {
           value,
         }));
 
-      // Déterminer le activity_type legacy selon le type sélectionné
+      // Déterminer le activity_type legacy
       const selectedActivityName = selectedActivity?.name.toLowerCase() || "autre";
       let legacyActivityType = "autre";
       if (selectedActivityName.includes("musculation")) legacyActivityType = "musculation";
@@ -372,7 +394,7 @@ export default function NewExercisePage() {
       else if (selectedActivityName.includes("danse")) legacyActivityType = "danse";
       else if (selectedActivityName.includes("volleyball")) legacyActivityType = "volleyball";
 
-      await workoutApi.exercises.create({
+      await workoutApi.exercises.update(exerciseId, {
         name,
         description: description || undefined,
         activity_type: legacyActivityType as never,
@@ -381,10 +403,10 @@ export default function NewExercisePage() {
         field_values: fieldValuesData.length > 0 ? fieldValuesData : undefined,
       });
       
-      success(`Exercice "${name}" créé avec succès`);
+      success(`Exercice "${name}" modifié avec succès`);
       router.push("/workout/exercises");
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Erreur lors de la création");
+      showError(err instanceof Error ? err.message : "Erreur lors de la modification");
     } finally {
       setIsLoading(false);
     }
@@ -411,7 +433,6 @@ export default function NewExercisePage() {
         );
       
       case "multi_select":
-        // Parser la valeur (array JSON) ou utiliser un array vide
         let selectedValues: string[] = [];
         try {
           if (value) {
@@ -424,7 +445,6 @@ export default function NewExercisePage() {
           selectedValues = [];
         }
 
-        // Convertir les options en format pour MultiSelect
         const multiSelectOptions = options.map((opt: string) => ({
           label: opt,
           value: opt,
@@ -435,7 +455,6 @@ export default function NewExercisePage() {
             options={multiSelectOptions}
             selected={selectedValues}
             onChange={(selected) => {
-              // Stocker comme JSON array
               handleFieldChange(field.id, JSON.stringify(selected));
             }}
             placeholder={field.placeholder || "Sélectionner plusieurs options..."}
@@ -504,7 +523,7 @@ export default function NewExercisePage() {
     }
   };
 
-  if (loadingActivities) {
+  if (loadingActivities || isLoadingExercise) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -532,10 +551,10 @@ export default function NewExercisePage() {
 
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
             <Dumbbell className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
-            Nouvel exercice
+            Modifier l&apos;exercice
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Créez un exercice personnalisé avec vos propres paramètres
+            Modifiez les caractéristiques de l&apos;exercice
           </p>
         </section>
 
@@ -705,9 +724,6 @@ export default function NewExercisePage() {
               <div className="text-center py-8 text-muted-foreground">
                 <p>Aucun champ personnalisé pour cette activité</p>
                 <p className="text-sm mt-1">Cliquez sur &quot;Ajouter&quot; pour créer des paramètres</p>
-                <p className="text-xs mt-2 text-muted-foreground/70">
-                  Ex: Poids (kg), Répétitions, Distance (km), Durée...
-                </p>
               </div>
             ) : (
               customFields.map((field) => (
@@ -751,14 +767,14 @@ export default function NewExercisePage() {
             disabled={isLoading}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Créer l&apos;exercice
+            Enregistrer
           </Button>
         </div>
       </main>
 
       <Footer />
 
-      {/* Dialog nouvelle activité avec sélection d'icône */}
+      {/* Dialog nouvelle activité */}
       <Dialog open={showNewActivity} onOpenChange={setShowNewActivity}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

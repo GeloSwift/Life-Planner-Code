@@ -70,6 +70,58 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth();
   }, []);
 
+  // Rafraîchit automatiquement le token si l'utilisateur est actif
+  useEffect(() => {
+    if (!user) return; // Pas de refresh si l'utilisateur n'est pas connecté
+
+    let refreshInterval: NodeJS.Timeout | null = null;
+    let lastActivityTime = Date.now();
+    const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes d'inactivité
+    const REFRESH_INTERVAL = 3 * 60 * 60 * 1000; // Rafraîchit toutes les 3 heures (avant expiration à 4h)
+
+    // Détecte l'activité de l'utilisateur
+    const activityEvents = ["mousedown", "mousemove", "keypress", "scroll", "touchstart", "click"];
+    const handleActivity = () => {
+      lastActivityTime = Date.now();
+    };
+
+    // Ajoute les listeners d'activité
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleActivity, { passive: true });
+    });
+
+    // Fonction de refresh automatique
+    const performAutoRefresh = async () => {
+      const timeSinceLastActivity = Date.now() - lastActivityTime;
+      
+      // Ne rafraîchit que si l'utilisateur est actif (activité dans les 5 dernières minutes)
+      if (timeSinceLastActivity < INACTIVITY_TIMEOUT) {
+        try {
+          await authApi.refresh();
+          console.log("[AUTH] Token rafraîchi automatiquement");
+        } catch (error) {
+          console.error("[AUTH] Erreur lors du refresh automatique:", error);
+          // Si le refresh échoue, on déconnecte l'utilisateur
+          clearStoredTokens();
+          setUser(null);
+        }
+      }
+    };
+
+    // Démarre l'intervalle de refresh
+    refreshInterval = setInterval(performAutoRefresh, REFRESH_INTERVAL);
+
+    // Nettoie les listeners et l'intervalle au démontage
+    return () => {
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleActivity);
+      });
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, [user]);
+
   /**
    * Connexion avec email et mot de passe.
    */

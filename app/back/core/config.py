@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # JWT Configuration
     JWT_SECRET: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 240  # 4 heures (augmenté de 30 min pour rester connecté plus longtemps)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30  # 30 jours (augmenté de 7 jours)
     
     # CORS Configuration (frontend URLs - dev and production)
     CORS_ORIGINS: list[str] = [
