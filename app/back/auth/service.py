@@ -169,10 +169,14 @@ def get_or_create_oauth_user(
     user = get_user_by_provider(db, provider, provider_user_id)
     if user:
         # Mise à jour des infos si nécessaire
+        # Ne pas écraser un avatar personnalisé (data URL) avec l'avatar Google
+        # Les data URLs commencent par "data:image/" et indiquent une image uploadée par l'utilisateur
         if avatar_url and user.avatar_url != avatar_url:
-            user.avatar_url = avatar_url
-            db.commit()
-            db.refresh(user)
+            # Si l'avatar actuel est une data URL (image personnalisée), on ne l'écrase pas
+            if not (user.avatar_url and user.avatar_url.startswith("data:image/")):
+                user.avatar_url = avatar_url
+                db.commit()
+                db.refresh(user)
         return user
     
     # Cherche par email
