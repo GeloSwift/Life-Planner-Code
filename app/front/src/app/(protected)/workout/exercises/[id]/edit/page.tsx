@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -650,10 +651,13 @@ export default function EditExercisePage() {
               <div className="border-2 border-dashed rounded-lg p-4">
                 {gifPreview ? (
                   <div className="relative flex items-center justify-center bg-muted rounded-lg overflow-hidden" style={{ minHeight: "150px", maxHeight: "400px" }}>
-                    <img
+                    <Image
                       src={gifPreview}
                       alt="Aperçu"
-                      className="w-full h-auto max-h-full object-contain rounded-lg"
+                      fill
+                      className="object-contain rounded-lg"
+                      sizes="(max-width: 768px) 100vw, 600px"
+                      unoptimized
                     />
                     <Button
                       variant="destructive"

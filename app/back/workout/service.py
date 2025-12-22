@@ -1153,7 +1153,7 @@ class ActivityTypeService:
             joinedload(UserActivityType.custom_fields)
         ).filter(
             or_(
-                UserActivityType.is_default == True,  # Activités par défaut
+                UserActivityType.is_default.is_(True),  # Activités par défaut
                 UserActivityType.user_id == user_id,  # Activités personnelles
             )
         ).order_by(UserActivityType.is_default.desc(), UserActivityType.name).all()
@@ -1170,7 +1170,7 @@ class ActivityTypeService:
         ).filter(
             UserActivityType.id == activity_type_id,
             or_(
-                UserActivityType.is_default == True,
+                UserActivityType.is_default.is_(True),
                 UserActivityType.user_id == user_id,
             ),
         ).first()
@@ -1209,7 +1209,7 @@ class ActivityTypeService:
         activity_type = db.query(UserActivityType).filter(
             UserActivityType.id == activity_type_id,
             UserActivityType.user_id == user_id,  # Seulement ses propres activités
-            UserActivityType.is_default == False,  # Pas les activités par défaut
+            ~UserActivityType.is_default,  # Pas les activités par défaut
         ).first()
         
         if not activity_type:
@@ -1236,7 +1236,7 @@ class ActivityTypeService:
         activity_type = db.query(UserActivityType).filter(
             UserActivityType.id == activity_type_id,
             UserActivityType.user_id == user_id,  # Seulement ses propres activités
-            UserActivityType.is_default == False,  # Pas les activités par défaut
+            ~UserActivityType.is_default,  # Pas les activités par défaut
         ).first()
         
         if not activity_type:
@@ -1265,7 +1265,7 @@ class ActivityTypeService:
         activity_type = db.query(UserActivityType).filter(
             UserActivityType.id == activity_type_id,
             or_(
-                UserActivityType.is_default == True,
+                UserActivityType.is_default.is_(True),
                 UserActivityType.user_id == user_id,
             ),
         ).first()
@@ -1308,7 +1308,7 @@ class ActivityTypeService:
         field = db.query(CustomFieldDefinition).join(UserActivityType).filter(
             CustomFieldDefinition.id == field_id,
             or_(
-                UserActivityType.is_default == True,
+                UserActivityType.is_default.is_(True),
                 UserActivityType.user_id == user_id,
             ),
         ).first()
@@ -1347,7 +1347,7 @@ class ActivityTypeService:
         field = db.query(CustomFieldDefinition).join(UserActivityType).filter(
             CustomFieldDefinition.id == field_id,
             or_(
-                UserActivityType.is_default == True,
+                UserActivityType.is_default.is_(True),
                 UserActivityType.user_id == user_id,
             ),
         ).first()

@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Image from "next/image";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -205,18 +206,23 @@ export default function ExerciseDetailPage() {
           {/* Image/GIF */}
           {(exercise.gif_data || exercise.image_url) && (
             <Card className="p-0 overflow-hidden">
-              <div className="w-full bg-muted overflow-hidden aspect-video">
+              <div className="relative w-full bg-muted overflow-hidden aspect-video">
                 {exercise.gif_data ? (
-                  <img
+                  <Image
                     src={exercise.gif_data}
                     alt={exercise.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 800px"
+                    unoptimized
                   />
                 ) : exercise.image_url ? (
-                  <img
+                  <Image
                     src={exercise.image_url}
                     alt={exercise.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 800px"
                   />
                 ) : null}
               </div>

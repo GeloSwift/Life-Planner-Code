@@ -12,6 +12,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -657,10 +658,13 @@ export default function ExercisesPage() {
                         {/* Image/GIF/Vidéo - Hauteur fixe pour aligner toutes les cartes */}
                         <div className="relative w-full bg-muted overflow-hidden aspect-video">
                           {exercise.gif_data ? (
-                            <img
+                            <Image
                               src={exercise.gif_data}
                               alt={exercise.name}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                              unoptimized
                             />
                           ) : exercise.image_url || exercise.video_url ? (
                             <>
@@ -670,15 +674,17 @@ export default function ExercisesPage() {
                               </div>
                               )}
                             {exercise.image_url && (
-                              <img
+                              <Image
                                 src={exercise.image_url}
                                 alt={exercise.name}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                               />
                             )}
                             </>
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
                               {activity ? (
                                 <ActivityIcon 
                                   iconName={getActivityIcon(activity)} 
