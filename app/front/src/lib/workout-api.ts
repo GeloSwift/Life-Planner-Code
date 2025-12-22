@@ -54,7 +54,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
  * Rafraîchit le token automatiquement en cas d'expiration.
  */
 let isRefreshing = false;
-let refreshPromise: Promise<any> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
 async function refreshTokenIfNeeded(): Promise<void> {
   if (isRefreshing && refreshPromise) {
@@ -63,17 +63,20 @@ async function refreshTokenIfNeeded(): Promise<void> {
   }
 
   isRefreshing = true;
-  refreshPromise = authApi.refresh().then((response) => {
-    setStoredTokens(response.access_token, response.refresh_token);
-    return response;
-  }).catch((error) => {
-    // Si le refresh échoue, on supprime les tokens
-    clearStoredTokens();
-    throw error;
-  }).finally(() => {
-    isRefreshing = false;
-    refreshPromise = null;
-  });
+  refreshPromise = authApi
+    .refresh()
+    .then((response) => {
+      setStoredTokens(response.access_token, response.refresh_token);
+    })
+    .catch((error) => {
+      // Si le refresh échoue, on supprime les tokens
+      clearStoredTokens();
+      throw error;
+    })
+    .finally(() => {
+      isRefreshing = false;
+      refreshPromise = null;
+    });
 
   await refreshPromise;
 }

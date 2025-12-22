@@ -484,7 +484,7 @@ export default function SessionsPage() {
                   {/* Image avec logos des activités */}
                   <div className="relative w-full bg-muted overflow-hidden aspect-video">
                     {activities.length > 0 ? (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 gap-2 p-4">
+                      <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/10 to-primary/5 gap-2 p-4">
                         {activities.slice(0, 3).map((activity) => (
                           <div
                             key={activity.id}
@@ -505,7 +505,7 @@ export default function SessionsPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
+                      <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/10 to-primary/5">
                         <Calendar className="h-8 w-8 sm:h-10 sm:w-10 text-primary/30" />
                       </div>
                     )}

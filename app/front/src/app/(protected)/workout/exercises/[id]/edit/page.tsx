@@ -37,7 +37,6 @@ import type {
   CustomFieldDefinition,
   CustomFieldType,
   ExerciseFieldValueCreate,
-  Exercise,
 } from "@/lib/workout-types";
 import {
   Loader2,

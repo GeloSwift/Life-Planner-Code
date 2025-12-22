@@ -37,7 +37,7 @@ import {
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
-import type { Exercise, ActivityType, UserActivityType, CustomFieldDefinition, ExerciseFieldValue } from "@/lib/workout-types";
+import type { Exercise, ActivityType, UserActivityType, CustomFieldDefinition } from "@/lib/workout-types";
 import {
   DndContext,
   closestCenter,
@@ -244,14 +244,12 @@ function renderCustomField(
 // Composant pour un exercice sortable
 function SortableExerciseItem({
   item,
-  index,
   onUpdateField,
   onAddField,
   onRemoveField,
   onRemoveExercise,
 }: {
   item: SelectedExercise;
-  index: number;
   onUpdateField: (fieldId: number, value: string) => void;
   onAddField: (field: CustomFieldDefinition) => void;
   onRemoveField: (fieldId: number) => void;
@@ -561,7 +559,7 @@ export default function NewSessionPage() {
       const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
 
       // Créer la séance (on stocke la première activité sélectionnée)
-      const session = await workoutApi.sessions.create({
+      await workoutApi.sessions.create({
         name,
         activity_type: activityType,
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
@@ -795,7 +793,6 @@ export default function NewSessionPage() {
                       <SortableExerciseItem
                     key={item.exercise.id}
                         item={item}
-                        index={index}
                         onUpdateField={(fieldId, value) =>
                           handleUpdateFieldValue(index, fieldId, value)
                         }

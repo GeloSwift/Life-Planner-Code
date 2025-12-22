@@ -25,15 +25,10 @@ function VerifyEmailContent() {
   const { refreshUser } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
+  const token = searchParams.get("token");
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    
-    if (!token) {
-      setStatus("error");
-      setMessage("Token de vérification manquant");
-      return;
-    }
+    if (!token) return;
 
     const verify = async () => {
       try {
@@ -57,7 +52,7 @@ function VerifyEmailContent() {
     };
 
     verify();
-  }, [searchParams, router, refreshUser]);
+  }, [token, router, refreshUser]);
 
   return (
     <div className="min-h-screen overflow-hidden">
@@ -68,7 +63,7 @@ function VerifyEmailContent() {
         <div className="mx-auto max-w-md">
           <Card>
             <CardHeader className="text-center">
-              {status === "loading" && (
+              {token && status === "loading" && (
                 <>
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -80,7 +75,7 @@ function VerifyEmailContent() {
                 </>
               )}
               
-              {status === "success" && (
+              {token && status === "success" && (
                 <>
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
                     <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
@@ -92,27 +87,29 @@ function VerifyEmailContent() {
                 </>
               )}
               
-              {status === "error" && (
+              {(!token || status === "error") && (
                 <>
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
                     <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
                   </div>
                   <CardTitle>Erreur de vérification</CardTitle>
                   <CardDescription>
-                    {message || "Le lien de vérification est invalide ou a expiré"}
+                    {!token
+                      ? "Token de vérification manquant"
+                      : message || "Le lien de vérification est invalide ou a expiré"}
                   </CardDescription>
                 </>
               )}
             </CardHeader>
             
             <CardContent className="space-y-4">
-              {status === "success" && (
+              {token && status === "success" && (
                 <p className="text-center text-sm text-muted-foreground">
                   Redirection vers votre profil dans quelques secondes...
                 </p>
               )}
               
-              {status === "error" && (
+              {(!token || status === "error") && (
                 <div className="space-y-4">
                   <p className="text-center text-sm text-muted-foreground">
                     Le lien de vérification peut avoir expiré ou être invalide.

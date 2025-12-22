@@ -625,18 +625,6 @@ class SessionService:
                             distance=ex.target_distance,
                         )
                         db.add(db_set)
-                else:
-                    # Créer des séries vides par défaut
-                    for i in range(1, ex.target_sets + 1):
-                        db_set = WorkoutSet(
-                            session_exercise_id=session_ex.id,
-                            set_number=i,
-                            weight=ex.target_weight,
-                            reps=ex.target_reps,
-                            duration_seconds=ex.target_duration,
-                            distance=ex.target_distance,
-                        )
-                        db.add(db_set)
         
         db.commit()
         db.refresh(db_session)

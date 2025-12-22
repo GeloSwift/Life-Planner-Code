@@ -191,7 +191,7 @@ export default function EditSessionPage({ params }: PageProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>Types d'activités</Label>
+              <Label>Types d&apos;activités</Label>
               <MultiSelect
                 options={activityOptions}
                 selected={selectedActivityIds.map((x) => x.toString())}
@@ -200,7 +200,7 @@ export default function EditSessionPage({ params }: PageProps) {
               />
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Activity className="h-3.5 w-3.5" />
-                La première activité sélectionnée reste l'activité principale.
+                La première activité sélectionnée reste l&apos;activité principale.
               </div>
             </div>
 
