@@ -75,15 +75,14 @@ export default function SessionPage({ params }: PageProps) {
   const loadSession = useCallback(async () => {
     try {
       setError(null);
-      const [sessionData, exercisesData] = await Promise.all([
-        workoutApi.sessions.get(parseInt(id)),
-        workoutApi.sessions.getExercises(parseInt(id)),
-      ]);
+      const sessionData = await workoutApi.sessions.get(parseInt(id));
       setSession(sessionData);
-      setExercises(exercisesData);
+      // Les exercices sont inclus dans la réponse de la session
+      const exercisesList = sessionData.exercises || [];
+      setExercises(exercisesList);
 
       // Étendre le premier exercice non complété
-      const firstIncomplete = exercisesData.find((e) => !e.is_completed);
+      const firstIncomplete = exercisesList.find((e) => !e.is_completed);
       if (firstIncomplete) {
         setExpandedExercise(firstIncomplete.id);
       }

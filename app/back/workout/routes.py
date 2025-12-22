@@ -310,7 +310,7 @@ def remove_exercise_from_template(
 
 @router.get(
     "/sessions",
-    response_model=list[WorkoutSessionListResponse],
+    response_model=list[WorkoutSessionResponse],
     summary="Liste des sessions",
 )
 def get_sessions(
@@ -327,33 +327,9 @@ def get_sessions(
     session_status = SessionStatus(status_filter.value) if status_filter else None
     activity = ActivityType(activity_type.value) if activity_type else None
     
-    sessions = SessionService.get_sessions(
+    return SessionService.get_sessions(
         db, current_user.id, session_status, activity, start_date, end_date, skip, limit
     )
-    
-    # Transformer en format liste avec compteurs
-    result = []
-    for s in sessions:
-        exercises_count = len(s.exercises)
-        completed_count = sum(1 for e in s.exercises if e.is_completed)
-        
-        result.append(WorkoutSessionListResponse(
-            id=s.id,
-            name=s.name,
-            activity_type=ActivityTypeEnum(s.activity_type.value),
-            status=SessionStatusEnum(s.status.value),
-            template_id=s.template_id,
-            scheduled_at=s.scheduled_at,
-            started_at=s.started_at,
-            ended_at=s.ended_at,
-            duration_seconds=s.duration_seconds,
-            rating=s.rating,
-            exercises_count=exercises_count,
-            completed_exercises_count=completed_count,
-            created_at=s.created_at,
-        ))
-    
-    return result
 
 
 @router.get(

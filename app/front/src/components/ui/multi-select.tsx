@@ -18,6 +18,8 @@ interface MultiSelectProps {
   onChange: (selected: string[]) => void
   placeholder?: string
   className?: string
+  renderOption?: (option: Option) => React.ReactNode
+  renderBadge?: (option: Option) => React.ReactNode
 }
 
 export function MultiSelect({
@@ -26,6 +28,8 @@ export function MultiSelect({
   onChange,
   placeholder = "Sélectionner...",
   className,
+  renderOption,
+  renderBadge,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -68,13 +72,14 @@ export function MultiSelect({
             ) : (
               selected.map((value) => {
                 const option = options.find((opt) => opt.value === value)
+                if (!option) return null
                 return (
                   <Badge
                     variant="secondary"
                     key={value}
                     className="mr-1 mb-1"
                   >
-                    {option?.label || value}
+                    {renderBadge ? renderBadge(option) : (option.label || value)}
                     <span
                       role="button"
                       tabIndex={0}
@@ -138,7 +143,7 @@ export function MultiSelect({
                       <Check className="h-3 w-3 text-primary" />
                     )}
                   </div>
-                  <span>{option.label}</span>
+                  {renderOption ? renderOption(option) : <span>{option.label}</span>}
                 </div>
               )
             })}

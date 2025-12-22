@@ -371,7 +371,7 @@ export default function NewExercisePage() {
       else if (selectedActivityName.includes("course")) legacyActivityType = "course";
       else if (selectedActivityName.includes("danse")) legacyActivityType = "danse";
       else if (selectedActivityName.includes("volleyball")) legacyActivityType = "volleyball";
-
+      
       await workoutApi.exercises.create({
         name,
         description: description || undefined,
@@ -637,14 +637,14 @@ export default function NewExercisePage() {
                       alt="Aperçu"
                       className="w-full h-auto max-h-full object-contain rounded-lg"
                     />
-                    <Button
+                  <Button
                       variant="destructive"
                       size="icon"
                       className="absolute top-2 right-2"
                       onClick={removeGif}
                     >
                       <X className="h-4 w-4" />
-                    </Button>
+                  </Button>
                   </div>
                 ) : (
                   <div
@@ -681,12 +681,12 @@ export default function NewExercisePage() {
                   <ActivityIcon iconName={getActivityIcon(selectedActivity)} className="h-5 w-5 text-primary" />
                 )}
                 <div>
-                  <CardTitle>
+            <CardTitle>
                     Paramètres {selectedActivity?.name || ""}
-                  </CardTitle>
-                  <CardDescription>
+            </CardTitle>
+            <CardDescription>
                     Champs personnalisés pour ce type d&apos;activité
-                  </CardDescription>
+            </CardDescription>
                 </div>
               </div>
               <Button
@@ -708,7 +708,7 @@ export default function NewExercisePage() {
                 <p className="text-xs mt-2 text-muted-foreground/70">
                   Ex: Poids (kg), Répétitions, Distance (km), Durée...
                 </p>
-              </div>
+                  </div>
             ) : (
               customFields.map((field) => (
                 <div key={field.id} className="space-y-2">
@@ -718,8 +718,8 @@ export default function NewExercisePage() {
                       {field.is_required && <span className="text-destructive ml-1">*</span>}
                       {field.unit && (
                         <span className="text-muted-foreground ml-1">({field.unit})</span>
-                      )}
-                    </Label>
+                    )}
+                  </Label>
                     <Button
                       variant="ghost"
                       size="icon"

@@ -271,6 +271,8 @@ export interface WorkoutTemplate {
   name: string;
   description: string | null;
   activity_type: ActivityType;
+  custom_activity_type_id: number | null;
+  custom_activity_type: UserActivityType | null;
   color: string | null;
   estimated_duration: number | null;
   user_id: number;
@@ -306,6 +308,7 @@ export interface WorkoutTemplateUpdate {
   name?: string;
   description?: string;
   activity_type?: ActivityType;
+  custom_activity_type_id?: number;
   color?: string;
   estimated_duration?: number;
   is_public?: boolean;
@@ -355,6 +358,9 @@ export interface WorkoutSession {
   id: number;
   name: string;
   activity_type: ActivityType;
+  custom_activity_type_id: number | null;
+  custom_activity_type_ids?: number[]; // multi-activités (optionnel pour rétro-compat)
+  custom_activity_type: UserActivityType | null;
   status: SessionStatus;
   user_id: number;
   template_id: number | null;
@@ -374,14 +380,29 @@ export interface WorkoutSession {
 export interface WorkoutSessionCreate {
   name: string;
   activity_type: ActivityType;
+  custom_activity_type_id?: number;
+  custom_activity_type_ids?: number[];
   template_id?: number;
   scheduled_at?: string;
   notes?: string;
+  exercises?: Array<{
+    exercise_id: number;
+    order?: number;
+    target_sets: number;
+    target_reps?: number;
+    target_weight?: number;
+    target_duration?: number;
+    target_distance?: number;
+    rest_seconds: number;
+    notes?: string;
+  }>;
 }
 
 export interface WorkoutSessionUpdate {
   name?: string;
   activity_type?: ActivityType;
+  custom_activity_type_id?: number;
+  custom_activity_type_ids?: number[];
   scheduled_at?: string;
   notes?: string;
   rating?: number;

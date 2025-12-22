@@ -36,8 +36,25 @@ import {
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
-import type { Exercise, ActivityType } from "@/lib/workout-types";
-import { ACTIVITY_TYPE_LABELS, MUSCLE_GROUP_LABELS } from "@/lib/workout-types";
+import { MultiSelect } from "@/components/ui/multi-select";
+import type { Exercise, ActivityType, UserActivityType, CustomFieldDefinition, ExerciseFieldValue } from "@/lib/workout-types";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Loader2,
   ArrowLeft,
@@ -47,14 +64,305 @@ import {
   Dumbbell,
   GripVertical,
   Search,
+  Activity,
+  Bike,
+  Footprints,
+  Heart,
+  Mountain,
+  Music,
+  Waves,
+  Target,
+  Timer,
+  Trophy,
+  Zap,
+  Flame,
+  PersonStanding,
+  CircleDot,
+  Swords,
+  Medal,
+  Volleyball,
+  type LucideIcon,
 } from "lucide-react";
+
+// Map des icônes disponibles pour les activités
+const ACTIVITY_ICONS: Record<string, LucideIcon> = {
+  Dumbbell: Dumbbell,
+  Footprints: Footprints,
+  Music: Music,
+  Volleyball: Volleyball,
+  Activity: Activity,
+  Bike: Bike,
+  Heart: Heart,
+  Mountain: Mountain,
+  Waves: Waves,
+  Target: Target,
+  Timer: Timer,
+  Trophy: Trophy,
+  Zap: Zap,
+  Flame: Flame,
+  PersonStanding: PersonStanding,
+  CircleDot: CircleDot,
+  Swords: Swords,
+  Medal: Medal,
+};
+
+// Composant pour afficher une icône d'activité
+function ActivityIcon({ iconName, className = "h-5 w-5" }: { iconName: string | null; className?: string }) {
+  const IconComponent = iconName ? ACTIVITY_ICONS[iconName] : Activity;
+  return IconComponent ? <IconComponent className={className} /> : <Activity className={className} />;
+}
+
+// Fonction pour obtenir l'icône d'une activité
+function getActivityIcon(activity: { icon: string | null } | null): string {
+  if (!activity) return "Activity";
+  if (activity.icon && ACTIVITY_ICONS[activity.icon]) {
+    return activity.icon;
+  }
+  return "Activity";
+}
 
 interface SelectedExercise {
   exercise: Exercise;
-  sets: number;
-  reps: number;
-  weight?: number;
-  restSeconds: number;
+  fieldValues: Record<number, string>; // field_id -> value
+}
+
+// Composant pour rendre un champ personnalisé
+function renderCustomField(
+  field: CustomFieldDefinition,
+  value: string,
+  onChange: (value: string) => void
+) {
+  const options = field.options || [];
+
+  switch (field.field_type) {
+    case "select":
+      return (
+        <Select value={value || ""} onValueChange={onChange}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder={field.placeholder || "Sélectionner..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((opt: string) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    
+    case "multi_select":
+      let selectedValues: string[] = [];
+      try {
+        if (value) {
+          selectedValues = JSON.parse(value);
+          if (!Array.isArray(selectedValues)) {
+            selectedValues = [];
+          }
+        }
+      } catch {
+        selectedValues = [];
+      }
+
+      const multiSelectOptions = options.map((opt: string) => ({
+        label: opt,
+        value: opt,
+      }));
+
+      return (
+        <MultiSelect
+          options={multiSelectOptions}
+          selected={selectedValues}
+          onChange={(selected) => {
+            onChange(JSON.stringify(selected));
+          }}
+          placeholder={field.placeholder || "Sélectionner..."}
+        />
+      );
+    
+    case "checkbox":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={value === "true"}
+            onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label className="text-sm">Oui</Label>
+        </div>
+      );
+    
+    case "number":
+      return (
+        <div className="flex gap-2 items-center">
+          <Input
+            type="number"
+            placeholder={field.placeholder || "0"}
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="h-8 text-sm flex-1"
+          />
+          {field.unit && <span className="text-xs text-muted-foreground">{field.unit}</span>}
+        </div>
+      );
+    
+    case "duration":
+      return (
+        <div className="flex gap-2 items-center">
+          <Input
+            type="number"
+            placeholder="0"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="h-8 text-sm flex-1"
+          />
+          <span className="text-xs text-muted-foreground">secondes</span>
+        </div>
+      );
+    
+    case "date":
+      return (
+        <Input
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 text-sm"
+        />
+      );
+    
+    default: // text
+      return (
+        <Input
+          placeholder={field.placeholder || "Valeur..."}
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 text-sm"
+        />
+      );
+  }
+}
+
+// Composant pour un exercice sortable
+function SortableExerciseItem({
+  item,
+  index,
+  onUpdateField,
+  onAddField,
+  onRemoveField,
+  onRemoveExercise,
+}: {
+  item: SelectedExercise;
+  index: number;
+  onUpdateField: (fieldId: number, value: string) => void;
+  onAddField: (field: CustomFieldDefinition) => void;
+  onRemoveField: (fieldId: number) => void;
+  onRemoveExercise: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.exercise.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const activity = item.exercise.custom_activity_type;
+  const availableFields = activity?.custom_fields || [];
+  const usedFieldIds = new Set(Object.keys(item.fieldValues).map(Number));
+  const unusedFields = availableFields.filter((f) => !usedFieldIds.has(f.id));
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center cursor-grab active:cursor-grabbing mt-1"
+      >
+        <GripVertical className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <h4 className="font-medium truncate">{item.exercise.name}</h4>
+        {activity && (
+          <p className="text-xs text-muted-foreground">
+            {activity.name}
+          </p>
+        )}
+        
+        {/* Champs personnalisés utilisés */}
+        {availableFields.length > 0 && (
+          <div className="space-y-2 mt-3">
+            {availableFields
+              .filter((field) => usedFieldIds.has(field.id))
+              .map((field) => (
+                <div key={field.id} className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Label className="text-xs">
+                      {field.name}
+                      {field.unit && (
+                        <span className="text-muted-foreground ml-1">({field.unit})</span>
+                      )}
+                    </Label>
+                    {renderCustomField(
+                      field,
+                      item.fieldValues[field.id] || "",
+                      (value) => onUpdateField(field.id, value)
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 mt-5 text-destructive"
+                    onClick={() => onRemoveField(field.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            
+            {/* Bouton pour ajouter un champ */}
+            {unusedFields.length > 0 && (
+              <Select
+                value=""
+                onValueChange={(fieldId) => {
+                  const field = availableFields.find((f) => f.id.toString() === fieldId);
+                  if (field) onAddField(field);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Ajouter un paramètre..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {unusedFields.map((field) => (
+                    <SelectItem key={field.id} value={field.id.toString()}>
+                      {field.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        onClick={onRemoveExercise}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export default function NewSessionPage() {
@@ -64,10 +372,14 @@ export default function NewSessionPage() {
 
   // Formulaire
   const [name, setName] = useState("");
+  const [selectedActivityIds, setSelectedActivityIds] = useState<number[]>([]);
   const [activityType, setActivityType] = useState<ActivityType>("musculation");
   const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split("T")[0]);
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [notes, setNotes] = useState("");
+
+  // Activités personnalisées
+  const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
 
   // Exercices
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
@@ -75,23 +387,66 @@ export default function NewSessionPage() {
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [loadingExercises, setLoadingExercises] = useState(false);
+  
+  // Drag & Drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Charger les types d'activités
+  const loadActivityTypes = useCallback(async () => {
+    try {
+      const data = await workoutApi.activityTypes.list();
+      setActivityTypes(data);
+    } catch (err) {
+      console.error("Erreur lors du chargement des activités", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadActivityTypes();
+  }, [loadActivityTypes]);
+
+  // Mettre à jour l'activité legacy quand on change l'activité personnalisée
+  useEffect(() => {
+    if (selectedActivityIds.length > 0) {
+      const firstActivity = activityTypes.find(a => a.id === selectedActivityIds[0]);
+      if (firstActivity) {
+        const nameLower = firstActivity.name.toLowerCase();
+        if (nameLower.includes("musculation")) setActivityType("musculation");
+        else if (nameLower.includes("course")) setActivityType("course");
+        else if (nameLower.includes("danse")) setActivityType("danse");
+        else if (nameLower.includes("volleyball")) setActivityType("volleyball");
+        else setActivityType("autre");
+      }
+    }
+  }, [selectedActivityIds, activityTypes]);
 
   // Charger les exercices disponibles
   const loadExercises = useCallback(async () => {
     setLoadingExercises(true);
     try {
       const data = await workoutApi.exercises.list({
-        activity_type: activityType,
         search: exerciseSearch || undefined,
-        limit: 50,
+        limit: 100,
       });
-      setAvailableExercises(data);
+      // Filtrer par activités personnalisées sélectionnées côté client
+      let filtered = data;
+      if (selectedActivityIds.length > 0) {
+        filtered = data.filter(ex => 
+          ex.custom_activity_type_id && selectedActivityIds.includes(ex.custom_activity_type_id)
+        );
+      }
+      setAvailableExercises(filtered);
     } catch {
       // Silencieux
     } finally {
       setLoadingExercises(false);
     }
-  }, [activityType, exerciseSearch]);
+  }, [selectedActivityIds, exerciseSearch]);
 
   useEffect(() => {
     if (showExerciseDialog) {
@@ -106,17 +461,33 @@ export default function NewSessionPage() {
       return;
     }
 
+    // Initialiser les valeurs des champs personnalisés avec les valeurs par défaut de l'exercice
+    const initialFieldValues: Record<number, string> = {};
+    if (exercise.field_values) {
+      exercise.field_values.forEach((fv) => {
+        if (fv.field_id && fv.value !== null) {
+          initialFieldValues[fv.field_id] = fv.value;
+        }
+      });
+    }
+
+    // Si l'exercice a une activité personnalisée, initialiser aussi avec les valeurs par défaut des champs
+    if (exercise.custom_activity_type?.custom_fields) {
+      exercise.custom_activity_type.custom_fields.forEach((field) => {
+        if (field.default_value && !initialFieldValues[field.id]) {
+          initialFieldValues[field.id] = field.default_value;
+        }
+      });
+    }
+
     setSelectedExercises((prev) => [
       ...prev,
       {
         exercise,
-        sets: 3,
-        reps: 12,
-        weight: undefined,
-        restSeconds: 90,
+        fieldValues: initialFieldValues,
       },
     ]);
-    setShowExerciseDialog(false);
+    // Ne pas fermer le dialog automatiquement - l'utilisateur peut continuer à ajouter des exercices
     setExerciseSearch("");
   };
 
@@ -124,19 +495,58 @@ export default function NewSessionPage() {
     setSelectedExercises((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpdateExercise = (index: number, updates: Partial<SelectedExercise>) => {
+  const handleUpdateFieldValue = (index: number, fieldId: number, value: string) => {
     setSelectedExercises((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...updates } : item))
+      prev.map((item, i) => {
+        if (i === index) {
+          const newFieldValues = { ...item.fieldValues };
+          if (value === "" || value === null) {
+            delete newFieldValues[fieldId];
+          } else {
+            newFieldValues[fieldId] = value;
+          }
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
     );
   };
 
-  const handleMoveExercise = (index: number, direction: "up" | "down") => {
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= selectedExercises.length) return;
+  const handleAddField = (index: number, field: CustomFieldDefinition) => {
+    setSelectedExercises((prev) =>
+      prev.map((item, i) => {
+        if (i === index) {
+          const newFieldValues = { ...item.fieldValues };
+          newFieldValues[field.id] = field.default_value || "";
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
+    );
+  };
 
-    const newList = [...selectedExercises];
-    [newList[index], newList[newIndex]] = [newList[newIndex], newList[index]];
-    setSelectedExercises(newList);
+  const handleRemoveField = (index: number, fieldId: number) => {
+    setSelectedExercises((prev) =>
+      prev.map((item, i) => {
+        if (i === index) {
+          const newFieldValues = { ...item.fieldValues };
+          delete newFieldValues[fieldId];
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSelectedExercises((items) => {
+        const oldIndex = items.findIndex((item) => item.exercise.id === active.id);
+        const newIndex = items.findIndex((item) => item.exercise.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const handleSubmit = async () => {
@@ -150,19 +560,28 @@ export default function NewSessionPage() {
       // Créer la date/heure planifiée
       const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
 
-      // Créer la séance
+      // Créer la séance (on stocke la première activité sélectionnée)
       const session = await workoutApi.sessions.create({
         name,
         activity_type: activityType,
+        custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
+        custom_activity_type_ids: selectedActivityIds,
         scheduled_at: scheduledAt,
         notes: notes || undefined,
+        exercises: selectedExercises.map((item, idx) => ({
+          exercise_id: item.exercise.id,
+          order: idx,
+          target_sets: 3,
+          target_reps: 12,
+          rest_seconds: 90,
+        })),
       });
 
       // Ajouter les exercices à la séance (si l'API le supporte)
       // Note: Cette partie dépend de l'API backend, on peut l'adapter
 
       success(`Séance "${name}" créée avec succès`);
-      router.push(`/workout/sessions/${session.id}`);
+      router.push(`/workout`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
@@ -178,18 +597,27 @@ export default function NewSessionPage() {
 
     setIsLoading(true);
     try {
-      // Créer la séance
+      // Créer la séance (on stocke la première activité sélectionnée)
       const session = await workoutApi.sessions.create({
         name,
         activity_type: activityType,
+        custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
+        custom_activity_type_ids: selectedActivityIds,
         notes: notes || undefined,
+        exercises: selectedExercises.map((item, idx) => ({
+          exercise_id: item.exercise.id,
+          order: idx,
+          target_sets: 3,
+          target_reps: 12,
+          rest_seconds: 90,
+        })),
       });
 
       // Démarrer immédiatement
       await workoutApi.sessions.start(session.id);
 
       success(`Séance "${name}" lancée ! 💪`);
-      router.push(`/workout/sessions/${session.id}`);
+      router.push(`/workout`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
@@ -244,24 +672,42 @@ export default function NewSessionPage() {
               />
             </div>
 
-            {/* Type d'activité */}
+            {/* Types d'activités (multi-select) */}
             <div className="space-y-2">
-              <Label>Type d&apos;activité</Label>
-              <Select
-                value={activityType}
-                onValueChange={(v) => setActivityType(v as ActivityType)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ACTIVITY_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Types d&apos;activités</Label>
+              <MultiSelect
+                options={activityTypes.map(activity => ({
+                  label: activity.name,
+                  value: activity.id.toString(),
+                }))}
+                selected={selectedActivityIds.map(id => id.toString())}
+                onChange={(selected) => {
+                  setSelectedActivityIds(selected.map(s => parseInt(s)));
+                }}
+                placeholder="Sélectionner une ou plusieurs activités"
+                renderOption={(option) => {
+                  const activity = activityTypes.find(a => a.id.toString() === option.value);
+                  return (
+                    <div className="flex items-center gap-2">
+                      {activity && (
+                        <ActivityIcon iconName={getActivityIcon(activity)} className="h-4 w-4" />
+                      )}
+                      <span>{option.label}</span>
+                    </div>
+                  );
+                }}
+                renderBadge={(option) => {
+                  const activity = activityTypes.find(a => a.id.toString() === option.value);
+                  return (
+                    <div className="flex items-center gap-1">
+                      {activity && (
+                        <ActivityIcon iconName={getActivityIcon(activity)} className="h-3 w-3" />
+                      )}
+                      <span>{option.label}</span>
+                    </div>
+                  );
+                }}
+              />
             </div>
 
             {/* Date et heure */}
@@ -335,94 +781,32 @@ export default function NewSessionPage() {
                 </Button>
               </div>
             ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={selectedExercises.map((item) => item.exercise.id)}
+                  strategy={verticalListSortingStrategy}
+                >
               <div className="space-y-3">
                 {selectedExercises.map((item, index) => (
-                  <div
+                      <SortableExerciseItem
                     key={item.exercise.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border bg-card"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => handleMoveExercise(index, "up")}
-                        disabled={index === 0}
-                      >
-                        <GripVertical className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium truncate">{item.exercise.name}</h4>
-                      {item.exercise.muscle_group && (
-                        <p className="text-xs text-muted-foreground">
-                          {MUSCLE_GROUP_LABELS[item.exercise.muscle_group]}
-                        </p>
-                      )}
-                      <div className="grid grid-cols-4 gap-2 mt-2">
-                        <div>
-                          <Label className="text-xs">Séries</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={item.sets}
-                            onChange={(e) =>
-                              handleUpdateExercise(index, { sets: parseInt(e.target.value) || 1 })
-                            }
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Reps</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={item.reps}
-                            onChange={(e) =>
-                              handleUpdateExercise(index, { reps: parseInt(e.target.value) || 1 })
-                            }
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Poids (kg)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={item.weight || ""}
-                            onChange={(e) =>
-                              handleUpdateExercise(index, { weight: parseFloat(e.target.value) || undefined })
-                            }
-                            className="h-8 text-sm"
-                            placeholder="-"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Repos (s)</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.restSeconds}
-                            onChange={(e) =>
-                              handleUpdateExercise(index, { restSeconds: parseInt(e.target.value) || 0 })
-                            }
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleRemoveExercise(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                        item={item}
+                        index={index}
+                        onUpdateField={(fieldId, value) =>
+                          handleUpdateFieldValue(index, fieldId, value)
+                        }
+                        onAddField={(field) => handleAddField(index, field)}
+                        onRemoveField={(fieldId) => handleRemoveField(index, fieldId)}
+                        onRemoveExercise={() => handleRemoveExercise(index)}
+                      />
                 ))}
               </div>
+                </SortableContext>
+              </DndContext>
             )}
           </CardContent>
         </Card>
@@ -501,20 +885,34 @@ export default function NewSessionPage() {
                   </Button>
                 </div>
               ) : (
-                availableExercises.map((exercise) => (
+                (() => {
+                  // Filtrer les exercices déjà ajoutés
+                  const addedExerciseIds = new Set(selectedExercises.map(e => e.exercise.id));
+                  const filteredExercises = availableExercises.filter(ex => !addedExerciseIds.has(ex.id));
+                  
+                  if (filteredExercises.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="text-sm">Tous les exercices disponibles ont été ajoutés</p>
+                      </div>
+                    );
+                  }
+                  
+                  return filteredExercises.map((exercise) => (
                   <button
                     key={exercise.id}
                     className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
                     onClick={() => handleAddExercise(exercise)}
                   >
                     <h4 className="font-medium">{exercise.name}</h4>
+                      {exercise.custom_activity_type && (
                     <p className="text-xs text-muted-foreground">
-                      {exercise.muscle_group
-                        ? MUSCLE_GROUP_LABELS[exercise.muscle_group]
-                        : ACTIVITY_TYPE_LABELS[exercise.activity_type]}
+                          {exercise.custom_activity_type.name}
                     </p>
+                      )}
                   </button>
-                ))
+                  ));
+                })()
               )}
             </div>
           </div>

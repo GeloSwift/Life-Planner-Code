@@ -259,6 +259,7 @@ class TemplateService:
             query = query.filter(WorkoutTemplate.activity_type == activity_type)
         
         return query.options(
+            joinedload(WorkoutTemplate.custom_activity_type),
             joinedload(WorkoutTemplate.exercises).joinedload(WorkoutTemplateExercise.exercise)
         ).order_by(WorkoutTemplate.name).offset(skip).limit(limit).all()
     
@@ -269,6 +270,7 @@ class TemplateService:
             WorkoutTemplate.id == template_id,
             or_(WorkoutTemplate.user_id == user_id, WorkoutTemplate.is_public == True),  # noqa: E712
         ).options(
+            joinedload(WorkoutTemplate.custom_activity_type),
             joinedload(WorkoutTemplate.exercises).joinedload(WorkoutTemplateExercise.exercise)
         ).first()
     
@@ -283,6 +285,7 @@ class TemplateService:
             name=template.name,
             description=template.description,
             activity_type=ActivityType(template.activity_type.value),
+            custom_activity_type_id=template.custom_activity_type_id,
             color=template.color,
             estimated_duration=template.estimated_duration,
             is_public=template.is_public,
@@ -338,6 +341,11 @@ class TemplateService:
         
         db.commit()
         db.refresh(db_template)
+        # Recharger avec les relations
+        db_template = db.query(WorkoutTemplate).options(
+            joinedload(WorkoutTemplate.custom_activity_type),
+            joinedload(WorkoutTemplate.exercises).joinedload(WorkoutTemplateExercise.exercise)
+        ).filter(WorkoutTemplate.id == template_id).first()
         return db_template
     
     @staticmethod
@@ -470,7 +478,9 @@ class SessionService:
             )
         
         return query.options(
-            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise),
+            joinedload(WorkoutSession.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
             joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.sets),
         ).order_by(desc(WorkoutSession.created_at)).offset(skip).limit(limit).all()
     
@@ -481,7 +491,9 @@ class SessionService:
             WorkoutSession.id == session_id,
             WorkoutSession.user_id == user_id,
         ).options(
-            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise),
+            joinedload(WorkoutSession.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
             joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.sets),
         ).first()
     
@@ -492,7 +504,9 @@ class SessionService:
             WorkoutSession.user_id == user_id,
             WorkoutSession.status == SessionStatus.EN_COURS,
         ).options(
-            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise),
+            joinedload(WorkoutSession.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
             joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.sets),
         ).first()
     
@@ -503,9 +517,24 @@ class SessionService:
         user_id: int,
     ) -> WorkoutSession:
         """Crée une nouvelle session."""
+        # Support multi-activités : stocker custom_activity_type_ids en JSON string
+        custom_ids_json: Optional[str] = None
+        custom_ids_list = getattr(session, "custom_activity_type_ids", None)
+        if custom_ids_list is not None:
+            try:
+                custom_ids_int = [int(x) for x in custom_ids_list]
+            except Exception:
+                custom_ids_int = []
+            custom_ids_json = json.dumps(custom_ids_int)
+            # Conserver aussi l'ID principal (compat)
+            if session.custom_activity_type_id is None and len(custom_ids_int) > 0:
+                session.custom_activity_type_id = custom_ids_int[0]
+
         db_session = WorkoutSession(
             name=session.name,
             activity_type=ActivityType(session.activity_type.value),
+            custom_activity_type_id=session.custom_activity_type_id,
+            custom_activity_type_ids=custom_ids_json,
             status=SessionStatus.PLANIFIEE,
             user_id=user_id,
             template_id=session.template_id,
@@ -582,6 +611,18 @@ class SessionService:
                             is_failure=s.is_failure,
                             rpe=s.rpe,
                             notes=s.notes,
+                        )
+                        db.add(db_set)
+                else:
+                    # Par défaut, créer des séries vides basées sur target_sets
+                    for i in range(1, ex.target_sets + 1):
+                        db_set = WorkoutSet(
+                            session_exercise_id=session_ex.id,
+                            set_number=i,
+                            weight=ex.target_weight,
+                            reps=ex.target_reps,
+                            duration_seconds=ex.target_duration,
+                            distance=ex.target_distance,
                         )
                         db.add(db_set)
                 else:
@@ -687,12 +728,30 @@ class SessionService:
         
         if "status" in update_data and update_data["status"]:
             update_data["status"] = SessionStatus(update_data["status"].value)
+
+        # Support multi-activités : stocker custom_activity_type_ids en JSON string
+        if "custom_activity_type_ids" in update_data:
+            custom_ids = update_data.get("custom_activity_type_ids") or []
+            try:
+                custom_ids_int = [int(x) for x in custom_ids]
+            except Exception:
+                custom_ids_int = []
+            update_data["custom_activity_type_ids"] = json.dumps(custom_ids_int)
+            if "custom_activity_type_id" not in update_data and len(custom_ids_int) > 0:
+                update_data["custom_activity_type_id"] = custom_ids_int[0]
         
         for key, value in update_data.items():
             setattr(db_session, key, value)
         
         db.commit()
         db.refresh(db_session)
+        # Recharger avec les relations
+        db_session = db.query(WorkoutSession).options(
+            joinedload(WorkoutSession.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
+            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.sets),
+        ).filter(WorkoutSession.id == session_id).first()
         return db_session
     
     @staticmethod

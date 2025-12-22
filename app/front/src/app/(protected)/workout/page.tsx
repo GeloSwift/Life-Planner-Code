@@ -296,15 +296,15 @@ export default function WorkoutPage() {
 
             <Card
               className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
-              onClick={() => router.push("/workout/templates")}
+              onClick={() => router.push("/workout/sessions")}
             >
               <CardHeader>
                 <div className="mb-2 w-fit rounded-lg p-2 bg-purple-500/10">
                   <Calendar className="h-6 w-6 text-purple-500" />
                 </div>
-                <CardTitle className="text-lg">Programmes</CardTitle>
+                <CardTitle className="text-lg">Séances</CardTitle>
                 <CardDescription>
-                  Créez et gérez vos modèles de séances
+                  Consultez et gérez vos séances d&apos;entraînement
                 </CardDescription>
               </CardHeader>
             </Card>

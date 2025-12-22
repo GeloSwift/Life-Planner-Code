@@ -666,18 +666,18 @@ export default function ExercisesPage() {
                             <>
                               {exercise.video_url && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
-                                  <Play className="h-8 w-8 text-white" />
-                                </div>
+                                <Play className="h-8 w-8 text-white" />
+                              </div>
                               )}
-                              {exercise.image_url && (
-                                <img
-                                  src={exercise.image_url}
-                                  alt={exercise.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              )}
+                            {exercise.image_url && (
+                              <img
+                                src={exercise.image_url}
+                                alt={exercise.name}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
                             </>
-                          ) : (
+                        ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
                               {activity ? (
                                 <ActivityIcon 
@@ -687,8 +687,8 @@ export default function ExercisesPage() {
                               ) : (
                                 <Dumbbell className="h-8 w-8 sm:h-10 sm:w-10 text-primary/30" />
                               )}
-                            </div>
-                          )}
+                          </div>
+                        )}
                         </div>
 
                         <CardHeader className="pb-2 pt-4">
@@ -696,9 +696,9 @@ export default function ExercisesPage() {
                             {exercise.name}
                           </CardTitle>
                           {exercise.description && (
-                            <CardDescription className="line-clamp-2">
+                          <CardDescription className="line-clamp-2">
                               {exercise.description}
-                            </CardDescription>
+                          </CardDescription>
                           )}
                         </CardHeader>
 

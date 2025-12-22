@@ -285,6 +285,7 @@ class WorkoutTemplateBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     activity_type: ActivityTypeEnum = ActivityTypeEnum.MUSCULATION
+    custom_activity_type_id: Optional[int] = None
     color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     estimated_duration: Optional[int] = Field(None, ge=0)  # minutes
     is_public: bool = False
@@ -300,6 +301,7 @@ class WorkoutTemplateUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     activity_type: Optional[ActivityTypeEnum] = None
+    custom_activity_type_id: Optional[int] = None
     color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     estimated_duration: Optional[int] = Field(None, ge=0)
     is_public: Optional[bool] = None
@@ -421,6 +423,8 @@ class WorkoutSessionBase(BaseModel):
     """Base schema pour WorkoutSession."""
     name: str = Field(..., min_length=1, max_length=255)
     activity_type: ActivityTypeEnum = ActivityTypeEnum.MUSCULATION
+    custom_activity_type_id: Optional[int] = None
+    custom_activity_type_ids: Optional[list[int]] = None
     scheduled_at: Optional[datetime] = None
     notes: Optional[str] = None
 
@@ -435,6 +439,8 @@ class WorkoutSessionUpdate(BaseModel):
     """Schema pour mettre à jour une session."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     activity_type: Optional[ActivityTypeEnum] = None
+    custom_activity_type_id: Optional[int] = None
+    custom_activity_type_ids: Optional[list[int]] = None
     status: Optional[SessionStatusEnum] = None
     scheduled_at: Optional[datetime] = None
     notes: Optional[str] = None
@@ -448,6 +454,7 @@ class WorkoutSessionResponse(WorkoutSessionBase):
     id: int
     user_id: int
     template_id: Optional[int] = None
+    custom_activity_type: Optional[UserActivityTypeResponse] = None
     status: SessionStatusEnum
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
@@ -460,6 +467,23 @@ class WorkoutSessionResponse(WorkoutSessionBase):
     updated_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("custom_activity_type_ids", mode="before")
+    @classmethod
+    def parse_custom_activity_type_ids(cls, v):
+        """Parse custom_activity_type_ids from JSON string to list[int]."""
+        if v is None:
+            return []
+        if isinstance(v, list):
+            return [int(x) for x in v]
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [int(x) for x in parsed]
+            except Exception:
+                return []
+        return []
 
 
 class WorkoutSessionListResponse(BaseModel):

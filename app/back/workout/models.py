@@ -246,6 +246,11 @@ class WorkoutTemplate(Base):
         default=ActivityType.MUSCULATION,
         nullable=False,
     )
+    custom_activity_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("user_activity_types.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)  # Hex color (#FF5733)
     estimated_duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # minutes
     
@@ -270,6 +275,7 @@ class WorkoutTemplate(Base):
     
     # Relations
     user = relationship("User", backref="workout_templates")
+    custom_activity_type = relationship("UserActivityType")
     exercises = relationship(
         "WorkoutTemplateExercise",
         back_populates="template",
@@ -363,6 +369,13 @@ class WorkoutSession(Base):
         default=ActivityType.MUSCULATION,
         nullable=False,
     )
+    custom_activity_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("user_activity_types.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Liste d'IDs d'activités personnalisées (stockée en JSON string)
+    custom_activity_type_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[SessionStatus] = mapped_column(
         SQLEnum(SessionStatus, values_callable=lambda x: [e.value for e in x], name='sessionstatus'),
         default=SessionStatus.PLANIFIEE,
@@ -407,6 +420,7 @@ class WorkoutSession(Base):
     # Relations
     user = relationship("User", backref="workout_sessions")
     template = relationship("WorkoutTemplate", back_populates="sessions")
+    custom_activity_type = relationship("UserActivityType")
     exercises = relationship(
         "WorkoutSessionExercise",
         back_populates="session",
