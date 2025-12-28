@@ -293,6 +293,29 @@ export default function SessionsPage() {
     router.push(`/workout/sessions/${session.id}/edit`);
   };
 
+  const formatRecurrence = (type: string | null | undefined, data: (string | number)[] | null | undefined): string => {
+    if (!type) return "";
+    if (type === "daily") return "Tous les jours";
+    if (type === "weekly" && data && data.length > 0) {
+      const dayNames: Record<string, string> = {
+        lundi: "Lundi",
+        mardi: "Mardi",
+        mercredi: "Mercredi",
+        jeudi: "Jeudi",
+        vendredi: "Vendredi",
+        samedi: "Samedi",
+        dimanche: "Dimanche",
+      };
+      const days = data.map((d) => dayNames[String(d).toLowerCase()] || String(d)).join(", ");
+      return `Tous les ${days}`;
+    }
+    if (type === "monthly" && data && data.length > 0) {
+      const days = data.map(String).join(", ");
+      return `Tous les ${days} du mois`;
+    }
+    return "";
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Non planifiée";
     const date = new Date(dateString);
@@ -334,7 +357,7 @@ export default function SessionsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout")}
+            onClick={() => router.back()}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -447,61 +470,61 @@ export default function SessionsPage() {
               return (
                 <Card
                   key={session.id}
-                  className="group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 relative p-0 overflow-hidden"
-                  onClick={() => router.push(`/workout/sessions/${session.id}`)}
+                  className={`group transition-all relative p-0 overflow-hidden ${
+                    session.status === "annulee"
+                      ? "opacity-50 cursor-not-allowed"
+                      : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
+                  }`}
+                  onClick={() => session.status !== "annulee" && router.push(`/workout/sessions/${session.id}`)}
                 >
                   {/* Actions rapides */}
-                  <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-7 w-7 sm:h-8 sm:w-8"
-                      onClick={(e) => handleDuplicateClick(session, e)}
-                      title="Dupliquer"
-                    >
-                      <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="h-7 w-7 sm:h-8 sm:w-8"
-                      onClick={(e) => handleEditClick(session, e)}
-                      title="Modifier"
-                    >
-                      <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="h-7 w-7 sm:h-8 sm:w-8"
-                      onClick={(e) => handleDeleteClick(session, e)}
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </div>
+                  {session.status !== "annulee" && (
+                    <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => handleDuplicateClick(session, e)}
+                        title="Dupliquer"
+                      >
+                        <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => handleEditClick(session, e)}
+                        title="Modifier"
+                      >
+                        <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => handleDeleteClick(session, e)}
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Image avec logos des activités */}
                   <div className="relative w-full bg-muted overflow-hidden aspect-video">
                     {activities.length > 0 ? (
                       <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-primary/10 to-primary/5 gap-2 p-4">
                         {activities.slice(0, 3).map((activity) => (
-                          <div
+                          <ActivityIcon
                             key={activity.id}
-                            className="flex items-center justify-center bg-background/80 rounded-full p-3 shadow-sm"
-                          >
-                            <ActivityIcon
-                              iconName={getActivityIcon(activity)}
-                              className="h-6 w-6 sm:h-8 sm:w-8 text-primary"
-                            />
-                          </div>
+                            iconName={getActivityIcon(activity)}
+                            className="h-10 w-10 sm:h-12 sm:w-12 text-primary"
+                          />
                         ))}
                         {activities.length > 3 && (
-                          <div className="flex items-center justify-center bg-background/80 rounded-full p-3 shadow-sm">
-                            <span className="text-xs font-semibold text-primary">
-                              +{activities.length - 3}
-                            </span>
-                          </div>
+                          <span className="text-xs font-semibold text-primary">
+                            +{activities.length - 3}
+                          </span>
                         )}
                       </div>
                     ) : (
@@ -510,9 +533,8 @@ export default function SessionsPage() {
                       </div>
                     )}
                     {/* Badge de statut en haut à droite */}
-                    <div className="absolute top-2 left-2 z-10 bg-background/80 rounded-full px-2 py-1 text-xs flex items-center gap-1">
+                    <div className="absolute top-2 left-2 z-10">
                       {getStatusIcon(session.status)}
-                      <span className="text-muted-foreground">{SESSION_STATUS_LABELS[session.status]}</span>
                     </div>
                   </div>
 
@@ -532,6 +554,11 @@ export default function SessionsPage() {
                               <span className="text-muted-foreground">{activity.name}</span>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {session.recurrence_type && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatRecurrence(session.recurrence_type, session.recurrence_data)}
                         </div>
                       )}
                     </CardDescription>

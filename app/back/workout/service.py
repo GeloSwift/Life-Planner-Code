@@ -442,6 +442,47 @@ class SessionService:
     """Service pour la gestion des sessions d'entraînement."""
     
     @staticmethod
+    def _update_session_statuses_automatically(db: Session, user_id: int) -> None:
+        """Met à jour automatiquement les statuts des séances :
+        - Annule les séances planifiées non lancées après leur date (jour suivant)
+        - Termine les séances en cours depuis plus de 3 heures
+        """
+        now = datetime.now(timezone.utc)
+        today_date = now.date()
+        three_hours_ago = now - timedelta(hours=3)
+        
+        # Annuler les séances planifiées non lancées dont la date est passée (jour suivant)
+        # On compare seulement les dates (pas les heures) : si la date planifiée est avant aujourd'hui
+        expired_planned = db.query(WorkoutSession).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.status == SessionStatus.PLANIFIEE,
+            WorkoutSession.scheduled_at.isnot(None),
+            func.date(WorkoutSession.scheduled_at) < today_date,
+            WorkoutSession.started_at.is_(None),  # Non lancées
+        ).all()
+        
+        for session in expired_planned:
+            session.status = SessionStatus.ANNULEE
+            session.ended_at = now
+        
+        # Terminer les séances en cours depuis plus de 3 heures
+        expired_active = db.query(WorkoutSession).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSession.status == SessionStatus.EN_COURS,
+            WorkoutSession.started_at.isnot(None),
+            WorkoutSession.started_at < three_hours_ago,
+        ).all()
+        
+        for session in expired_active:
+            session.status = SessionStatus.TERMINEE
+            session.ended_at = now
+            if session.started_at:
+                session.duration_seconds = int((now - session.started_at).total_seconds())
+        
+        if expired_planned or expired_active:
+            db.commit()
+    
+    @staticmethod
     def get_sessions(
         db: Session,
         user_id: int,
@@ -453,6 +494,9 @@ class SessionService:
         limit: int = 50,
     ) -> list[WorkoutSession]:
         """Récupère les sessions de l'utilisateur."""
+        # Mettre à jour automatiquement les statuts avant de récupérer
+        SessionService._update_session_statuses_automatically(db, user_id)
+        
         query = db.query(WorkoutSession).filter(WorkoutSession.user_id == user_id)
         
         if status:
@@ -487,6 +531,9 @@ class SessionService:
     @staticmethod
     def get_session(db: Session, session_id: int, user_id: int) -> Optional[WorkoutSession]:
         """Récupère une session par son ID."""
+        # Mettre à jour automatiquement les statuts avant de récupérer
+        SessionService._update_session_statuses_automatically(db, user_id)
+        
         return db.query(WorkoutSession).filter(
             WorkoutSession.id == session_id,
             WorkoutSession.user_id == user_id,
@@ -500,6 +547,9 @@ class SessionService:
     @staticmethod
     def get_active_session(db: Session, user_id: int) -> Optional[WorkoutSession]:
         """Récupère la session en cours de l'utilisateur."""
+        # Mettre à jour automatiquement les statuts avant de récupérer
+        SessionService._update_session_statuses_automatically(db, user_id)
+        
         return db.query(WorkoutSession).filter(
             WorkoutSession.user_id == user_id,
             WorkoutSession.status == SessionStatus.EN_COURS,
@@ -530,6 +580,11 @@ class SessionService:
             if session.custom_activity_type_id is None and len(custom_ids_int) > 0:
                 session.custom_activity_type_id = custom_ids_int[0]
 
+        # Préparer recurrence_data (JSON string)
+        recurrence_data_json: Optional[str] = None
+        if session.recurrence_data is not None:
+            recurrence_data_json = json.dumps(session.recurrence_data)
+
         db_session = WorkoutSession(
             name=session.name,
             activity_type=ActivityType(session.activity_type.value),
@@ -540,6 +595,8 @@ class SessionService:
             template_id=session.template_id,
             scheduled_at=session.scheduled_at,
             notes=session.notes,
+            recurrence_type=session.recurrence_type,
+            recurrence_data=recurrence_data_json,
         )
         db.add(db_session)
         db.flush()
@@ -727,6 +784,62 @@ class SessionService:
             update_data["custom_activity_type_ids"] = json.dumps(custom_ids_int)
             if "custom_activity_type_id" not in update_data and len(custom_ids_int) > 0:
                 update_data["custom_activity_type_id"] = custom_ids_int[0]
+        
+        # Gérer recurrence_data (convertir list en JSON string)
+        if "recurrence_data" in update_data:
+            recurrence_data = update_data.get("recurrence_data")
+            if recurrence_data is not None:
+                update_data["recurrence_data"] = json.dumps(recurrence_data)
+            else:
+                update_data["recurrence_data"] = None
+        
+        # Si des exercices sont fournis, remplacer les exercices existants
+        if "exercises" in update_data and update_data["exercises"] is not None:
+            # Supprimer les exercices existants et leurs séries
+            existing_exercises = db.query(WorkoutSessionExercise).filter(
+                WorkoutSessionExercise.session_id == session_id
+            ).all()
+            for ex in existing_exercises:
+                # Supprimer les séries
+                db.query(WorkoutSet).filter(WorkoutSet.session_exercise_id == ex.id).delete()
+                # Supprimer l'exercice
+                db.delete(ex)
+            db.flush()
+            
+            # Ajouter les nouveaux exercices
+            # update_data["exercises"] contient des dictionnaires (depuis model_dump)
+            for order, ex_data in enumerate(update_data["exercises"]):
+                session_ex = WorkoutSessionExercise(
+                    session_id=session_id,
+                    exercise_id=ex_data.get("exercise_id"),
+                    order=ex_data.get("order", order),
+                    target_sets=ex_data.get("target_sets", 3),
+                    target_reps=ex_data.get("target_reps"),
+                    target_weight=ex_data.get("target_weight"),
+                    target_duration=ex_data.get("target_duration"),
+                    target_distance=ex_data.get("target_distance"),
+                    rest_seconds=ex_data.get("rest_seconds", 90),
+                    notes=ex_data.get("notes"),
+                )
+                db.add(session_ex)
+                db.flush()
+                
+                # Créer des séries vides par défaut
+                target_sets = ex_data.get("target_sets", 3)
+                if target_sets:
+                    for i in range(1, target_sets + 1):
+                        db_set = WorkoutSet(
+                            session_exercise_id=session_ex.id,
+                            set_number=i,
+                            weight=ex_data.get("target_weight"),
+                            reps=ex_data.get("target_reps"),
+                            duration_seconds=ex_data.get("target_duration"),
+                            distance=ex_data.get("target_distance"),
+                        )
+                        db.add(db_set)
+            
+            # Retirer "exercises" de update_data pour éviter de l'assigner à db_session
+            del update_data["exercises"]
         
         for key, value in update_data.items():
             setattr(db_session, key, value)

@@ -7,7 +7,7 @@ Schemas pour valider les requêtes et sérialiser les réponses.
 import json
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -427,6 +427,8 @@ class WorkoutSessionBase(BaseModel):
     custom_activity_type_ids: Optional[list[int]] = None
     scheduled_at: Optional[datetime] = None
     notes: Optional[str] = None
+    recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
+    recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence (jours de la semaine pour weekly, jours du mois pour monthly)
 
 
 class WorkoutSessionCreate(WorkoutSessionBase):
@@ -447,6 +449,7 @@ class WorkoutSessionUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
     calories_burned: Optional[int] = Field(None, ge=0)
+    exercises: Optional[list[SessionExerciseCreate]] = None  # Pour mettre à jour les exercices
 
 
 class WorkoutSessionResponse(WorkoutSessionBase):
@@ -484,6 +487,21 @@ class WorkoutSessionResponse(WorkoutSessionBase):
             except Exception:
                 return []
         return []
+
+    @field_validator("recurrence_data", mode="before")
+    @classmethod
+    def parse_recurrence_data(cls, v):
+        """Parse recurrence_data from JSON string to list."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return None
+        return None
 
 
 class WorkoutSessionListResponse(BaseModel):

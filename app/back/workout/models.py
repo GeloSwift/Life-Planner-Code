@@ -400,6 +400,10 @@ class WorkoutSession(Base):
     ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     duration_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
+    # Récurrence (quotidien/hebdomadaire/mensuel)
+    recurrence_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "daily", "weekly", "monthly"
+    recurrence_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: pour weekly -> ["monday", "wednesday"], pour monthly -> [1, 15]
+    
     # Feedback
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5

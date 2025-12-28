@@ -252,7 +252,7 @@ export default function SessionPage({ params }: PageProps) {
           <Card className="border-destructive">
             <CardContent className="py-8 text-center">
               <p className="text-destructive">{error || "Séance introuvable"}</p>
-              <Button className="mt-4" onClick={() => router.push("/workout")}>
+              <Button className="mt-4" onClick={() => router.push("/workout/sessions")}>
                 Retour
               </Button>
             </CardContent>
@@ -276,7 +276,7 @@ export default function SessionPage({ params }: PageProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout")}
+            onClick={() => router.push("/workout/sessions")}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

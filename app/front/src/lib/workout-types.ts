@@ -372,6 +372,8 @@ export interface WorkoutSession {
   rating: number | null;
   perceived_difficulty: number | null;
   calories_burned: number | null;
+  recurrence_type?: "daily" | "weekly" | "monthly" | null;
+  recurrence_data?: (number | string)[] | null; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
   created_at: string;
   updated_at: string;
   exercises?: WorkoutSessionExercise[];
@@ -408,6 +410,19 @@ export interface WorkoutSessionUpdate {
   rating?: number;
   perceived_difficulty?: number;
   calories_burned?: number;
+  recurrence_type?: "daily" | "weekly" | "monthly";
+  recurrence_data?: (number | string)[]; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
+  exercises?: Array<{
+    exercise_id: number;
+    order?: number;
+    target_sets: number;
+    target_reps?: number;
+    target_weight?: number;
+    target_duration?: number;
+    target_distance?: number;
+    rest_seconds: number;
+    notes?: string;
+  }>;
 }
 
 export interface SetCreate {

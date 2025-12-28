@@ -339,7 +339,7 @@ export default function ExercisesPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout")}
+            onClick={() => router.back()}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -629,29 +629,29 @@ export default function ExercisesPage() {
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
                             onClick={(e) => handleDuplicateClick(exercise, e)}
                             title="Dupliquer"
                           >
-                            <Copy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
                             onClick={(e) => handleEditClick(exercise, e)}
                             title="Modifier"
                           >
-                            <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>
                           <Button
                             variant="destructive"
                             size="icon"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
                             onClick={(e) => handleDeleteClick(exercise, e)}
                             title="Supprimer"
                           >
-                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
 
@@ -688,10 +688,10 @@ export default function ExercisesPage() {
                               {activity ? (
                                 <ActivityIcon 
                                   iconName={getActivityIcon(activity)} 
-                                  className="h-8 w-8 sm:h-10 sm:w-10 text-primary/30" 
+                                  className="h-10 w-10 sm:h-12 sm:w-12 text-primary" 
                                 />
                               ) : (
-                                <Dumbbell className="h-8 w-8 sm:h-10 sm:w-10 text-primary/30" />
+                                <Dumbbell className="h-10 w-10 sm:h-12 sm:w-12 text-primary/30" />
                               )}
                           </div>
                         )}

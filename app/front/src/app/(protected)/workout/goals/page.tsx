@@ -165,7 +165,7 @@ export default function GoalsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout")}
+            onClick={() => router.back()}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />

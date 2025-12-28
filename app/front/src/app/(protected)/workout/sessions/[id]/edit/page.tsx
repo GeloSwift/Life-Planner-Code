@@ -8,8 +8,7 @@
  * - types d'activités (multi-select)
  * - date/heure (si planifiée)
  * - notes
- *
- * NB: l'édition des exercices/sets d'une séance (contenu) reste gérée sur la page détail.
+ * - exercices (ajout/suppression)
  */
 
 import { useCallback, useEffect, useMemo, useState, use } from "react";
@@ -21,11 +20,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
-import type { UserActivityType, WorkoutSession } from "@/lib/workout-types";
-import { Loader2, ArrowLeft, Save, Activity } from "lucide-react";
+import type { UserActivityType, WorkoutSession, Exercise, WorkoutSessionExercise } from "@/lib/workout-types";
+import { Loader2, ArrowLeft, Save, Plus, X, Search } from "lucide-react";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -41,6 +54,11 @@ export default function EditSessionPage({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
+  const [selectedExercises, setSelectedExercises] = useState<Array<{ exercise: Exercise }>>([]);
+  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+  const [showExerciseDialog, setShowExerciseDialog] = useState(false);
+  const [exerciseSearch, setExerciseSearch] = useState("");
+  const [loadingExercises, setLoadingExercises] = useState(false);
 
   // Form
   const [name, setName] = useState("");
@@ -48,6 +66,8 @@ export default function EditSessionPage({ params }: PageProps) {
   const [scheduledDate, setScheduledDate] = useState<string>("");
   const [scheduledTime, setScheduledTime] = useState<string>("09:00");
   const [notes, setNotes] = useState("");
+  const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
+  const [recurrenceData, setRecurrenceData] = useState<(number | string)[]>([]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -61,6 +81,8 @@ export default function EditSessionPage({ params }: PageProps) {
 
       setName(sessionData.name || "");
       setNotes(sessionData.notes || "");
+      setRecurrenceType(sessionData.recurrence_type || null);
+      setRecurrenceData(sessionData.recurrence_data || []);
 
       // Types d'activités
       const ids =
@@ -70,6 +92,16 @@ export default function EditSessionPage({ params }: PageProps) {
             ? [sessionData.custom_activity_type_id]
             : [];
       setSelectedActivityIds(ids);
+
+      // Charger les exercices existants (trier par ordre pour garder l'ordre d'origine)
+      const exercisesList = sessionData.exercises || [];
+      const loadedExercises = exercisesList
+        .filter((se: WorkoutSessionExercise) => se.exercise !== undefined && se.exercise !== null)
+        .sort((a, b) => a.order - b.order)
+        .map((se: WorkoutSessionExercise) => ({ 
+          exercise: se.exercise! 
+        }));
+      setSelectedExercises(loadedExercises);
 
       // Date/heure (si planifiée)
       const dt = sessionData.scheduled_at ? new Date(sessionData.scheduled_at) : null;
@@ -93,6 +125,38 @@ export default function EditSessionPage({ params }: PageProps) {
     loadData();
   }, [loadData, sessionId]);
 
+  // Charger les exercices disponibles
+  const loadExercises = useCallback(async () => {
+    setLoadingExercises(true);
+    try {
+      const data = await workoutApi.exercises.list({
+        search: exerciseSearch || undefined,
+        limit: 100,
+      });
+      // Filtrer par activités personnalisées sélectionnées et exclure ceux déjà ajoutés
+      let filtered = data;
+      if (selectedActivityIds.length > 0) {
+        filtered = data.filter(ex => 
+          ex.custom_activity_type_id && selectedActivityIds.includes(ex.custom_activity_type_id)
+        );
+      }
+      // Exclure les exercices déjà ajoutés
+      const addedExerciseIds = new Set(selectedExercises.map(e => e.exercise.id));
+      filtered = filtered.filter(ex => !addedExerciseIds.has(ex.id));
+      setAvailableExercises(filtered);
+    } catch {
+      // Silencieux
+    } finally {
+      setLoadingExercises(false);
+    }
+  }, [selectedActivityIds, exerciseSearch, selectedExercises]);
+
+  useEffect(() => {
+    if (showExerciseDialog) {
+      loadExercises();
+    }
+  }, [showExerciseDialog, loadExercises]);
+
   const activityOptions = useMemo(
     () =>
       activityTypes.map((a) => ({
@@ -101,6 +165,20 @@ export default function EditSessionPage({ params }: PageProps) {
       })),
     [activityTypes]
   );
+
+  const handleAddExercise = (exercise: Exercise) => {
+    if (selectedExercises.find((e) => e.exercise.id === exercise.id)) {
+      showError("Cet exercice est déjà dans la séance");
+      return;
+    }
+
+    setSelectedExercises((prev) => [...prev, { exercise }]);
+    setExerciseSearch("");
+  };
+
+  const handleRemoveExercise = (index: number) => {
+    setSelectedExercises((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -121,6 +199,13 @@ export default function EditSessionPage({ params }: PageProps) {
         scheduled_at,
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
         custom_activity_type_ids: selectedActivityIds,
+        exercises: selectedExercises.map((item, idx) => ({
+          exercise_id: item.exercise.id,
+          order: idx,
+          target_sets: 3,
+          target_reps: 12,
+          rest_seconds: 90,
+        })),
       });
 
       success("Séance mise à jour");
@@ -158,6 +243,8 @@ export default function EditSessionPage({ params }: PageProps) {
     );
   }
 
+  const isSessionInProgress = session.status === "en_cours";
+
   return (
     <div className="min-h-screen overflow-hidden">
       <BackgroundDecorations />
@@ -168,7 +255,7 @@ export default function EditSessionPage({ params }: PageProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/workout/sessions/${sessionId}`)}
+            onClick={() => router.push("/workout/sessions")}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -198,21 +285,116 @@ export default function EditSessionPage({ params }: PageProps) {
                 onChange={(selected) => setSelectedActivityIds(selected.map((v) => parseInt(v)))}
                 placeholder="Sélectionner une ou plusieurs activités"
               />
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Activity className="h-3.5 w-3.5" />
-                La première activité sélectionnée reste l&apos;activité principale.
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
-                <Input id="date" type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                <Input 
+                  id="date" 
+                  type="date" 
+                  value={scheduledDate} 
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  disabled={isSessionInProgress}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="time">Heure</Label>
-                <Input id="time" type="time" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
+                <Input 
+                  id="time" 
+                  type="time" 
+                  value={scheduledTime} 
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  disabled={isSessionInProgress}
+                />
               </div>
+            </div>
+            {isSessionInProgress && (
+              <p className="text-xs text-muted-foreground">
+                La date et l&apos;heure ne peuvent pas être modifiées pour une séance en cours
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <Label>Récurrence</Label>
+              <Select
+                value={recurrenceType || "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setRecurrenceType(null);
+                    setRecurrenceData([]);
+                  } else {
+                    setRecurrenceType(value as "daily" | "weekly" | "monthly");
+                    if (value === "daily") {
+                      setRecurrenceData([]);
+                    } else if (value === "weekly") {
+                      setRecurrenceData([]);
+                    } else if (value === "monthly") {
+                      setRecurrenceData([]);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Aucune récurrence" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucune récurrence</SelectItem>
+                  <SelectItem value="daily">Quotidien</SelectItem>
+                  <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                  <SelectItem value="monthly">Mensuel</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {recurrenceType === "weekly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Jours de la semaine</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"].map((day) => {
+                      const dayLower = day.toLowerCase();
+                      const isSelected = recurrenceData.includes(dayLower);
+                      return (
+                        <Button
+                          key={day}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (isSelected) {
+                              setRecurrenceData(recurrenceData.filter((d) => d !== dayLower));
+                            } else {
+                              setRecurrenceData([...recurrenceData, dayLower]);
+                            }
+                          }}
+                        >
+                          {day.charAt(0).toUpperCase() + day.slice(1)}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {recurrenceType === "monthly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Jours du mois (1-31)</Label>
+                  <Input
+                    type="text"
+                    placeholder="Ex: 1, 15, 30"
+                    value={recurrenceData.map(String).join(", ")}
+                    onChange={(e) => {
+                      const values = e.target.value
+                        .split(",")
+                        .map((v) => parseInt(v.trim()))
+                        .filter((v) => !isNaN(v) && v >= 1 && v <= 31);
+                      setRecurrenceData(values);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Séparez les jours par des virgules (ex: 1, 15, 30)
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -222,8 +404,113 @@ export default function EditSessionPage({ params }: PageProps) {
           </CardContent>
         </Card>
 
+        <Card className="mt-4">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Exercices</CardTitle>
+                <CardDescription>Gérez les exercices de la séance</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExerciseDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {selectedExercises.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Aucun exercice ajouté. Cliquez sur &quot;Ajouter&quot; pour en ajouter.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {selectedExercises.map((item, index) => (
+                  <div
+                    key={item.exercise.id}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium">{item.exercise.name}</p>
+                      {item.exercise.custom_activity_type && (
+                        <p className="text-xs text-muted-foreground">
+                          {item.exercise.custom_activity_type.name}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveExercise(index)}
+                      className="text-destructive"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog open={showExerciseDialog} onOpenChange={setShowExerciseDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Ajouter un exercice</DialogTitle>
+              <DialogDescription>
+                Sélectionnez un exercice à ajouter à la séance
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un exercice..."
+                  value={exerciseSearch}
+                  onChange={(e) => setExerciseSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {loadingExercises ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : availableExercises.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Aucun exercice disponible
+                  </p>
+                ) : (
+                  availableExercises.map((exercise) => (
+                    <div
+                      key={exercise.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-card cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => handleAddExercise(exercise)}
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{exercise.name}</p>
+                        {exercise.custom_activity_type && (
+                          <p className="text-xs text-muted-foreground">
+                            {exercise.custom_activity_type.name}
+                          </p>
+                        )}
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <Button variant="outline" className="flex-1" onClick={() => router.push(`/workout/sessions/${sessionId}`)}>
+          <Button variant="outline" className="flex-1" onClick={() => router.push("/workout/sessions")}>
             Annuler
           </Button>
           <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
@@ -237,4 +524,3 @@ export default function EditSessionPage({ params }: PageProps) {
     </div>
   );
 }
-

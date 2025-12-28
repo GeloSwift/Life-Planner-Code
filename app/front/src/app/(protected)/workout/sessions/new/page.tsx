@@ -375,6 +375,8 @@ export default function NewSessionPage() {
   const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split("T")[0]);
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [notes, setNotes] = useState("");
+  const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
+  const [recurrenceData, setRecurrenceData] = useState<(number | string)[]>([]);
 
   // Activités personnalisées
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
@@ -602,6 +604,8 @@ export default function NewSessionPage() {
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
         custom_activity_type_ids: selectedActivityIds,
         notes: notes || undefined,
+        recurrence_type: recurrenceType || undefined,
+        recurrence_data: recurrenceType && recurrenceData.length > 0 ? recurrenceData : undefined,
         exercises: selectedExercises.map((item, idx) => ({
           exercise_id: item.exercise.id,
           order: idx,
@@ -634,7 +638,7 @@ export default function NewSessionPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout")}
+            onClick={() => router.back()}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -728,6 +732,88 @@ export default function NewSessionPage() {
                   onChange={(e) => setScheduledTime(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Récurrence</Label>
+              <Select
+                value={recurrenceType || "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setRecurrenceType(null);
+                    setRecurrenceData([]);
+                  } else {
+                    setRecurrenceType(value as "daily" | "weekly" | "monthly");
+                    if (value === "daily") {
+                      setRecurrenceData([]);
+                    } else if (value === "weekly") {
+                      setRecurrenceData([]);
+                    } else if (value === "monthly") {
+                      setRecurrenceData([]);
+                    }
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Aucune récurrence" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Aucune récurrence</SelectItem>
+                  <SelectItem value="daily">Quotidien</SelectItem>
+                  <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                  <SelectItem value="monthly">Mensuel</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {recurrenceType === "weekly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Jours de la semaine</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"].map((day) => {
+                      const dayLower = day.toLowerCase();
+                      const isSelected = recurrenceData.includes(dayLower);
+                      return (
+                        <Button
+                          key={day}
+                          type="button"
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            if (isSelected) {
+                              setRecurrenceData(recurrenceData.filter((d) => d !== dayLower));
+                            } else {
+                              setRecurrenceData([...recurrenceData, dayLower]);
+                            }
+                          }}
+                        >
+                          {day.charAt(0).toUpperCase() + day.slice(1)}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {recurrenceType === "monthly" && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Jours du mois (1-31)</Label>
+                  <Input
+                    type="text"
+                    placeholder="Ex: 1, 15, 30"
+                    value={recurrenceData.map(String).join(", ")}
+                    onChange={(e) => {
+                      const values = e.target.value
+                        .split(",")
+                        .map((v) => parseInt(v.trim()))
+                        .filter((v) => !isNaN(v) && v >= 1 && v <= 31);
+                      setRecurrenceData(values);
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Séparez les jours par des virgules (ex: 1, 15, 30)
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Notes */}
