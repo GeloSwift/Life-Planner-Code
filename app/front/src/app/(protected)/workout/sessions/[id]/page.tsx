@@ -264,6 +264,7 @@ export default function SessionPage({ params }: PageProps) {
 
   const isActive = session.status === "en_cours";
   const isPlanned = session.status === "planifiee";
+  const isCancelled = session.status === "annulee";
 
   return (
     <div className="min-h-screen overflow-hidden pb-32">
