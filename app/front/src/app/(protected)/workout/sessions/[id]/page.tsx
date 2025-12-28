@@ -289,6 +289,13 @@ export default function SessionPage({ params }: PageProps) {
               <p className="text-sm text-muted-foreground">
                 {ACTIVITY_TYPE_LABELS[session.activity_type]}
               </p>
+              {isCancelled && (
+                <div className="mt-4 border border-destructive bg-destructive/10 rounded-lg p-3">
+                  <p className="text-sm text-destructive font-medium">
+                    Cette séance a été annulée car vous ne l&apos;avez pas lancée à temps !
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Timer principal */}

@@ -67,7 +67,6 @@ export default function EditSessionPage({ params }: PageProps) {
   const [scheduledTime, setScheduledTime] = useState<string>("09:00");
   const [notes, setNotes] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
-  const [recurrenceData, setRecurrenceData] = useState<(number | string)[]>([]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -82,7 +81,6 @@ export default function EditSessionPage({ params }: PageProps) {
       setName(sessionData.name || "");
       setNotes(sessionData.notes || "");
       setRecurrenceType(sessionData.recurrence_type || null);
-      setRecurrenceData(sessionData.recurrence_data || []);
 
       // Types d'activités
       const ids =
@@ -193,12 +191,28 @@ export default function EditSessionPage({ params }: PageProps) {
           ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
           : undefined;
 
+      // Calculer recurrence_data automatiquement selon le type
+      let recurrenceData: (number | string)[] | undefined = undefined;
+      if (recurrenceType && scheduledDate && scheduledTime) {
+        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+        if (recurrenceType === "weekly") {
+          const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+          const dayOfWeek = scheduledDateObj.getDay();
+          recurrenceData = [dayNames[dayOfWeek]];
+        } else if (recurrenceType === "monthly") {
+          const dayOfMonth = scheduledDateObj.getDate();
+          recurrenceData = [dayOfMonth];
+        }
+      }
+
       await workoutApi.sessions.update(sessionId, {
         name,
         notes: notes || undefined,
         scheduled_at,
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
         custom_activity_type_ids: selectedActivityIds,
+        recurrence_type: recurrenceType || undefined,
+        recurrence_data: recurrenceData,
         exercises: selectedExercises.map((item, idx) => ({
           exercise_id: item.exercise.id,
           order: idx,
@@ -209,7 +223,7 @@ export default function EditSessionPage({ params }: PageProps) {
       });
 
       success("Séance mise à jour");
-      router.push(`/workout/sessions/${sessionId}`);
+      router.push(`/workout/sessions`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
     } finally {
@@ -322,16 +336,8 @@ export default function EditSessionPage({ params }: PageProps) {
                 onValueChange={(value) => {
                   if (value === "none") {
                     setRecurrenceType(null);
-                    setRecurrenceData([]);
                   } else {
                     setRecurrenceType(value as "daily" | "weekly" | "monthly");
-                    if (value === "daily") {
-                      setRecurrenceData([]);
-                    } else if (value === "weekly") {
-                      setRecurrenceData([]);
-                    } else if (value === "monthly") {
-                      setRecurrenceData([]);
-                    }
                   }
                 }}
               >
@@ -345,55 +351,24 @@ export default function EditSessionPage({ params }: PageProps) {
                   <SelectItem value="monthly">Mensuel</SelectItem>
                 </SelectContent>
               </Select>
-
-              {recurrenceType === "weekly" && (
-                <div className="space-y-2">
-                  <Label className="text-sm">Jours de la semaine</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"].map((day) => {
-                      const dayLower = day.toLowerCase();
-                      const isSelected = recurrenceData.includes(dayLower);
-                      return (
-                        <Button
-                          key={day}
-                          type="button"
-                          variant={isSelected ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => {
-                            if (isSelected) {
-                              setRecurrenceData(recurrenceData.filter((d) => d !== dayLower));
-                            } else {
-                              setRecurrenceData([...recurrenceData, dayLower]);
-                            }
-                          }}
-                        >
-                          {day.charAt(0).toUpperCase() + day.slice(1)}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {recurrenceType === "monthly" && (
-                <div className="space-y-2">
-                  <Label className="text-sm">Jours du mois (1-31)</Label>
-                  <Input
-                    type="text"
-                    placeholder="Ex: 1, 15, 30"
-                    value={recurrenceData.map(String).join(", ")}
-                    onChange={(e) => {
-                      const values = e.target.value
-                        .split(",")
-                        .map((v) => parseInt(v.trim()))
-                        .filter((v) => !isNaN(v) && v >= 1 && v <= 31);
-                      setRecurrenceData(values);
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Séparez les jours par des virgules (ex: 1, 15, 30)
-                  </p>
-                </div>
+              {recurrenceType && scheduledDate && scheduledTime && (
+                <p className="text-xs text-muted-foreground">
+                  {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
+                  {recurrenceType === "weekly" && (() => {
+                    const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                    const dayOfWeek = scheduledDateObj.getDay();
+                    return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
+                  })()}
+                  {recurrenceType === "monthly" && (() => {
+                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                    const dayOfMonth = scheduledDateObj.getDate();
+                    if (dayOfMonth >= 28) {
+                      return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
+                    }
+                    return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
+                  })()}
+                </p>
               )}
             </div>
 

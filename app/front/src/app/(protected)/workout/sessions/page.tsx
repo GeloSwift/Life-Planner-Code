@@ -306,12 +306,15 @@ export default function SessionsPage() {
         samedi: "Samedi",
         dimanche: "Dimanche",
       };
-      const days = data.map((d) => dayNames[String(d).toLowerCase()] || String(d)).join(", ");
-      return `Tous les ${days}`;
+      const day = dayNames[String(data[0]).toLowerCase()] || String(data[0]);
+      return `Tous les ${day}s`;
     }
     if (type === "monthly" && data && data.length > 0) {
-      const days = data.map(String).join(", ");
-      return `Tous les ${days} du mois`;
+      const day = Number(data[0]);
+      if (day >= 28) {
+        return "Le dernier jour du mois";
+      }
+      return `Le ${day} de chaque mois`;
     }
     return "";
   };

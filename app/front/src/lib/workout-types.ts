@@ -387,6 +387,8 @@ export interface WorkoutSessionCreate {
   template_id?: number;
   scheduled_at?: string;
   notes?: string;
+  recurrence_type?: "daily" | "weekly" | "monthly";
+  recurrence_data?: (number | string)[]; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
   exercises?: Array<{
     exercise_id: number;
     order?: number;
