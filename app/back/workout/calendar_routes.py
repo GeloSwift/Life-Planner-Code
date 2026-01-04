@@ -8,11 +8,9 @@ Endpoints:
 - DELETE /workout/calendar/disconnect - Déconnexion
 """
 
-from typing import Optional
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 

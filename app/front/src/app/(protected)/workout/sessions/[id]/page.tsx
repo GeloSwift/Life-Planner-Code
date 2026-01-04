@@ -900,7 +900,6 @@ export default function SessionPage({ params }: PageProps) {
               
               // Extraire les détails dynamiques de l'exercice
               const details = extractExerciseDetails(exercise);
-              const mainDetails = formatMainDetails(details);
               const secondaryDetails = formatSecondaryDetails(details);
               const inputFields = getSetInputFields(details);
 

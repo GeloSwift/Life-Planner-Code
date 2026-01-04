@@ -62,27 +62,19 @@ const extractMuscles = (exercise: WorkoutSessionExercise): string | null => {
   
   for (const fv of exercise.exercise.field_values) {
     if (fv.field?.name && MUSCLE_PATTERN.test(fv.field.name) && fv.value) {
-      let value = fv.value;
+      const value = fv.value;
       
-      // Si c'est une chaîne JSON, la parser
-      if (typeof value === "string") {
-        try {
-          const parsed = JSON.parse(value);
-          if (Array.isArray(parsed)) {
-            return parsed.join(", ");
-          }
-          return value;
-        } catch {
-          // Ce n'est pas du JSON, retourner la chaîne telle quelle
-          return value;
+      // Le value est toujours une string, parser si c'est du JSON
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          return parsed.join(", ");
         }
+        return String(value);
+      } catch {
+        // Ce n'est pas du JSON, retourner la chaîne telle quelle
+        return String(value);
       }
-      
-      // Si c'est un tableau (multi-select), le joindre
-      if (Array.isArray(value)) {
-        return value.join(", ");
-      }
-      return String(value);
     }
   }
   return null;

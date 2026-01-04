@@ -289,17 +289,30 @@ export default function SessionsPage() {
         notes: full.notes ?? undefined,
         recurrence_type: full.recurrence_type ?? undefined,
         recurrence_data: full.recurrence_data ?? undefined,
-        exercises: full.exercises?.map((ex) => ({
-          exercise_id: ex.exercise_id,
-          order: ex.order,
-          target_sets: ex.target_sets,
-          target_reps: ex.target_reps ?? undefined,
-          target_weight: ex.target_weight ?? undefined,
-          target_duration: ex.target_duration ?? undefined,
-          target_distance: ex.target_distance ?? undefined,
-          rest_seconds: ex.rest_seconds,
-          notes: ex.notes ?? undefined,
-        })),
+        exercises: full.exercises?.map((ex) => {
+          const exerciseData: {
+            exercise_id: number;
+            order: number;
+            target_sets: number;
+            rest_seconds: number;
+            target_reps?: number;
+            target_weight?: number;
+            target_duration?: number;
+            target_distance?: number;
+            notes?: string;
+          } = {
+            exercise_id: ex.exercise_id,
+            order: ex.order,
+            target_sets: ex.target_sets,
+            rest_seconds: ex.rest_seconds,
+          };
+          if (ex.target_reps) exerciseData.target_reps = ex.target_reps;
+          if (ex.target_weight) exerciseData.target_weight = ex.target_weight;
+          if (ex.target_duration) exerciseData.target_duration = ex.target_duration;
+          if (ex.target_distance) exerciseData.target_distance = ex.target_distance;
+          if (ex.notes) exerciseData.notes = ex.notes;
+          return exerciseData;
+        }),
       });
       
       // Le backend crée toujours les séances avec le statut "planifiee" par défaut.
@@ -410,17 +423,28 @@ export default function SessionsPage() {
         notes: undefined, // Notes vides pour la nouvelle séance
         recurrence_type: full.recurrence_type ?? undefined,
         recurrence_data: full.recurrence_data ?? undefined,
-        exercises: full.exercises?.map((ex) => ({
-          exercise_id: ex.exercise_id,
-          order: ex.order,
-          target_sets: ex.target_sets,
-          target_reps: ex.target_reps ?? undefined,
-          target_weight: ex.target_weight ?? undefined,
-          target_duration: ex.target_duration ?? undefined,
-          target_distance: ex.target_distance ?? undefined,
-          rest_seconds: ex.rest_seconds,
-          // Notes vides pour les exercices de la nouvelle séance
-        })),
+        exercises: full.exercises?.map((ex) => {
+          const exerciseData: {
+            exercise_id: number;
+            order: number;
+            target_sets: number;
+            rest_seconds: number;
+            target_reps?: number;
+            target_weight?: number;
+            target_duration?: number;
+            target_distance?: number;
+          } = {
+            exercise_id: ex.exercise_id,
+            order: ex.order,
+            target_sets: ex.target_sets,
+            rest_seconds: ex.rest_seconds,
+          };
+          if (ex.target_reps) exerciseData.target_reps = ex.target_reps;
+          if (ex.target_weight) exerciseData.target_weight = ex.target_weight;
+          if (ex.target_duration) exerciseData.target_duration = ex.target_duration;
+          if (ex.target_distance) exerciseData.target_distance = ex.target_distance;
+          return exerciseData;
+        }),
       });
 
       success("Séance replanifiée (nouvelle séance créée)");
