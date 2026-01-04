@@ -104,9 +104,28 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
   const TrendIcon = trend > 0.5 ? TrendingUp : trend < -0.5 ? TrendingDown : Minus;
   const trendColor = trend > 0.5 ? "text-red-500" : trend < -0.5 ? "text-green-500" : "text-muted-foreground";
 
-  // Calculer les bornes de l'axe Y (arrondi à 5)
-  const yMin = Math.floor((actualMin - 2) / 5) * 5;
-  const yMax = Math.ceil((actualMax + 2) / 5) * 5;
+  // Calculer les bornes de l'axe Y de manière dynamique
+  // pour maximiser la visibilité des variations
+  const range = actualMax - actualMin;
+  
+  // Padding minimal pour zoomer au maximum sur les variations
+  // On garde juste un petit espace autour des valeurs min/max
+  const padding = Math.max(0.2, range * 0.15); // 15% de la plage, minimum 0.2kg
+  
+  // Arrondir à des valeurs "propres" pour l'affichage
+  let roundTo: number;
+  if (range < 0.5) {
+    roundTo = 0.1; // Très petites variations
+  } else if (range < 2) {
+    roundTo = 0.5; // Petites variations
+  } else if (range < 5) {
+    roundTo = 1; // Variations moyennes
+  } else {
+    roundTo = 2; // Grandes variations
+  }
+  
+  const yMin = Math.floor((actualMin - padding) / roundTo) * roundTo;
+  const yMax = Math.ceil((actualMax + padding) / roundTo) * roundTo;
 
   return (
     <div className="space-y-2">
@@ -158,8 +177,9 @@ export function WeightChart({ latestWeight }: WeightChartProps) {
             axisLine={false}
             tickMargin={8}
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            tickFormatter={(value) => `${value}`}
-            width={35}
+            tickFormatter={(value) => `${Number(value).toFixed(roundTo < 1 ? 1 : 0)}`}
+            width={40}
+            tickCount={Math.min(6, Math.ceil((yMax - yMin) / roundTo) + 1)}
           />
           <ChartTooltip
             content={

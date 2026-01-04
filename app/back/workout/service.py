@@ -785,8 +785,23 @@ class SessionService:
             if "custom_activity_type_id" not in update_data and len(custom_ids_int) > 0:
                 update_data["custom_activity_type_id"] = custom_ids_int[0]
         
-        # Gérer recurrence_data (convertir list en JSON string)
-        if "recurrence_data" in update_data:
+        # Gérer recurrence_type et recurrence_data
+        if "recurrence_type" in update_data:
+            # Si recurrence_type est None ou vide, supprimer aussi recurrence_data
+            if update_data["recurrence_type"] is None:
+                update_data["recurrence_type"] = None
+                update_data["recurrence_data"] = None
+            else:
+                # Si recurrence_type est défini, s'assurer que recurrence_data est aussi traité
+                if "recurrence_data" in update_data:
+                    recurrence_data = update_data.get("recurrence_data")
+                    if recurrence_data is not None:
+                        update_data["recurrence_data"] = json.dumps(recurrence_data)
+                    else:
+                        update_data["recurrence_data"] = None
+        
+        # Gérer recurrence_data séparément si recurrence_type n'est pas dans update_data
+        if "recurrence_data" in update_data and "recurrence_type" not in update_data:
             recurrence_data = update_data.get("recurrence_data")
             if recurrence_data is not None:
                 update_data["recurrence_data"] = json.dumps(recurrence_data)
@@ -902,6 +917,33 @@ class SessionService:
         db.commit()
         db.refresh(db_set)
         return db_set
+    
+    @staticmethod
+    def update_session_exercise_notes(
+        db: Session,
+        session_exercise_id: int,
+        notes: Optional[str],
+        user_id: int,
+    ) -> Optional[WorkoutSessionExercise]:
+        """Met à jour les notes d'un exercice de session (sans toucher aux séries)."""
+        session_ex = db.query(WorkoutSessionExercise).join(
+            WorkoutSession
+        ).options(
+            joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
+            joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
+            joinedload(WorkoutSessionExercise.sets),
+        ).filter(
+            WorkoutSessionExercise.id == session_exercise_id,
+            WorkoutSession.user_id == user_id,
+        ).first()
+        
+        if not session_ex:
+            return None
+        
+        session_ex.notes = notes
+        db.commit()
+        db.refresh(session_ex)
+        return session_ex
     
     @staticmethod
     def add_set(

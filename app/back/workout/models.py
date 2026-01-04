@@ -410,6 +410,9 @@ class WorkoutSession(Base):
     perceived_difficulty: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-10 RPE
     calories_burned: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
+    # Google Calendar sync
+    google_calendar_event_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

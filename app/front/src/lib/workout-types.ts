@@ -409,6 +409,7 @@ export interface WorkoutSessionUpdate {
   custom_activity_type_ids?: number[];
   scheduled_at?: string;
   notes?: string;
+  status?: SessionStatus;
   rating?: number;
   perceived_difficulty?: number;
   calories_burned?: number;

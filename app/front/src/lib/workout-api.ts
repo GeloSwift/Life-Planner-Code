@@ -311,10 +311,10 @@ export const sessionsApi = {
     });
   },
 
-  async complete(id: number, data?: { rating?: number; perceived_difficulty?: number; notes?: string }): Promise<WorkoutSession> {
-    return workoutFetch<WorkoutSession>(`/workout/sessions/${id}/complete`, {
+  async complete(id: number): Promise<WorkoutSession> {
+    // Le backend utilise /end, mais on garde le nom "complete" pour la clarté côté frontend
+    return workoutFetch<WorkoutSession>(`/workout/sessions/${id}/end`, {
       method: "POST",
-      body: JSON.stringify(data || {}),
     });
   },
 
@@ -354,6 +354,17 @@ export const sessionsApi = {
     );
   },
 
+  async updateExerciseNotes(sessionId: number, exerciseId: number, notes: string): Promise<WorkoutSessionExercise> {
+    const params = new URLSearchParams();
+    if (notes) {
+      params.set("notes", notes);
+    }
+    return workoutFetch<WorkoutSessionExercise>(
+      `/workout/sessions/${sessionId}/exercises/${exerciseId}?${params.toString()}`,
+      { method: "PUT" }
+    );
+  },
+
   // Sets within session exercise
   async addSet(sessionId: number, exerciseId: number, data: SetCreate): Promise<WorkoutSet> {
     return workoutFetch<WorkoutSet>(
@@ -365,9 +376,9 @@ export const sessionsApi = {
     );
   },
 
-  async updateSet(sessionId: number, exerciseId: number, setId: number, data: SetUpdate): Promise<WorkoutSet> {
+  async updateSet(setId: number, data: SetUpdate): Promise<WorkoutSet> {
     return workoutFetch<WorkoutSet>(
-      `/workout/sessions/${sessionId}/exercises/${exerciseId}/sets/${setId}`,
+      `/workout/sets/${setId}`,
       {
         method: "PUT",
         body: JSON.stringify(data),
@@ -375,17 +386,10 @@ export const sessionsApi = {
     );
   },
 
-  async completeSet(sessionId: number, exerciseId: number, setId: number): Promise<WorkoutSet> {
+  async completeSet(setId: number): Promise<WorkoutSet> {
     return workoutFetch<WorkoutSet>(
-      `/workout/sessions/${sessionId}/exercises/${exerciseId}/sets/${setId}/complete`,
+      `/workout/sets/${setId}/complete`,
       { method: "POST" }
-    );
-  },
-
-  async deleteSet(sessionId: number, exerciseId: number, setId: number): Promise<void> {
-    await workoutFetch<void>(
-      `/workout/sessions/${sessionId}/exercises/${exerciseId}/sets/${setId}`,
-      { method: "DELETE" }
     );
   },
 };

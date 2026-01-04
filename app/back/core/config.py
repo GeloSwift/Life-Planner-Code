@@ -47,10 +47,15 @@ class Settings(BaseSettings):
     # Frontend URL (for OAuth redirects)
     FRONTEND_URL: str = "http://localhost:3000"
     
-    # Google OAuth Configuration
+    # Google OAuth Configuration (for login)
     # Get credentials from: https://console.cloud.google.com/apis/credentials
     GOOGLE_CLIENT_ID: str | None = None
     GOOGLE_CLIENT_SECRET: str | None = None
+    
+    # Google Calendar API Configuration (for calendar sync)
+    # Uses the same OAuth credentials but with different scopes
+    GOOGLE_CALENDAR_CLIENT_ID: str | None = None
+    GOOGLE_CALENDAR_CLIENT_SECRET: str | None = None
     
     # MailerSend Configuration
     # Get API key from: https://app.mailersend.com/api

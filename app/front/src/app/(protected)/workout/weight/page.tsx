@@ -140,10 +140,6 @@ export default function WeightPage() {
                 <Scale className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
                 Suivi du poids
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {entries.length} pesée{entries.length > 1 ? "s" : ""} enregistrée
-                {entries.length > 1 ? "s" : ""}
-              </p>
             </div>
             <Dialog open={showNewEntry} onOpenChange={setShowNewEntry}>
               <DialogTrigger asChild>

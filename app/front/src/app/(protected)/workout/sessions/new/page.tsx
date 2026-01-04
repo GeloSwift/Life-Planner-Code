@@ -121,6 +121,78 @@ function getActivityIcon(activity: { icon: string | null } | null): string {
   return "Activity";
 }
 
+// Regex pour identifier les types de paramètres personnalisés
+const PARAM_PATTERNS = {
+  series: /s[eé]rie|sets?/i,
+  reps: /r[eé]p[eé]tition|reps?/i,
+  weight: /poids|weight|charge|kg/i,
+  duration: /dur[eé]e|temps|time|duration/i,
+  distance: /distance|km|kilom[eè]tre/i,
+  rest: /repos|rest|pause/i,
+};
+
+// Fonction pour identifier le type de paramètre via regex
+function identifyParamType(fieldName: string): string | null {
+  const normalizedName = fieldName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  for (const [type, pattern] of Object.entries(PARAM_PATTERNS)) {
+    if (pattern.test(normalizedName)) {
+      return type;
+    }
+  }
+  return null;
+}
+
+// Fonction pour extraire les paramètres d'un exercice depuis ses field_values
+interface ExerciseParams {
+  sets: number;
+  reps?: number;
+  weight?: number;
+  duration?: number;
+  distance?: number;
+  rest?: number;
+}
+
+function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
+  const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
+  
+  if (!exercise.field_values) return params;
+  
+  exercise.field_values.forEach((fieldValue) => {
+    const field = fieldValue.field;
+    if (!field) return;
+    
+    // Utiliser la valeur override si disponible, sinon la valeur par défaut de l'exercice
+    const value = overrideValues?.[field.id] ?? fieldValue.value;
+    if (!value) return;
+    
+    const paramType = identifyParamType(field.name);
+    
+    switch (paramType) {
+      case "series":
+        params.sets = parseInt(value) || 3;
+        break;
+      case "reps":
+        params.reps = parseInt(value) || undefined;
+        break;
+      case "weight":
+        params.weight = parseFloat(value) || undefined;
+        break;
+      case "duration":
+        params.duration = parseInt(value) || undefined;
+        break;
+      case "distance":
+        params.distance = parseFloat(value) || undefined;
+        break;
+      case "rest":
+        params.rest = parseInt(value) || 90;
+        break;
+    }
+  });
+  
+  return params;
+}
+
 interface SelectedExercise {
   exercise: Exercise;
   fieldValues: Record<number, string>; // field_id -> value
@@ -586,13 +658,19 @@ export default function NewSessionPage() {
         notes: notes || undefined,
         recurrence_type: recurrenceType || undefined,
         recurrence_data: recurrenceData,
-        exercises: selectedExercises.map((item, idx) => ({
-          exercise_id: item.exercise.id,
-          order: idx,
-          target_sets: 3,
-          target_reps: 12,
-          rest_seconds: 90,
-        })),
+        exercises: selectedExercises.map((item, idx) => {
+          const params = extractExerciseParams(item.exercise, item.fieldValues);
+          return {
+            exercise_id: item.exercise.id,
+            order: idx,
+            target_sets: params.sets,
+            target_reps: params.reps,
+            target_weight: params.weight,
+            target_duration: params.duration,
+            target_distance: params.distance,
+            rest_seconds: params.rest || 90,
+          };
+        }),
       });
 
       success(`Séance "${name}" créée avec succès`);
@@ -612,10 +690,12 @@ export default function NewSessionPage() {
 
     setIsLoading(true);
     try {
-      // Calculer recurrence_data automatiquement selon le type (pour "Lancer maintenant", on utilise la date/heure actuelle)
+      // "Lancer maintenant" : la date de la séance est maintenant
+      const now = new Date();
+      
+      // Calculer recurrence_data automatiquement selon le type
       let recurrenceData: (number | string)[] | undefined = undefined;
       if (recurrenceType) {
-        const now = new Date();
         if (recurrenceType === "weekly") {
           const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
           const dayOfWeek = now.getDay();
@@ -626,22 +706,29 @@ export default function NewSessionPage() {
         }
       }
 
-      // Créer la séance (on stocke la première activité sélectionnée)
+      // Créer la séance avec la date actuelle
       const session = await workoutApi.sessions.create({
         name,
         activity_type: activityType,
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
         custom_activity_type_ids: selectedActivityIds,
+        scheduled_at: now.toISOString(), // Date de la séance = maintenant
         notes: notes || undefined,
         recurrence_type: recurrenceType || undefined,
         recurrence_data: recurrenceData,
-        exercises: selectedExercises.map((item, idx) => ({
-          exercise_id: item.exercise.id,
-          order: idx,
-          target_sets: 3,
-          target_reps: 12,
-          rest_seconds: 90,
-        })),
+        exercises: selectedExercises.map((item, idx) => {
+          const params = extractExerciseParams(item.exercise, item.fieldValues);
+          return {
+            exercise_id: item.exercise.id,
+            order: idx,
+            target_sets: params.sets,
+            target_reps: params.reps,
+            target_weight: params.weight,
+            target_duration: params.duration,
+            target_distance: params.distance,
+            rest_seconds: params.rest || 90,
+          };
+        }),
       });
 
       // Démarrer immédiatement

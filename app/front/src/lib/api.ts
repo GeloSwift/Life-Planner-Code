@@ -344,12 +344,69 @@ export const healthApi = {
 };
 
 // =============================================================================
+// GOOGLE CALENDAR API
+// =============================================================================
+
+interface CalendarStatus {
+  connected: boolean;
+  message: string;
+}
+
+interface CalendarConnectResponse {
+  auth_url: string;
+  state: string;
+}
+
+interface CalendarSyncResponse {
+  success: boolean;
+  synced: number;
+  total: number;
+  errors?: string[];
+}
+
+export const googleCalendarApi = {
+  /**
+   * Récupère le statut de connexion Google Calendar.
+   */
+  async getStatus(): Promise<CalendarStatus> {
+    return apiFetch<CalendarStatus>("/workout/calendar/status");
+  },
+
+  /**
+   * Initie la connexion à Google Calendar.
+   * Retourne l'URL d'autorisation vers laquelle rediriger l'utilisateur.
+   */
+  async connect(): Promise<CalendarConnectResponse> {
+    return apiFetch<CalendarConnectResponse>("/workout/calendar/connect");
+  },
+
+  /**
+   * Déconnecte Google Calendar.
+   */
+  async disconnect(): Promise<{ success: boolean; message: string }> {
+    return apiFetch("/workout/calendar/disconnect", {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Synchronise toutes les séances planifiées avec Google Calendar.
+   */
+  async syncAll(): Promise<CalendarSyncResponse> {
+    return apiFetch<CalendarSyncResponse>("/workout/calendar/sync", {
+      method: "POST",
+    });
+  },
+};
+
+// =============================================================================
 // DEFAULT EXPORT
 // =============================================================================
 
 export const api = {
   auth: authApi,
   health: healthApi,
+  googleCalendar: googleCalendarApi,
 };
 
 export default api;

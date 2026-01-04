@@ -10,9 +10,9 @@
  */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { authApi } from "@/lib/api";
+import { authApi, googleCalendarApi } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,11 @@ import {
   X,
   Camera,
   CheckCircle2,
-  Send
+  Send,
+  CalendarSync,
+  Link2,
+  Unlink,
+  RefreshCw,
 } from "lucide-react";
 import { useToast, ToastContainer } from "@/components/ui/toast";
 
@@ -51,12 +55,32 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const verifyEmailButtonRef = useRef<HTMLButtonElement>(null);
   
+  // Google Calendar states
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
+  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+  
+  // Charge le statut Google Calendar
+  const loadCalendarStatus = useCallback(async () => {
+    try {
+      const status = await googleCalendarApi.getStatus();
+      setCalendarConnected(status.connected);
+    } catch {
+      // Ignore les erreurs (pas configuré côté serveur)
+      setCalendarConnected(false);
+    } finally {
+      setIsLoadingCalendar(false);
+    }
+  }, []);
+  
   // Initialise les valeurs depuis l'utilisateur
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || "");
+      loadCalendarStatus();
     }
-  }, [user]);
+  }, [user, loadCalendarStatus]);
 
   // Redirige vers login si non authentifié (après le chargement)
   useEffect(() => {
@@ -198,6 +222,48 @@ export default function ProfilePage() {
       error("Erreur lors de la mise à jour du nom");
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  // Gestion de la connexion Google Calendar
+  const handleConnectCalendar = async () => {
+    setIsConnectingCalendar(true);
+    try {
+      const { auth_url } = await googleCalendarApi.connect();
+      // Redirige vers Google pour l'autorisation
+      window.location.href = auth_url;
+    } catch (err) {
+      console.error("Erreur lors de la connexion à Google Calendar:", err);
+      error("Erreur lors de la connexion à Google Calendar");
+      setIsConnectingCalendar(false);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    try {
+      await googleCalendarApi.disconnect();
+      setCalendarConnected(false);
+      success("Google Calendar déconnecté");
+    } catch (err) {
+      console.error("Erreur lors de la déconnexion:", err);
+      error("Erreur lors de la déconnexion");
+    }
+  };
+
+  const handleSyncCalendar = async () => {
+    setIsSyncingCalendar(true);
+    try {
+      const result = await googleCalendarApi.syncAll();
+      if (result.synced > 0) {
+        success(`${result.synced} séance(s) synchronisée(s) avec Google Calendar`);
+      } else {
+        success("Toutes les séances sont déjà synchronisées");
+      }
+    } catch (err) {
+      console.error("Erreur lors de la synchronisation:", err);
+      error("Erreur lors de la synchronisation");
+    } finally {
+      setIsSyncingCalendar(false);
     }
   };
 
@@ -405,6 +471,81 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Google Calendar */}
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <CalendarSync className="h-5 w-5 text-blue-500" />
+              Google Calendar
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Synchronisez vos séances avec votre calendrier Google
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingCalendar ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Chargement...</span>
+              </div>
+            ) : calendarConnected ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="text-sm font-medium">Google Calendar connecté</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={handleSyncCalendar}
+                    disabled={isSyncingCalendar}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                  >
+                    {isSyncingCalendar ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Synchroniser
+                  </Button>
+                  <Button
+                    onClick={handleDisconnectCalendar}
+                    variant="destructive"
+                    size="sm"
+                    className="flex-1 sm:flex-none"
+                  >
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Déconnecter
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Vos séances planifiées seront automatiquement ajoutées à votre Google Calendar.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Connectez votre compte Google pour synchroniser automatiquement vos séances
+                  avec votre calendrier.
+                </p>
+                <Button
+                  onClick={handleConnectCalendar}
+                  disabled={isConnectingCalendar}
+                  className="w-full sm:w-auto"
+                >
+                  {isConnectingCalendar ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4 mr-2" />
+                  )}
+                  Connecter Google Calendar
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Informations du compte */}
         <Card>

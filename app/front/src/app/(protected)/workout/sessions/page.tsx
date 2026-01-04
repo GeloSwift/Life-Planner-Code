@@ -55,6 +55,7 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  RotateCcw,
   Activity,
   Bike,
   Footprints,
@@ -121,7 +122,7 @@ function getStatusIcon(status: SessionStatus) {
     case "en_cours":
       return <Play className="h-4 w-4 text-green-500" />;
     case "terminee":
-      return <CheckCircle className="h-4 w-4 text-gray-500" />;
+      return <CheckCircle className="h-4 w-4 text-green-500" />;
     case "annulee":
       return <XCircle className="h-4 w-4 text-red-500" />;
     default:
@@ -262,13 +263,32 @@ export default function SessionsPage() {
     e.stopPropagation();
     try {
       const full = await workoutApi.sessions.get(session.id);
+      
+      // Si la date originale est dans le passé, on la met à demain à la même heure
+      // pour éviter que le système automatique change le statut à "annulée"
+      let newScheduledAt = full.scheduled_at ?? undefined;
+      if (full.scheduled_at) {
+        const originalDate = new Date(full.scheduled_at);
+        const now = new Date();
+        
+        // Si la date est dans le passé, la mettre à demain à la même heure
+        if (originalDate < now) {
+          const tomorrow = new Date(now);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
+          newScheduledAt = tomorrow.toISOString();
+        }
+      }
+      
       const duplicated = await workoutApi.sessions.create({
         name: `${full.name} (copie)`,
         activity_type: full.activity_type,
         custom_activity_type_id: full.custom_activity_type_id ?? undefined,
         custom_activity_type_ids: full.custom_activity_type_ids ?? [],
-        scheduled_at: full.scheduled_at ?? undefined,
+        scheduled_at: newScheduledAt,
         notes: full.notes ?? undefined,
+        recurrence_type: full.recurrence_type ?? undefined,
+        recurrence_data: full.recurrence_data ?? undefined,
         exercises: full.exercises?.map((ex) => ({
           exercise_id: ex.exercise_id,
           order: ex.order,
@@ -281,16 +301,134 @@ export default function SessionsPage() {
           notes: ex.notes ?? undefined,
         })),
       });
+      
+      // Le backend crée toujours les séances avec le statut "planifiee" par défaut.
+      // Si on a mis à jour la date pour qu'elle soit dans le futur, le système automatique
+      // ne changera pas le statut. On vérifie quand même pour être sûr.
+      let finalSession = duplicated;
+      
+      // Vérifier le statut après création
+      finalSession = await workoutApi.sessions.get(duplicated.id);
+      
+      // Si le statut n'est pas "planifiee", le forcer explicitement
+      if (finalSession.status !== "planifiee") {
+        await workoutApi.sessions.update(duplicated.id, {
+          status: "planifiee",
+        });
+        finalSession = await workoutApi.sessions.get(duplicated.id);
+      }
+      
       success(`Séance "${full.name}" dupliquée`);
-      router.push(`/workout/sessions/${duplicated.id}/edit`);
+      // Rediriger directement vers la page d'édition sans recharger la liste
+      // Utiliser replace au lieu de push pour éviter d'ajouter une entrée dans l'historique
+      // et rendre la transition plus fluide (évite les flashs)
+      router.replace(`/workout/sessions/${finalSession.id}/edit`);
     } catch (err) {
+      console.error("Erreur lors de la duplication:", err);
       showError(err instanceof Error ? err.message : "Erreur lors de la duplication");
     }
   };
 
   const handleEditClick = (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
+    // Empêcher l'édition des séances terminées ou annulées
+    if (session.status === "terminee" || session.status === "annulee") {
+      showError("Cette séance ne peut pas être modifiée");
+      return;
+    }
     router.push(`/workout/sessions/${session.id}/edit`);
+  };
+
+  const handleReplanClick = async (session: WorkoutSession, e: MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      // Récupérer la session complète avec ses exercices
+      const full = await workoutApi.sessions.get(session.id);
+      
+      const now = new Date();
+      let nextDate: Date | null = null;
+      
+      // Si la séance a une récurrence, calculer la prochaine date selon la récurrence
+      if (session.recurrence_type && session.scheduled_at) {
+        const scheduledTime = new Date(session.scheduled_at);
+        
+        if (session.recurrence_type === "daily") {
+          // Demain à la même heure
+          nextDate = new Date(now);
+          nextDate.setDate(nextDate.getDate() + 1);
+          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+        } else if (session.recurrence_type === "weekly" && session.recurrence_data && session.recurrence_data.length > 0) {
+          // Semaine suivante, même jour de la semaine à la même heure
+          const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+          const targetDay = dayNames.indexOf(String(session.recurrence_data[0]).toLowerCase());
+          if (targetDay === -1) {
+            showError("Jour de la semaine invalide");
+            return;
+          }
+
+          // Calculer le jour de la semaine de la date originale
+          const originalDayOfWeek = scheduledTime.getDay();
+
+          // Si le jour cible correspond au jour original, on prend la semaine suivante
+          nextDate = new Date(scheduledTime);
+          if (targetDay === originalDayOfWeek) {
+            nextDate.setDate(nextDate.getDate() + 7);
+          } else {
+            const daysUntilTarget = (targetDay - originalDayOfWeek + 7) % 7 || 7;
+            nextDate.setDate(nextDate.getDate() + daysUntilTarget);
+          }
+          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+        } else if (session.recurrence_type === "monthly" && session.recurrence_data && session.recurrence_data.length > 0) {
+          // Mois suivant, même jour du mois à la même heure
+          const dayOfMonth = Number(session.recurrence_data[0]);
+          nextDate = new Date(scheduledTime);
+          nextDate.setMonth(nextDate.getMonth() + 1);
+
+          const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+          nextDate.setDate(Math.min(dayOfMonth, lastDayOfMonth));
+          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+        }
+      }
+
+      // Si pas de récurrence, replanifier pour demain à la même heure
+      if (!nextDate) {
+        const scheduledTime = session.scheduled_at ? new Date(session.scheduled_at) : now;
+        nextDate = new Date(now);
+        nextDate.setDate(nextDate.getDate() + 1);
+        nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+      }
+
+      // CRÉER UNE NOUVELLE SÉANCE (au lieu de modifier l'existante)
+      // Cela permet de garder l'historique de la séance originale
+      await workoutApi.sessions.create({
+        name: full.name, // Même nom (pas de "(copie)")
+        activity_type: full.activity_type,
+        custom_activity_type_id: full.custom_activity_type_id ?? undefined,
+        custom_activity_type_ids: full.custom_activity_type_ids ?? [],
+        scheduled_at: nextDate.toISOString(),
+        notes: undefined, // Notes vides pour la nouvelle séance
+        recurrence_type: full.recurrence_type ?? undefined,
+        recurrence_data: full.recurrence_data ?? undefined,
+        exercises: full.exercises?.map((ex) => ({
+          exercise_id: ex.exercise_id,
+          order: ex.order,
+          target_sets: ex.target_sets,
+          target_reps: ex.target_reps ?? undefined,
+          target_weight: ex.target_weight ?? undefined,
+          target_duration: ex.target_duration ?? undefined,
+          target_distance: ex.target_distance ?? undefined,
+          rest_seconds: ex.rest_seconds,
+          // Notes vides pour les exercices de la nouvelle séance
+        })),
+      });
+
+      success("Séance replanifiée (nouvelle séance créée)");
+      await loadData();
+    } catch (err) {
+      console.error("Erreur lors de la replanification:", err);
+      showError(err instanceof Error ? err.message : "Erreur lors de la replanification");
+    }
   };
 
   const formatRecurrence = (type: string | null | undefined, data: (string | number)[] | null | undefined): string => {
@@ -360,7 +498,7 @@ export default function SessionsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.back()}
+            onClick={() => router.push("/workout")}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -474,44 +612,99 @@ export default function SessionsPage() {
                 <Card
                   key={session.id}
                   className={`group transition-all relative p-0 overflow-hidden ${
-                    session.status === "annulee"
-                      ? "opacity-50 cursor-not-allowed"
+                    session.status === "annulee" || session.status === "terminee"
+                      ? "opacity-50 cursor-pointer hover:shadow-lg hover:-translate-y-1"
                       : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
                   }`}
-                  onClick={() => session.status !== "annulee" && router.push(`/workout/sessions/${session.id}`)}
+                  onClick={() => router.push(`/workout/sessions/${session.id}`)}
                 >
                   {/* Actions rapides */}
-                  {session.status !== "annulee" && (
-                    <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="h-10 w-10 sm:h-8 sm:w-8"
-                        onClick={(e) => handleDuplicateClick(session, e)}
-                        title="Dupliquer"
-                      >
-                        <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="h-10 w-10 sm:h-8 sm:w-8"
-                        onClick={(e) => handleEditClick(session, e)}
-                        title="Modifier"
-                      >
-                        <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="h-10 w-10 sm:h-8 sm:w-8"
-                        onClick={(e) => handleDeleteClick(session, e)}
-                        title="Supprimer"
-                      >
-                        <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    {/* Boutons pour séances actives (planifiée, en cours) */}
+                    {session.status !== "annulee" && session.status !== "terminee" && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 sm:h-8 sm:w-8"
+                          onClick={(e) => handleDuplicateClick(session, e)}
+                          title="Dupliquer"
+                        >
+                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 sm:h-8 sm:w-8"
+                          onClick={(e) => handleEditClick(session, e)}
+                          title="Modifier"
+                        >
+                          <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Boutons pour séances annulées */}
+                    {session.status === "annulee" && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 sm:h-8 sm:w-8"
+                          onClick={(e) => handleDuplicateClick(session, e)}
+                          title="Dupliquer"
+                        >
+                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 sm:h-8 sm:w-8"
+                          onClick={(e) => handleReplanClick(session, e)}
+                          title="Replanifier"
+                        >
+                          <RotateCcw className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </Button>
+                      </>
+                    )}
+                    
+                    {/* Boutons pour séances terminées */}
+                    {session.status === "terminee" && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-10 w-10 sm:h-8 sm:w-8"
+                          onClick={(e) => handleDuplicateClick(session, e)}
+                          title="Dupliquer"
+                        >
+                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                        </Button>
+                        {session.recurrence_type && (
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            onClick={(e) => handleReplanClick(session, e)}
+                            title="Replanifier"
+                          >
+                            <RotateCcw className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </Button>
+                        )}
+                      </>
+                    )}
+                    
+                    {/* Bouton supprimer (toujours disponible) */}
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-10 w-10 sm:h-8 sm:w-8"
+                      onClick={(e) => handleDeleteClick(session, e)}
+                      title="Supprimer"
+                    >
+                      <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                    </Button>
+                  </div>
 
                   {/* Image avec logos des activités */}
                   <div className="relative w-full bg-muted overflow-hidden aspect-video">

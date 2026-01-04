@@ -83,6 +83,14 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     
+    # Google Calendar integration
+    google_calendar_refresh_token: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    google_calendar_connected: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    
     # Timestamps automatiques
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

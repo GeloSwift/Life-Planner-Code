@@ -446,6 +446,8 @@ class WorkoutSessionUpdate(BaseModel):
     status: Optional[SessionStatusEnum] = None
     scheduled_at: Optional[datetime] = None
     notes: Optional[str] = None
+    recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
+    recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence
     rating: Optional[int] = Field(None, ge=1, le=5)
     perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
     calories_burned: Optional[int] = Field(None, ge=0)

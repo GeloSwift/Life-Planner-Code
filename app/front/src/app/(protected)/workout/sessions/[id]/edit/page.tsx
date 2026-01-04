@@ -37,11 +37,339 @@ import {
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
-import type { UserActivityType, WorkoutSession, Exercise, WorkoutSessionExercise } from "@/lib/workout-types";
-import { Loader2, ArrowLeft, Save, Plus, X, Search } from "lucide-react";
+import type { UserActivityType, WorkoutSession, Exercise, WorkoutSessionExercise, CustomFieldDefinition } from "@/lib/workout-types";
+import { Loader2, ArrowLeft, Save, Plus, X, Search, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+// Regex pour identifier les types de paramètres personnalisés
+const PARAM_PATTERNS = {
+  series: /s[eé]rie|sets?/i,
+  reps: /r[eé]p[eé]tition|reps?/i,
+  weight: /poids|weight|charge|kg/i,
+  duration: /dur[eé]e|temps|time|duration/i,
+  distance: /distance|km|kilom[eè]tre/i,
+  rest: /repos|rest|pause/i,
+};
+
+// Fonction pour identifier le type de paramètre via regex
+function identifyParamType(fieldName: string): string | null {
+  const normalizedName = fieldName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  for (const [type, pattern] of Object.entries(PARAM_PATTERNS)) {
+    if (pattern.test(normalizedName)) {
+      return type;
+    }
+  }
+  return null;
+}
+
+// Fonction pour extraire les paramètres d'un exercice depuis ses field_values
+interface ExerciseParams {
+  sets: number;
+  reps?: number;
+  weight?: number;
+  duration?: number;
+  distance?: number;
+  rest?: number;
+}
+
+function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
+  const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
+  
+  if (!exercise.field_values) return params;
+  
+  exercise.field_values.forEach((fieldValue) => {
+    const field = fieldValue.field;
+    if (!field) return;
+    
+    // Utiliser la valeur override si disponible, sinon la valeur par défaut de l'exercice
+    const value = overrideValues?.[field.id] ?? fieldValue.value;
+    if (!value) return;
+    
+    const paramType = identifyParamType(field.name);
+    
+    switch (paramType) {
+      case "series":
+        params.sets = parseInt(value) || 3;
+        break;
+      case "reps":
+        params.reps = parseInt(value) || undefined;
+        break;
+      case "weight":
+        params.weight = parseFloat(value) || undefined;
+        break;
+      case "duration":
+        params.duration = parseInt(value) || undefined;
+        break;
+      case "distance":
+        params.distance = parseFloat(value) || undefined;
+        break;
+      case "rest":
+        params.rest = parseInt(value) || 90;
+        break;
+    }
+  });
+  
+  return params;
+}
+
+interface SelectedExercise {
+  exercise: Exercise;
+  fieldValues: Record<number, string>; // field_id -> value
+}
+
+// Composant pour rendre un champ personnalisé
+function renderCustomField(
+  field: CustomFieldDefinition,
+  value: string,
+  onChange: (value: string) => void
+) {
+  const options = field.options || [];
+
+  switch (field.field_type) {
+    case "select":
+      return (
+        <Select value={value || ""} onValueChange={onChange}>
+          <SelectTrigger className="h-8 text-sm">
+            <SelectValue placeholder={field.placeholder || "Sélectionner..."} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((opt: string) => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    
+    case "multi_select":
+      let selectedValues: string[] = [];
+      try {
+        if (value) {
+          selectedValues = JSON.parse(value);
+          if (!Array.isArray(selectedValues)) {
+            selectedValues = [];
+          }
+        }
+      } catch {
+        selectedValues = [];
+      }
+      return (
+        <MultiSelect
+          options={options.map(opt => ({ label: opt, value: opt }))}
+          selected={selectedValues}
+          onChange={(selected) => onChange(JSON.stringify(selected))}
+          placeholder={field.placeholder || "Sélectionner..."}
+        />
+      );
+    
+    case "text":
+      return (
+        <Input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || ""}
+          className="h-8 text-sm"
+        />
+      );
+    
+    case "number":
+      return (
+        <Input
+          type="number"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || ""}
+          className="h-8 text-sm"
+        />
+      );
+    
+    case "checkbox":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={value === "true" || value === "1"}
+            onChange={(e) => onChange(e.target.checked ? "true" : "false")}
+            className="h-4 w-4"
+          />
+        </div>
+      );
+    
+    case "date":
+      return (
+        <Input
+          type="date"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-8 text-sm"
+        />
+      );
+    
+    case "duration":
+      return (
+        <Input
+          type="number"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || "Durée en secondes"}
+          className="h-8 text-sm"
+        />
+      );
+    
+    default:
+      return (
+        <Input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={field.placeholder || ""}
+          className="h-8 text-sm"
+        />
+      );
+  }
+}
+
+// Composant pour un exercice sortable
+function SortableExerciseItem({
+  item,
+  onUpdateField,
+  onAddField,
+  onRemoveField,
+  onRemoveExercise,
+}: {
+  item: SelectedExercise;
+  onUpdateField: (fieldId: number, value: string) => void;
+  onAddField: (field: CustomFieldDefinition) => void;
+  onRemoveField: (fieldId: number) => void;
+  onRemoveExercise: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.exercise.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const activity = item.exercise.custom_activity_type;
+  const availableFields = activity?.custom_fields || [];
+  const usedFieldIds = new Set(Object.keys(item.fieldValues).map(Number));
+  const unusedFields = availableFields.filter((f) => !usedFieldIds.has(f.id));
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 p-3 rounded-lg border bg-card"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-center cursor-grab active:cursor-grabbing mt-1"
+      >
+        <GripVertical className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <h4 className="font-medium truncate">{item.exercise.name}</h4>
+        {activity && (
+          <p className="text-xs text-muted-foreground">
+            {activity.name}
+          </p>
+        )}
+        
+        {/* Champs personnalisés utilisés */}
+        {availableFields.length > 0 && (
+          <div className="space-y-2 mt-3">
+            {availableFields
+              .filter((field) => usedFieldIds.has(field.id))
+              .map((field) => (
+                <div key={field.id} className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Label className="text-xs">
+                      {field.name}
+                      {field.unit && (
+                        <span className="text-muted-foreground ml-1">({field.unit})</span>
+                      )}
+                    </Label>
+                    {renderCustomField(
+                      field,
+                      item.fieldValues[field.id] || "",
+                      (value) => onUpdateField(field.id, value)
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 mt-5 text-destructive"
+                    onClick={() => onRemoveField(field.id)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            
+            {/* Bouton pour ajouter un champ */}
+            {unusedFields.length > 0 && (
+              <Select
+                value=""
+                onValueChange={(fieldId) => {
+                  const field = availableFields.find((f) => f.id.toString() === fieldId);
+                  if (field) onAddField(field);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Ajouter un paramètre..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {unusedFields.map((field) => (
+                    <SelectItem key={field.id} value={field.id.toString()}>
+                      {field.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive"
+        onClick={onRemoveExercise}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
+  );
 }
 
 export default function EditSessionPage({ params }: PageProps) {
@@ -54,11 +382,19 @@ export default function EditSessionPage({ params }: PageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
-  const [selectedExercises, setSelectedExercises] = useState<Array<{ exercise: Exercise }>>([]);
+  const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [showExerciseDialog, setShowExerciseDialog] = useState(false);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [loadingExercises, setLoadingExercises] = useState(false);
+
+  // Drag & Drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   // Form
   const [name, setName] = useState("");
@@ -93,20 +429,39 @@ export default function EditSessionPage({ params }: PageProps) {
 
       // Charger les exercices existants (trier par ordre pour garder l'ordre d'origine)
       const exercisesList = sessionData.exercises || [];
-      const loadedExercises = exercisesList
+      const loadedExercises: SelectedExercise[] = exercisesList
         .filter((se: WorkoutSessionExercise) => se.exercise !== undefined && se.exercise !== null)
         .sort((a, b) => a.order - b.order)
-        .map((se: WorkoutSessionExercise) => ({ 
-          exercise: se.exercise! 
-        }));
+        .map((se: WorkoutSessionExercise) => {
+          // Initialiser les fieldValues depuis les field_values de l'exercice
+          const fieldValues: Record<number, string> = {};
+          if (se.exercise?.field_values) {
+            se.exercise.field_values.forEach((fv) => {
+              if (fv.field_id && fv.value !== null) {
+                fieldValues[fv.field_id] = fv.value;
+              }
+            });
+          }
+          
+          return {
+            exercise: se.exercise!,
+            fieldValues,
+          };
+        });
       setSelectedExercises(loadedExercises);
 
       // Date/heure (si planifiée)
+      // Utiliser les méthodes locales pour éviter les problèmes de fuseau horaire
       const dt = sessionData.scheduled_at ? new Date(sessionData.scheduled_at) : null;
       if (dt) {
-        const iso = dt.toISOString();
-        setScheduledDate(iso.split("T")[0]);
-        setScheduledTime(iso.split("T")[1].slice(0, 5));
+        // Utiliser les méthodes locales pour éviter les décalages d'heure
+        const year = dt.getFullYear();
+        const month = String(dt.getMonth() + 1).padStart(2, "0");
+        const day = String(dt.getDate()).padStart(2, "0");
+        const hours = String(dt.getHours()).padStart(2, "0");
+        const minutes = String(dt.getMinutes()).padStart(2, "0");
+        setScheduledDate(`${year}-${month}-${day}`);
+        setScheduledTime(`${hours}:${minutes}`);
       } else {
         setScheduledDate("");
         setScheduledTime("09:00");
@@ -170,12 +525,91 @@ export default function EditSessionPage({ params }: PageProps) {
       return;
     }
 
-    setSelectedExercises((prev) => [...prev, { exercise }]);
+    // Initialiser les valeurs des champs personnalisés avec les valeurs par défaut de l'exercice
+    const initialFieldValues: Record<number, string> = {};
+    if (exercise.field_values) {
+      exercise.field_values.forEach((fv) => {
+        if (fv.field_id && fv.value !== null) {
+          initialFieldValues[fv.field_id] = fv.value;
+        }
+      });
+    }
+
+    // Si l'exercice a une activité personnalisée, initialiser aussi avec les valeurs par défaut des champs
+    if (exercise.custom_activity_type?.custom_fields) {
+      exercise.custom_activity_type.custom_fields.forEach((field) => {
+        if (field.default_value && !initialFieldValues[field.id]) {
+          initialFieldValues[field.id] = field.default_value;
+        }
+      });
+    }
+
+    setSelectedExercises((prev) => [
+      ...prev,
+      {
+        exercise,
+        fieldValues: initialFieldValues,
+      },
+    ]);
     setExerciseSearch("");
   };
 
-  const handleRemoveExercise = (index: number) => {
-    setSelectedExercises((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveExercise = (exerciseId: number) => {
+    setSelectedExercises((prev) => prev.filter((item) => item.exercise.id !== exerciseId));
+  };
+
+  const handleUpdateFieldValue = (exerciseId: number, fieldId: number, value: string) => {
+    setSelectedExercises((prev) =>
+      prev.map((item) => {
+        if (item.exercise.id === exerciseId) {
+          const newFieldValues = { ...item.fieldValues };
+          if (value === "" || value === null) {
+            delete newFieldValues[fieldId];
+          } else {
+            newFieldValues[fieldId] = value;
+          }
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleAddField = (exerciseId: number, field: CustomFieldDefinition) => {
+    setSelectedExercises((prev) =>
+      prev.map((item) => {
+        if (item.exercise.id === exerciseId) {
+          const newFieldValues = { ...item.fieldValues };
+          newFieldValues[field.id] = field.default_value || "";
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleRemoveField = (exerciseId: number, fieldId: number) => {
+    setSelectedExercises((prev) =>
+      prev.map((item) => {
+        if (item.exercise.id === exerciseId) {
+          const newFieldValues = { ...item.fieldValues };
+          delete newFieldValues[fieldId];
+          return { ...item, fieldValues: newFieldValues };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setSelectedExercises((items) => {
+        const oldIndex = items.findIndex((item) => item.exercise.id === active.id);
+        const newIndex = items.findIndex((item) => item.exercise.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -186,15 +620,25 @@ export default function EditSessionPage({ params }: PageProps) {
 
     setIsSaving(true);
     try {
-      const scheduled_at =
-        scheduledDate && scheduledTime
-          ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
-          : undefined;
+      // Créer la date en heure locale pour éviter les décalages UTC
+      let scheduled_at: string | undefined = undefined;
+      if (scheduledDate && scheduledTime) {
+        // Créer une date en heure locale sans conversion UTC
+        const [year, month, day] = scheduledDate.split("-").map(Number);
+        const [hours, minutes] = scheduledTime.split(":").map(Number);
+        const localDate = new Date(year, month - 1, day, hours, minutes, 0);
+        // Convertir en ISO string (le backend attend une date ISO)
+        scheduled_at = localDate.toISOString();
+      }
 
       // Calculer recurrence_data automatiquement selon le type
       let recurrenceData: (number | string)[] | undefined = undefined;
       if (recurrenceType && scheduledDate && scheduledTime) {
-        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+        // Utiliser la date locale pour calculer la récurrence
+        const [year, month, day] = scheduledDate.split("-").map(Number);
+        const [hours, minutes] = scheduledTime.split(":").map(Number);
+        const scheduledDateObj = new Date(year, month - 1, day, hours, minutes, 0);
+        
         if (recurrenceType === "weekly") {
           const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
           const dayOfWeek = scheduledDateObj.getDay();
@@ -205,22 +649,51 @@ export default function EditSessionPage({ params }: PageProps) {
         }
       }
 
-      await workoutApi.sessions.update(sessionId, {
+      // Préparer les données de mise à jour
+      const updatePayload: {
+        name: string;
+        notes?: string;
+        scheduled_at?: string;
+        custom_activity_type_id?: number;
+        custom_activity_type_ids: number[];
+        recurrence_type?: "daily" | "weekly" | "monthly";
+        recurrence_data?: (number | string)[];
+        exercises?: Array<{
+          exercise_id: number;
+          order: number;
+          target_sets: number;
+          target_reps: number;
+          rest_seconds: number;
+        }>;
+      } = {
         name,
-        notes: notes || undefined,
-        scheduled_at,
-        custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
         custom_activity_type_ids: selectedActivityIds,
-        recurrence_type: recurrenceType || undefined,
-        recurrence_data: recurrenceData,
-        exercises: selectedExercises.map((item, idx) => ({
-          exercise_id: item.exercise.id,
-          order: idx,
-          target_sets: 3,
-          target_reps: 12,
-          rest_seconds: 90,
-        })),
-      });
+        exercises: selectedExercises.map((item, idx) => {
+          const params = extractExerciseParams(item.exercise, item.fieldValues);
+          return {
+            exercise_id: item.exercise.id,
+            order: idx,
+            target_sets: params.sets,
+            target_reps: params.reps,
+            target_weight: params.weight,
+            target_duration: params.duration,
+            target_distance: params.distance,
+            rest_seconds: params.rest || 90,
+          };
+        }),
+      };
+
+      // Ajouter les champs optionnels seulement s'ils ont une valeur
+      if (notes) updatePayload.notes = notes;
+      if (scheduled_at) updatePayload.scheduled_at = scheduled_at;
+      if (selectedActivityIds.length > 0) {
+        updatePayload.custom_activity_type_id = selectedActivityIds[0];
+      }
+      // Toujours envoyer recurrence_type et recurrence_data (même si null) pour permettre la suppression
+      updatePayload.recurrence_type = recurrenceType || undefined;
+      updatePayload.recurrence_data = recurrenceData;
+
+      await workoutApi.sessions.update(sessionId, updatePayload);
 
       success("Séance mise à jour");
       router.push(`/workout/sessions`);
@@ -258,6 +731,34 @@ export default function EditSessionPage({ params }: PageProps) {
   }
 
   const isSessionInProgress = session.status === "en_cours";
+  const isSessionCompleted = session.status === "terminee";
+  const isSessionCancelled = session.status === "annulee";
+  const canEdit = !isSessionCompleted && !isSessionCancelled;
+
+  // Rediriger si la séance ne peut pas être éditée
+  if (!canEdit) {
+    return (
+      <div className="min-h-screen">
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-8 max-w-2xl">
+          <Card className="border-destructive">
+            <CardContent className="py-8 text-center space-y-4">
+              <p className="text-destructive font-medium">
+                {isSessionCompleted && "Cette séance est terminée et ne peut pas être modifiée."}
+                {isSessionCancelled && "Cette séance a été annulée et ne peut pas être modifiée."}
+              </p>
+              <Button onClick={() => router.push(`/workout/sessions/${session.id}`)}>
+                Voir les détails
+              </Button>
+              <Button variant="outline" onClick={() => router.push("/workout/sessions")} className="ml-2">
+                Retour à la liste
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen overflow-hidden">
@@ -278,9 +779,23 @@ export default function EditSessionPage({ params }: PageProps) {
 
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Modifier la séance</h1>
           <p className="mt-1 text-sm text-muted-foreground">Mettez à jour les informations</p>
+          {isSessionCompleted && (
+            <div className="mt-4 border border-green-500/50 bg-green-500/10 rounded-lg p-3">
+              <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                Cette séance est terminée et ne peut pas être modifiée.
+              </p>
+            </div>
+          )}
+          {isSessionCancelled && (
+            <div className="mt-4 border border-destructive bg-destructive/10 rounded-lg p-3">
+              <p className="text-sm text-destructive font-medium">
+                Cette séance a été annulée et ne peut pas être modifiée.
+              </p>
+            </div>
+          )}
         </section>
 
-        <Card>
+        <Card className={canEdit ? "" : "opacity-50 pointer-events-none"}>
           <CardHeader>
             <CardTitle>Informations</CardTitle>
             <CardDescription>Nom, activités, date et notes</CardDescription>
@@ -402,31 +917,29 @@ export default function EditSessionPage({ params }: PageProps) {
                 Aucun exercice ajouté. Cliquez sur &quot;Ajouter&quot; pour en ajouter.
               </p>
             ) : (
-              <div className="space-y-2">
-                {selectedExercises.map((item, index) => (
-                  <div
-                    key={item.exercise.id}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium">{item.exercise.name}</p>
-                      {item.exercise.custom_activity_type && (
-                        <p className="text-xs text-muted-foreground">
-                          {item.exercise.custom_activity_type.name}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveExercise(index)}
-                      className="text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={selectedExercises.map((item) => item.exercise.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {selectedExercises.map((item) => (
+                      <SortableExerciseItem
+                        key={item.exercise.id}
+                        item={item}
+                        onUpdateField={(fieldId, value) => handleUpdateFieldValue(item.exercise.id, fieldId, value)}
+                        onAddField={(field) => handleAddField(item.exercise.id, field)}
+                        onRemoveField={(fieldId) => handleRemoveField(item.exercise.id, fieldId)}
+                        onRemoveExercise={() => handleRemoveExercise(item.exercise.id)}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
           </CardContent>
         </Card>
@@ -486,12 +999,14 @@ export default function EditSessionPage({ params }: PageProps) {
 
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
           <Button variant="outline" className="flex-1" onClick={() => router.push("/workout/sessions")}>
-            Annuler
+            Retour
           </Button>
-          <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Enregistrer
-          </Button>
+          {canEdit && (
+            <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Enregistrer
+            </Button>
+          )}
         </div>
       </main>
 

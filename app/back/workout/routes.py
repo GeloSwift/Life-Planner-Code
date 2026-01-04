@@ -37,6 +37,7 @@ from workout.schemas import (
     WorkoutSessionUpdate,
     WorkoutSessionResponse,
     WorkoutSessionListResponse,
+    SessionExerciseResponse,
     WorkoutSetCreate,
     WorkoutSetUpdate,
     WorkoutSetResponse,
@@ -465,6 +466,31 @@ def delete_session(
     """Supprime une session."""
     if not SessionService.delete_session(db, session_id, current_user.id):
         raise HTTPException(status_code=404, detail="Session non trouvée")
+
+
+# =============================================================================
+# SESSION EXERCISE ROUTES (Exercices de session)
+# =============================================================================
+
+@router.put(
+    "/sessions/{session_id}/exercises/{exercise_id}",
+    response_model=SessionExerciseResponse,
+    summary="Mettre à jour un exercice de session",
+)
+def update_session_exercise(
+    session_id: int,
+    exercise_id: int,
+    notes: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour les notes d'un exercice de session (sans toucher aux séries)."""
+    result = SessionService.update_session_exercise_notes(
+        db, exercise_id, notes, current_user.id
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Exercice non trouvé")
+    return result
 
 
 # =============================================================================
