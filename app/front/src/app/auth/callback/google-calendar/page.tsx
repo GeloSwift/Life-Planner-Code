@@ -7,7 +7,7 @@
  * via the backend API.
  */
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, XCircle, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default function GoogleCalendarCallbackPage() {
+function GoogleCalendarCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
@@ -74,46 +74,71 @@ export default function GoogleCalendarCallbackPage() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4">
-            {status === "loading" && (
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            )}
-            {status === "success" && (
-              <CheckCircle className="h-12 w-12 text-green-500" />
-            )}
-            {status === "error" && (
-              <XCircle className="h-12 w-12 text-destructive" />
-            )}
-          </div>
-          <CardTitle className="flex items-center justify-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Google Calendar
-          </CardTitle>
-          <CardDescription>
-            {status === "loading" && "Connexion en cours..."}
-            {status === "success" && "Connexion réussie !"}
-            {status === "error" && "Erreur de connexion"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-center">
-          <p className="text-sm text-muted-foreground mb-4">{message}</p>
-          
+    <Card className="max-w-md w-full">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4">
+          {status === "loading" && (
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          )}
           {status === "success" && (
-            <p className="text-xs text-muted-foreground">
-              Redirection vers votre profil...
-            </p>
+            <CheckCircle className="h-12 w-12 text-green-500" />
           )}
-          
           {status === "error" && (
-            <Button onClick={() => router.push("/profile")} className="mt-2">
-              Retour au profil
-            </Button>
+            <XCircle className="h-12 w-12 text-destructive" />
           )}
-        </CardContent>
-      </Card>
+        </div>
+        <CardTitle className="flex items-center justify-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Google Calendar
+        </CardTitle>
+        <CardDescription>
+          {status === "loading" && "Connexion en cours..."}
+          {status === "success" && "Connexion réussie !"}
+          {status === "error" && "Erreur de connexion"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="text-center">
+        <p className="text-sm text-muted-foreground mb-4">{message}</p>
+        
+        {status === "success" && (
+          <p className="text-xs text-muted-foreground">
+            Redirection vers votre profil...
+          </p>
+        )}
+        
+        {status === "error" && (
+          <Button onClick={() => router.push("/profile")} className="mt-2">
+            Retour au profil
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <Card className="max-w-md w-full">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+        <CardTitle className="flex items-center justify-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Google Calendar
+        </CardTitle>
+        <CardDescription>Chargement...</CardDescription>
+      </CardHeader>
+    </Card>
+  );
+}
+
+export default function GoogleCalendarCallbackPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Suspense fallback={<LoadingFallback />}>
+        <GoogleCalendarCallbackContent />
+      </Suspense>
     </div>
   );
 }
