@@ -662,7 +662,10 @@ export default function EditSessionPage({ params }: PageProps) {
           exercise_id: number;
           order: number;
           target_sets: number;
-          target_reps: number;
+          target_reps?: number;
+          target_weight?: number;
+          target_duration?: number;
+          target_distance?: number;
           rest_seconds: number;
         }>;
       } = {
@@ -670,16 +673,26 @@ export default function EditSessionPage({ params }: PageProps) {
         custom_activity_type_ids: selectedActivityIds,
         exercises: selectedExercises.map((item, idx) => {
           const params = extractExerciseParams(item.exercise, item.fieldValues);
-          return {
+          const exerciseData: {
+            exercise_id: number;
+            order: number;
+            target_sets: number;
+            rest_seconds: number;
+            target_reps?: number;
+            target_weight?: number;
+            target_duration?: number;
+            target_distance?: number;
+          } = {
             exercise_id: item.exercise.id,
             order: idx,
             target_sets: params.sets,
-            target_reps: params.reps,
-            target_weight: params.weight,
-            target_duration: params.duration,
-            target_distance: params.distance,
             rest_seconds: params.rest || 90,
           };
+          if (params.reps) exerciseData.target_reps = params.reps;
+          if (params.weight) exerciseData.target_weight = params.weight;
+          if (params.duration) exerciseData.target_duration = params.duration;
+          if (params.distance) exerciseData.target_distance = params.distance;
+          return exerciseData;
         }),
       };
 

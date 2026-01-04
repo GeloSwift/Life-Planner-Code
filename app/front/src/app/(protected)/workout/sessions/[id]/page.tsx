@@ -476,41 +476,6 @@ export default function SessionPage({ params }: PageProps) {
     return details;
   };
 
-  // Fonction pour formater la ligne principale des détails (séries, poids, reps, etc.)
-  const formatMainDetails = (details: ExerciseDetails): string => {
-    const parts: string[] = [];
-    
-    if (details.sets) {
-      parts.push(`${details.sets} séries`);
-    }
-    if (details.reps) {
-      parts.push(`${details.reps} reps`);
-    }
-    if (details.weight) {
-      parts.push(`${details.weight}kg`);
-    }
-    if (details.duration) {
-      const minutes = Math.floor(details.duration / 60);
-      const seconds = details.duration % 60;
-      if (minutes > 0) {
-        parts.push(`${minutes}min${seconds > 0 ? `${seconds}s` : ""}`);
-      } else {
-        parts.push(`${seconds}s`);
-      }
-    }
-    if (details.distance) {
-      parts.push(`${details.distance}km`);
-    }
-    if (details.speed) {
-      parts.push(`${details.speed}km/h`);
-    }
-    if (details.incline) {
-      parts.push(`${details.incline}% inclinaison`);
-    }
-    
-    return parts.join(" • ");
-  };
-
   // Fonction pour formater les muscles travaillés (affiché en dessous)
   const formatSecondaryDetails = (details: ExerciseDetails): string | null => {
     const parts: string[] = [];
