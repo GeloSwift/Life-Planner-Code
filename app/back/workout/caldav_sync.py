@@ -143,6 +143,11 @@ async def discover_caldav_server(apple_id: str, app_password: str) -> dict:
         root = ET.fromstring(response.text)
         ns["apple"] = "http://apple.com/ns/ical/"
         
+        # Extraire le serveur de base depuis calendar_home pour construire les URLs complètes
+        from urllib.parse import urlparse
+        parsed_home = urlparse(calendar_home)
+        base_url = f"{parsed_home.scheme}://{parsed_home.netloc}"
+        
         calendars = []
         for response_elem in root.findall(".//d:response", ns):
             href = response_elem.find("d:href", ns)
@@ -153,8 +158,13 @@ async def discover_caldav_server(apple_id: str, app_password: str) -> dict:
             is_calendar = resourcetype is not None and resourcetype.find("cal:calendar", ns) is not None
             
             if is_calendar and href is not None:
+                # Construire l'URL complète si c'est un chemin relatif
+                calendar_href = href.text
+                if calendar_href and not calendar_href.startswith("http"):
+                    calendar_href = f"{base_url}{calendar_href}"
+                
                 calendars.append({
-                    "href": href.text,
+                    "href": calendar_href,
                     "name": displayname.text if displayname is not None else "Calendrier",
                 })
         

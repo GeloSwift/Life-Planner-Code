@@ -126,7 +126,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
   const goToPrev = () => {
     if (viewMode === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() - 7);
@@ -136,7 +136,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
   const goToNext = () => {
     if (viewMode === "month") {
-      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() + 7);
@@ -237,9 +237,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                 <Clock className="h-2.5 w-2.5" />
                 {formatTime(session.scheduled_at)}
               </p>
-            )}
-          </div>
+          )}
         </div>
+      </div>
       </CardContent>
     </Card>
   );
@@ -269,8 +269,8 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                   {formatTime(session.scheduled_at)}
                 </span>
               )}
-            </div>
-          ))}
+          </div>
+        ))}
           {daySessions.length > 3 && (
             <p className="text-xs text-muted-foreground">+{daySessions.length - 3} autres</p>
           )}
@@ -285,34 +285,34 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const DayCell = ({ day, month, year }: { day: number; month: number; year: number }) => {
     const daySessions = getSessionsForDay(year, month, day);
     const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
-    const hasSessions = daySessions.length > 0;
+          const hasSessions = daySessions.length > 0;
     const dayKey = `${year}-${month}-${day}`;
     const isHovered = hoveredDay === dayKey;
 
-    return (
-      <div 
+          return (
+            <div
         className="relative"
         onMouseEnter={() => handleDayHover(dayKey)}
         onMouseLeave={() => handleDayHover(null)}
       >
         <div
-          className={`
+              className={`
             aspect-square flex flex-col items-center justify-center rounded-md text-xs sm:text-sm
-            transition-colors cursor-pointer hover:bg-accent
+                transition-colors cursor-pointer hover:bg-accent
             ${isToday ? "bg-primary/10 font-bold text-primary ring-1 ring-primary/30" : ""}
-            ${hasSessions ? "font-medium" : "text-muted-foreground"}
-          `}
+                ${hasSessions ? "font-medium" : "text-muted-foreground"}
+              `}
           onClick={() => handleDayClick(daySessions)}
-        >
-          <span>{day}</span>
-          {hasSessions && (
-            <div className="flex gap-0.5 mt-0.5">
-              {daySessions.slice(0, 3).map((session, i) => (
-                <div
-                  key={i}
+            >
+              <span>{day}</span>
+              {hasSessions && (
+                <div className="flex gap-0.5 mt-0.5">
+                  {daySessions.slice(0, 3).map((session, i) => (
+                    <div
+                      key={i}
                   className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${getStatusColor(session.status)}`}
-                />
-              ))}
+                    />
+                  ))}
             </div>
           )}
         </div>
@@ -459,9 +459,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                     {isToday && (
                       <span className="text-[10px] bg-primary text-primary-foreground px-1 py-0.5 rounded">
                         Auj.
-                      </span>
-                    )}
-                  </div>
+                    </span>
+                  )}
+                </div>
                 </div>
                 
                 {daySessions.length === 0 ? (
@@ -472,11 +472,11 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                       <SessionCard key={session.id} session={session} compact />
                     ))}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
       )}
 
       {/* Dialog pour sélectionner parmi plusieurs séances */}
@@ -492,7 +492,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             {selectedDaySessions?.map((session) => (
               <SessionCard key={session.id} session={session} />
             ))}
-          </div>
+        </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -415,7 +415,7 @@ class WorkoutSession(Base):
     
     # Apple Calendar sync (CalDAV)
     apple_calendar_event_uid: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-
+    
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
