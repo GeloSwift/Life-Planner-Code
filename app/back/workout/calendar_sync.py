@@ -150,7 +150,7 @@ async def create_calendar_event(
         end_time = start_time + timedelta(hours=1)
     
     event = {
-        "summary": f"🏋️ {title}",
+        "summary": title,
         "description": description,
         "start": {
             "dateTime": start_time.isoformat(),
@@ -197,7 +197,7 @@ async def update_calendar_event(
         end_time = start_time + timedelta(hours=1)
     
     event = {
-        "summary": f"🏋️ {title}",
+        "summary": title,
         "description": description,
         "start": {
             "dateTime": start_time.isoformat(),
@@ -250,19 +250,18 @@ def build_session_description(
     frontend_url: str,
 ) -> str:
     """
-    Construit une description riche pour l'événement Google Calendar.
+    Construit une description propre pour l'événement Google Calendar.
     """
     lines = []
     
     # Types d'activités
     if activity_types:
-        lines.append(f"📋 Activités : {', '.join(activity_types)}")
-    
-    lines.append("")
+        lines.append(f"Activités: {', '.join(activity_types)}")
+        lines.append("")
     
     # Liste des exercices
     if exercises:
-        lines.append("💪 Exercices :")
+        lines.append("Exercices:")
         for ex in exercises[:10]:  # Max 10 exercices
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
@@ -278,20 +277,15 @@ def build_session_description(
                 details.append(f"{weight}kg")
             
             detail_str = f" ({', '.join(details)})" if details else ""
-            lines.append(f"  • {name}{detail_str}")
+            lines.append(f"- {name}{detail_str}")
         
         if len(exercises) > 10:
-            lines.append(f"  ... et {len(exercises) - 10} autres exercices")
-    
-    lines.append("")
-    lines.append("─" * 30)
-    lines.append("")
+            lines.append(f"... et {len(exercises) - 10} autres")
+        lines.append("")
     
     # Lien vers la séance
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
-    lines.append(f"🔗 Lancer la séance : {session_url}")
-    lines.append("")
-    lines.append("📱 Life Planner")
+    lines.append(f"Lancer: {session_url}")
     
     return "\n".join(lines)
 

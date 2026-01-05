@@ -222,7 +222,7 @@ DTSTART;TZID=Europe/Paris:{format_datetime(start_time)}
 DTEND;TZID=Europe/Paris:{format_datetime(end_time)}
 LAST-MODIFIED:{format_datetime(now)}Z
 SEQUENCE:0
-SUMMARY:🏋️ {title}
+SUMMARY:{title}
 DESCRIPTION:{escaped_description}
 BEGIN:VALARM
 ACTION:DISPLAY
@@ -357,18 +357,16 @@ def build_session_description_caldav(
     frontend_url: str,
 ) -> str:
     """
-    Construit une description pour l'événement CalDAV.
-    Note: iCalendar utilise \\n pour les sauts de ligne.
+    Construit une description propre pour l'événement CalDAV.
     """
     lines = []
     
     if activity_types:
-        lines.append(f"Activités : {', '.join(activity_types)}")
-    
-    lines.append("")
+        lines.append(f"Activités: {', '.join(activity_types)}")
+        lines.append("")
     
     if exercises:
-        lines.append("Exercices :")
+        lines.append("Exercices:")
         for ex in exercises[:10]:
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
