@@ -60,11 +60,14 @@ async def connect_apple_calendar(
     pour pouvoir se connecter.
     """
     from workout.caldav_sync import discover_caldav_server
+    import traceback
     
     # Vérifier les identifiants
     try:
         discovery = await discover_caldav_server(request.apple_id, request.app_password)
     except Exception as e:
+        print(f"Apple Calendar connection error: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=400,
             detail=f"Impossible de se connecter à iCloud: {str(e)}"

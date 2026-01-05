@@ -48,7 +48,7 @@ async def discover_caldav_server(apple_id: str, app_password: str) -> dict:
     auth_header = get_auth_header(apple_id, app_password)
     
     # Étape 1: Trouver le principal de l'utilisateur
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         # Requête PROPFIND pour trouver le principal
         response = await client.request(
             method="PROPFIND",
