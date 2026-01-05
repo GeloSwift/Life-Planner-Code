@@ -211,7 +211,7 @@ function RegisterContent() {
                     placeholder="Jean Dupont"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
+                    className="h-12 pl-10 transition-all focus:scale-[1.01] text-[16px]"
                     autoComplete="name"
                   />
                 </div>
@@ -227,7 +227,7 @@ function RegisterContent() {
                     placeholder="vous@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
+                    className="h-12 pl-10 transition-all focus:scale-[1.01] text-[16px]"
                     required
                     autoComplete="email"
                   />
@@ -243,7 +243,7 @@ function RegisterContent() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-12 pl-10 transition-all focus:scale-[1.01]"
+                    className="h-12 pl-10 transition-all focus:scale-[1.01] text-[16px]"
                     required
                     autoComplete="new-password"
                   />
@@ -280,7 +280,7 @@ function RegisterContent() {
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`h-12 pl-10 transition-all focus:scale-[1.01] ${
+                    className={`h-12 pl-10 transition-all focus:scale-[1.01] text-[16px] ${
                       confirmPassword.length > 0 && !doPasswordsMatch
                         ? "border-destructive focus-visible:ring-destructive"
                         : ""

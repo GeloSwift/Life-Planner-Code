@@ -243,7 +243,7 @@ function LoginContent() {
                     placeholder="vous@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-11 sm:h-12 pl-10 text-sm sm:text-base transition-all focus:scale-[1.01]"
+                    className="h-11 sm:h-12 pl-10 transition-all focus:scale-[1.01]"
                     required
                     autoComplete="email"
                   />
@@ -267,7 +267,7 @@ function LoginContent() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-11 sm:h-12 pl-10 text-sm sm:text-base transition-all focus:scale-[1.01]"
+                    className="h-11 sm:h-12 pl-10 transition-all focus:scale-[1.01]"
                     required
                     autoComplete="current-password"
                   />
