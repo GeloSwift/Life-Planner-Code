@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from core.db import get_db
-from auth.service import get_current_user
+from auth.routes import get_current_user
 from auth.models import User
 
 
@@ -59,7 +59,7 @@ async def connect_apple_calendar(
     L'utilisateur doit créer un mot de passe d'application sur appleid.apple.com
     pour pouvoir se connecter.
     """
-    from workout.caldav_sync import discover_caldav_server, verify_caldav_credentials
+    from workout.caldav_sync import discover_caldav_server
     
     # Vérifier les identifiants
     try:

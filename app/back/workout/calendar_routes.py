@@ -160,7 +160,7 @@ async def sync_all_sessions(
             detail="Google Calendar n'est pas connecté"
         )
     
-    from workout.models import UserActivityType, WorkoutSessionExercise, Exercise
+    from workout.models import UserActivityType, WorkoutSessionExercise
     from sqlalchemy.orm import joinedload
     
     # Récupérer les séances planifiées avec leurs exercices et les détails de chaque exercice

@@ -10,7 +10,7 @@
  */
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { authApi, googleCalendarApi, appleCalendarApi } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,8 +37,8 @@ import {
 import { useToast, ToastContainer } from "@/components/ui/toast";
 import { SkeletonProfile } from "@/components/ui/skeleton";
 
-export default function ProfilePage() {
-  const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
+function ProfileContent() {
+  const { user, isLoading, refreshUser } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toasts, success, error, warning, closeToast } = useToast();
@@ -754,5 +754,26 @@ export default function ProfilePage() {
       <Footer />
       <ToastContainer toasts={toasts} onClose={closeToast} />
     </div>
+  );
+}
+
+function ProfileLoadingFallback() {
+  return (
+    <div className="min-h-screen overflow-hidden">
+      <BackgroundDecorations />
+      <Header variant="sticky" />
+      <main className="container mx-auto px-4 py-6 sm:py-8">
+        <SkeletonProfile />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<ProfileLoadingFallback />}>
+      <ProfileContent />
+    </Suspense>
   );
 }
