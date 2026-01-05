@@ -19,7 +19,7 @@ from auth.routes import get_current_user
 from auth.models import User
 
 
-router = APIRouter(prefix="/apple-calendar", tags=["Apple Calendar"])
+router = APIRouter(prefix="/workout/apple-calendar", tags=["Apple Calendar"])
 
 
 # =============================================================================

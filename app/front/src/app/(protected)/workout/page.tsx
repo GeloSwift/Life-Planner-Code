@@ -163,15 +163,6 @@ export default function WorkoutPage() {
                 Planifiez et suivez vos entraînements
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadDashboard()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-              Actualiser
-            </Button>
           </div>
         </section>
 
