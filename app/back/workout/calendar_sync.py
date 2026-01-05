@@ -243,12 +243,66 @@ async def delete_calendar_event(
 # Helper pour synchronisation avec les sessions
 # =============================================================================
 
+def build_session_description(
+    session_id: int,
+    activity_types: list[str],
+    exercises: list[dict],
+    frontend_url: str,
+) -> str:
+    """
+    Construit une description riche pour l'événement Google Calendar.
+    """
+    lines = []
+    
+    # Types d'activités
+    if activity_types:
+        lines.append(f"📋 Activités : {', '.join(activity_types)}")
+    
+    lines.append("")
+    
+    # Liste des exercices
+    if exercises:
+        lines.append("💪 Exercices :")
+        for ex in exercises[:10]:  # Max 10 exercices
+            name = ex.get("name", "Exercice")
+            sets = ex.get("sets", "")
+            reps = ex.get("reps", "")
+            weight = ex.get("weight", "")
+            
+            details = []
+            if sets:
+                details.append(f"{sets} séries")
+            if reps:
+                details.append(f"{reps} reps")
+            if weight:
+                details.append(f"{weight}kg")
+            
+            detail_str = f" ({', '.join(details)})" if details else ""
+            lines.append(f"  • {name}{detail_str}")
+        
+        if len(exercises) > 10:
+            lines.append(f"  ... et {len(exercises) - 10} autres exercices")
+    
+    lines.append("")
+    lines.append("─" * 30)
+    lines.append("")
+    
+    # Lien vers la séance
+    session_url = f"{frontend_url}/workout/sessions/{session_id}"
+    lines.append(f"🔗 Lancer la séance : {session_url}")
+    lines.append("")
+    lines.append("📱 Life Planner")
+    
+    return "\n".join(lines)
+
+
 async def sync_session_to_calendar(
     refresh_token: str,
     session_id: int,
     session_name: str,
-    activity_type: str,
+    activity_types: list[str],
     scheduled_at: datetime,
+    exercises: Optional[list[dict]] = None,
     existing_event_id: Optional[str] = None,
 ) -> Optional[str]:
     """
@@ -258,8 +312,9 @@ async def sync_session_to_calendar(
         refresh_token: Token de l'utilisateur
         session_id: ID de la session
         session_name: Nom de la session
-        activity_type: Type d'activité
+        activity_types: Liste des types d'activités
         scheduled_at: Date/heure planifiée
+        exercises: Liste des exercices avec leurs détails
         existing_event_id: ID de l'événement existant (pour mise à jour)
     
     Returns:
@@ -273,7 +328,14 @@ async def sync_session_to_calendar(
         if not access_token:
             return None
         
-        description = f"Séance de {activity_type}\n\nLife Planner - Session #{session_id}"
+        # Construire la description avec les détails
+        frontend_url = settings.FRONTEND_URL or "https://mylifeplanner.space"
+        description = build_session_description(
+            session_id,
+            activity_types,
+            exercises or [],
+            frontend_url,
+        )
         
         if existing_event_id:
             # Mise à jour

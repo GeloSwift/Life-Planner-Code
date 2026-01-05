@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
+import { googleCalendarApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { Exercise, ActivityType, UserActivityType, CustomFieldDefinition } from "@/lib/workout-types";
@@ -649,7 +650,7 @@ export default function NewSessionPage() {
       }
 
       // Créer la séance (on stocke la première activité sélectionnée)
-      await workoutApi.sessions.create({
+      const createdSession = await workoutApi.sessions.create({
         name,
         activity_type: activityType,
         custom_activity_type_id: selectedActivityIds.length > 0 ? selectedActivityIds[0] : undefined,
@@ -672,6 +673,16 @@ export default function NewSessionPage() {
           };
         }),
       });
+
+      // Sync automatique avec Google Calendar (silencieux)
+      try {
+        const calendarStatus = await googleCalendarApi.getStatus();
+        if (calendarStatus.connected && createdSession.id) {
+          await googleCalendarApi.syncSession(createdSession.id);
+        }
+      } catch {
+        // Silencieux - ne pas bloquer si la sync échoue
+      }
 
       success(`Séance "${name}" créée avec succès`);
       router.push(`/workout/sessions`);

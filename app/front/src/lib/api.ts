@@ -397,6 +397,15 @@ export const googleCalendarApi = {
       method: "POST",
     });
   },
+
+  /**
+   * Synchronise une séance spécifique avec Google Calendar.
+   */
+  async syncSession(sessionId: number): Promise<{ success: boolean; event_id?: string }> {
+    return apiFetch(`/workout/calendar/sync/${sessionId}`, {
+      method: "POST",
+    });
+  },
 };
 
 // =============================================================================

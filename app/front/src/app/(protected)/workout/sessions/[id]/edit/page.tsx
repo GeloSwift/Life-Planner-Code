@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
+import { googleCalendarApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { UserActivityType, WorkoutSession, Exercise, WorkoutSessionExercise, CustomFieldDefinition } from "@/lib/workout-types";
@@ -707,6 +708,16 @@ export default function EditSessionPage({ params }: PageProps) {
       updatePayload.recurrence_data = recurrenceData;
 
       await workoutApi.sessions.update(sessionId, updatePayload);
+
+      // Sync automatique avec Google Calendar (silencieux)
+      try {
+        const calendarStatus = await googleCalendarApi.getStatus();
+        if (calendarStatus.connected) {
+          await googleCalendarApi.syncSession(sessionId);
+        }
+      } catch {
+        // Silencieux - ne pas bloquer si la sync échoue
+      }
 
       success("Séance mise à jour");
       router.push(`/workout/sessions`);

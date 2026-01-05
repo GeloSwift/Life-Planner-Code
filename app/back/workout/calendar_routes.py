@@ -160,24 +160,62 @@ async def sync_all_sessions(
             detail="Google Calendar n'est pas connecté"
         )
     
-    # Récupérer les séances planifiées sans event_id
-    sessions = db.query(WorkoutSession).filter(
+    from workout.models import UserActivityType
+    from sqlalchemy.orm import joinedload
+    
+    # Récupérer les séances planifiées avec leurs exercices
+    sessions = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.exercises)
+    ).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.status == SessionStatus.PLANIFIEE,
         WorkoutSession.scheduled_at.isnot(None),
     ).all()
+    
+    # Récupérer les types d'activités pour les noms
+    activity_types_map = {
+        at.id: at.name 
+        for at in db.query(UserActivityType).filter(
+            UserActivityType.user_id == current_user.id
+        ).all()
+    }
     
     synced_count = 0
     errors = []
     
     for session in sessions:
         try:
+            # Construire la liste des types d'activités
+            activity_names = []
+            if session.custom_activity_type_ids:
+                import json
+                try:
+                    ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
+                    for aid in ids:
+                        if aid in activity_types_map:
+                            activity_names.append(activity_types_map[aid])
+                except Exception:
+                    pass
+            if not activity_names:
+                activity_names = [session.activity_type.value.capitalize()]
+            
+            # Construire la liste des exercices
+            exercises_data = []
+            for ex in (session.exercises or []):
+                exercises_data.append({
+                    "name": ex.exercise.name if ex.exercise else f"Exercice {ex.exercise_id}",
+                    "sets": ex.target_sets,
+                    "reps": ex.target_reps,
+                    "weight": ex.target_weight,
+                })
+            
             event_id = await sync_session_to_calendar(
                 current_user.google_calendar_refresh_token,
                 session.id,
                 session.name,
-                session.activity_type.value,
+                activity_names,
                 session.scheduled_at,
+                exercises_data,
                 session.google_calendar_event_id,
             )
             
@@ -196,3 +234,86 @@ async def sync_all_sessions(
         "total": len(sessions),
         "errors": errors if errors else None,
     }
+
+
+@router.post("/sync/{session_id}", summary="Synchroniser une séance spécifique")
+async def sync_single_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Synchronise une séance spécifique avec Google Calendar.
+    """
+    from workout.models import WorkoutSession, UserActivityType
+    from workout.calendar_sync import sync_session_to_calendar
+    from sqlalchemy.orm import joinedload
+    import json
+    
+    if not current_user.google_calendar_connected or not current_user.google_calendar_refresh_token:
+        raise HTTPException(
+            status_code=400,
+            detail="Google Calendar n'est pas connecté"
+        )
+    
+    # Récupérer la séance avec ses exercices
+    session = db.query(WorkoutSession).options(
+        joinedload(WorkoutSession.exercises)
+    ).filter(
+        WorkoutSession.id == session_id,
+        WorkoutSession.user_id == current_user.id,
+    ).first()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Séance non trouvée")
+    
+    if not session.scheduled_at:
+        raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
+    
+    # Récupérer les types d'activités
+    activity_types_map = {
+        at.id: at.name 
+        for at in db.query(UserActivityType).filter(
+            UserActivityType.user_id == current_user.id
+        ).all()
+    }
+    
+    # Construire la liste des types d'activités
+    activity_names = []
+    if session.custom_activity_type_ids:
+        try:
+            ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
+            for aid in ids:
+                if aid in activity_types_map:
+                    activity_names.append(activity_types_map[aid])
+        except Exception:
+            pass
+    if not activity_names:
+        activity_names = [session.activity_type.value.capitalize()]
+    
+    # Construire la liste des exercices
+    exercises_data = []
+    for ex in (session.exercises or []):
+        exercises_data.append({
+            "name": ex.exercise.name if ex.exercise else f"Exercice {ex.exercise_id}",
+            "sets": ex.target_sets,
+            "reps": ex.target_reps,
+            "weight": ex.target_weight,
+        })
+    
+    event_id = await sync_session_to_calendar(
+        current_user.google_calendar_refresh_token,
+        session.id,
+        session.name,
+        activity_names,
+        session.scheduled_at,
+        exercises_data,
+        session.google_calendar_event_id,
+    )
+    
+    if event_id:
+        session.google_calendar_event_id = event_id
+        db.commit()
+        return {"success": True, "event_id": event_id}
+    
+    raise HTTPException(status_code=500, detail="Erreur lors de la synchronisation")

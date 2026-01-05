@@ -25,6 +25,7 @@ import {
   ACTIVITY_TYPE_LABELS,
   type WorkoutSession,
   type WorkoutSessionExercise,
+  type UserActivityType,
 } from "@/lib/workout-types";
 import {
   Loader2,
@@ -51,6 +52,7 @@ export default function SessionPage({ params }: PageProps) {
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
   const [exercises, setExercises] = useState<WorkoutSessionExercise[]>([]);
+  const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,8 +83,12 @@ export default function SessionPage({ params }: PageProps) {
   const loadSession = useCallback(async (preserveExpanded: boolean = false) => {
     try {
       setError(null);
-      const sessionData = await workoutApi.sessions.get(parseInt(id));
+      const [sessionData, activitiesData] = await Promise.all([
+        workoutApi.sessions.get(parseInt(id)),
+        workoutApi.activityTypes.list(),
+      ]);
       setSession(sessionData);
+      setActivityTypes(activitiesData);
       // Les exercices sont inclus dans la réponse de la session
       const exercisesList = sessionData.exercises || [];
       setExercises(exercisesList);
@@ -381,6 +387,38 @@ export default function SessionPage({ params }: PageProps) {
     }
     return null;
   };
+
+  // Fonction pour obtenir les noms des activités de la séance
+  const getSessionActivityNames = useCallback((): string => {
+    if (!session) return "";
+    
+    const names: string[] = [];
+    
+    // 1) Activités depuis custom_activity_type_ids
+    if (session.custom_activity_type_ids && session.custom_activity_type_ids.length > 0) {
+      session.custom_activity_type_ids.forEach((id) => {
+        const activity = activityTypes.find((a) => a.id === id);
+        if (activity) names.push(activity.name);
+      });
+    }
+    
+    // 2) Activité principale custom_activity_type
+    if (session.custom_activity_type && !names.includes(session.custom_activity_type.name)) {
+      names.push(session.custom_activity_type.name);
+    } else if (session.custom_activity_type_id && names.length === 0) {
+      const activity = activityTypes.find((a) => a.id === session.custom_activity_type_id);
+      if (activity && !names.includes(activity.name)) {
+        names.push(activity.name);
+      }
+    }
+    
+    // 3) Fallback sur activity_type de base
+    if (names.length === 0) {
+      return ACTIVITY_TYPE_LABELS[session.activity_type];
+    }
+    
+    return names.join(", ");
+  }, [session, activityTypes]);
 
   // Fonction pour extraire les informations clés des paramètres personnalisés
   interface ExerciseDetails {
@@ -734,7 +772,7 @@ export default function SessionPage({ params }: PageProps) {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold">{session.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {ACTIVITY_TYPE_LABELS[session.activity_type]}
+                {getSessionActivityNames()}
               </p>
               {isCancelled && (
                 <div className="mt-4 border border-destructive bg-destructive/10 rounded-lg p-3">

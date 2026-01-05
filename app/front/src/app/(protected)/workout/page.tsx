@@ -24,7 +24,9 @@ import { GoalsProgress } from "@/components/workout/goals-progress";
 import { SessionCalendar } from "@/components/workout/session-calendar";
 import { ActiveSession } from "@/components/workout/active-session";
 import { workoutApi } from "@/lib/workout-api";
+import { googleCalendarApi } from "@/lib/api";
 import type { DashboardResponse } from "@/lib/workout-types";
+import { useToast } from "@/components/ui/toast";
 import {
   Loader2,
   Dumbbell,
@@ -35,13 +37,21 @@ import {
   Calendar,
   ArrowRight,
   RefreshCw,
+  CalendarSync,
+  Link2,
 } from "lucide-react";
 
 export default function WorkoutPage() {
   const router = useRouter();
+  const { success, error: showError, info } = useToast();
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Google Calendar
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -55,9 +65,51 @@ export default function WorkoutPage() {
     }
   }, []);
 
+  // Charger le statut Google Calendar
+  const loadCalendarStatus = useCallback(async () => {
+    try {
+      const status = await googleCalendarApi.getStatus();
+      setCalendarConnected(status.connected);
+    } catch {
+      setCalendarConnected(false);
+    }
+  }, []);
+
+  // Synchroniser avec Google Calendar
+  const handleSyncCalendar = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await googleCalendarApi.syncAll();
+      if (result.synced > 0) {
+        success(`${result.synced} séance(s) synchronisée(s) avec Google Calendar`);
+      } else {
+        info("Toutes les séances sont déjà synchronisées");
+      }
+    } catch (err) {
+      showError("Erreur lors de la synchronisation");
+      console.error(err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Connecter Google Calendar
+  const handleConnectCalendar = async () => {
+    setIsConnecting(true);
+    try {
+      const { auth_url } = await googleCalendarApi.connect();
+      window.location.href = auth_url;
+    } catch (err) {
+      showError("Erreur lors de la connexion à Google Calendar");
+      setIsConnecting(false);
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]);
+    loadCalendarStatus();
+  }, [loadDashboard, loadCalendarStatus]);
 
   if (isLoading) {
     return (
@@ -197,15 +249,51 @@ export default function WorkoutPage() {
                     <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     Planning
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-3"
-                    onClick={() => router.push("/workout/sessions")}
-                  >
-                    Voir tout
-                    <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {/* Bouton sync Google Calendar */}
+                    {calendarConnected ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 sm:h-9 px-2 sm:px-3"
+                        onClick={handleSyncCalendar}
+                        disabled={isSyncing}
+                        title="Synchroniser avec Google Calendar"
+                      >
+                        {isSyncing ? (
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <CalendarSync className="h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="hidden sm:inline ml-1">Sync</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 sm:h-9 px-2 sm:px-3"
+                        onClick={handleConnectCalendar}
+                        disabled={isConnecting}
+                        title="Connecter Google Calendar"
+                      >
+                        {isConnecting ? (
+                          <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <Link2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="hidden sm:inline ml-1">Google Cal</span>
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-3"
+                      onClick={() => router.push("/workout/sessions")}
+                    >
+                      Voir tout
+                      <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <CardDescription className="text-xs sm:text-sm">Vos séances du mois</CardDescription>
               </CardHeader>
