@@ -55,9 +55,11 @@ function GoogleCalendarCallbackContent() {
           setStatus("success");
           setMessage(data.message || "Google Calendar connecté avec succès !");
           
-          // Rediriger vers le profil après 2 secondes
+          // Rediriger vers la page précédente (ou workout par défaut) après 2 secondes
           setTimeout(() => {
-            router.push("/profile");
+            const returnUrl = localStorage.getItem("calendar_return_url") || "/workout";
+            localStorage.removeItem("calendar_return_url");
+            router.push(returnUrl);
           }, 2000);
         } else {
           setStatus("error");
@@ -102,13 +104,17 @@ function GoogleCalendarCallbackContent() {
         
         {status === "success" && (
           <p className="text-xs text-muted-foreground">
-            Redirection vers votre profil...
+            Redirection en cours...
           </p>
         )}
         
         {status === "error" && (
-          <Button onClick={() => router.push("/profile")} className="mt-2">
-            Retour au profil
+          <Button onClick={() => {
+            const returnUrl = localStorage.getItem("calendar_return_url") || "/workout";
+            localStorage.removeItem("calendar_return_url");
+            router.push(returnUrl);
+          }} className="mt-2">
+            Retour
           </Button>
         )}
       </CardContent>

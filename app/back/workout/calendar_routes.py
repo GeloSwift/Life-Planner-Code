@@ -160,12 +160,12 @@ async def sync_all_sessions(
             detail="Google Calendar n'est pas connecté"
         )
     
-    from workout.models import UserActivityType
+    from workout.models import UserActivityType, WorkoutSessionExercise, Exercise
     from sqlalchemy.orm import joinedload
     
-    # Récupérer les séances planifiées avec leurs exercices
+    # Récupérer les séances planifiées avec leurs exercices et les détails de chaque exercice
     sessions = db.query(WorkoutSession).options(
-        joinedload(WorkoutSession.exercises)
+        joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise)
     ).filter(
         WorkoutSession.user_id == current_user.id,
         WorkoutSession.status == SessionStatus.PLANIFIEE,
@@ -245,7 +245,7 @@ async def sync_single_session(
     """
     Synchronise une séance spécifique avec Google Calendar.
     """
-    from workout.models import WorkoutSession, UserActivityType
+    from workout.models import WorkoutSession, UserActivityType, WorkoutSessionExercise
     from workout.calendar_sync import sync_session_to_calendar
     from sqlalchemy.orm import joinedload
     import json
@@ -256,9 +256,9 @@ async def sync_single_session(
             detail="Google Calendar n'est pas connecté"
         )
     
-    # Récupérer la séance avec ses exercices
+    # Récupérer la séance avec ses exercices et les détails de chaque exercice
     session = db.query(WorkoutSession).options(
-        joinedload(WorkoutSession.exercises)
+        joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise)
     ).filter(
         WorkoutSession.id == session_id,
         WorkoutSession.user_id == current_user.id,

@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
-import { googleCalendarApi } from "@/lib/api";
+import { googleCalendarApi, appleCalendarApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { UserActivityType, WorkoutSession, Exercise, WorkoutSessionExercise, CustomFieldDefinition } from "@/lib/workout-types";
@@ -709,12 +709,21 @@ export default function EditSessionPage({ params }: PageProps) {
 
       await workoutApi.sessions.update(sessionId, updatePayload);
 
-      // Sync automatique avec Google Calendar (silencieux)
+      // Sync automatique avec les calendriers (silencieux)
       try {
-        const calendarStatus = await googleCalendarApi.getStatus();
-        if (calendarStatus.connected) {
-          await googleCalendarApi.syncSession(sessionId);
+        const [googleStatus, appleStatus] = await Promise.all([
+          googleCalendarApi.getStatus().catch(() => ({ connected: false })),
+          appleCalendarApi.getStatus().catch(() => ({ connected: false })),
+        ]);
+        
+        const syncPromises = [];
+        if (googleStatus.connected) {
+          syncPromises.push(googleCalendarApi.syncSession(sessionId));
         }
+        if (appleStatus.connected) {
+          syncPromises.push(appleCalendarApi.syncSession(sessionId));
+        }
+        await Promise.all(syncPromises);
       } catch {
         // Silencieux - ne pas bloquer si la sync échoue
       }

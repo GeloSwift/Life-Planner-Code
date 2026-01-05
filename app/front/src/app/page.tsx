@@ -5,6 +5,9 @@
  * 
  * Affiche une présentation de l'application avec des CTA
  * pour se connecter ou créer un compte.
+ * 
+ * OPTIMISATION: Pas de spinner de loading - affiche le contenu immédiatement
+ * avec les boutons "non connecté" par défaut, puis met à jour quand l'auth est prête.
  */
 
 import Link from "next/link";
@@ -14,7 +17,6 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import {
-  Loader2,
   Dumbbell,
   Utensils,
   Wallet,
@@ -25,15 +27,10 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // Pas de spinner de loading - on affiche le contenu immédiatement
+  // avec les boutons "non connecté" par défaut, puis ça se met à jour
 
   const features = [
     {

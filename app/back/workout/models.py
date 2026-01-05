@@ -413,6 +413,9 @@ class WorkoutSession(Base):
     # Google Calendar sync
     google_calendar_event_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     
+    # Apple Calendar sync (CalDAV)
+    apple_calendar_event_uid: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

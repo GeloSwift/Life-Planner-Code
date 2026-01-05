@@ -24,9 +24,10 @@ import { GoalsProgress } from "@/components/workout/goals-progress";
 import { SessionCalendar } from "@/components/workout/session-calendar";
 import { ActiveSession } from "@/components/workout/active-session";
 import { workoutApi } from "@/lib/workout-api";
-import { googleCalendarApi } from "@/lib/api";
+import { googleCalendarApi, appleCalendarApi } from "@/lib/api";
 import type { DashboardResponse } from "@/lib/workout-types";
 import { useToast } from "@/components/ui/toast";
+import { SkeletonWorkoutDashboard } from "@/components/ui/skeleton";
 import {
   Loader2,
   Dumbbell,
@@ -48,8 +49,9 @@ export default function WorkoutPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Google Calendar
-  const [calendarConnected, setCalendarConnected] = useState(false);
+  // Calendars sync
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+  const [appleCalendarConnected, setAppleCalendarConnected] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -65,23 +67,38 @@ export default function WorkoutPage() {
     }
   }, []);
 
-  // Charger le statut Google Calendar
+  // Charger le statut des calendriers
   const loadCalendarStatus = useCallback(async () => {
     try {
-      const status = await googleCalendarApi.getStatus();
-      setCalendarConnected(status.connected);
+      const [googleStatus, appleStatus] = await Promise.all([
+        googleCalendarApi.getStatus().catch(() => ({ connected: false })),
+        appleCalendarApi.getStatus().catch(() => ({ connected: false })),
+      ]);
+      setGoogleCalendarConnected(googleStatus.connected);
+      setAppleCalendarConnected(appleStatus.connected);
     } catch {
-      setCalendarConnected(false);
+      setGoogleCalendarConnected(false);
+      setAppleCalendarConnected(false);
     }
   }, []);
 
-  // Synchroniser avec Google Calendar
+  // Synchroniser avec les calendriers
   const handleSyncCalendar = async () => {
     setIsSyncing(true);
     try {
-      const result = await googleCalendarApi.syncAll();
-      if (result.synced > 0) {
-        success(`${result.synced} séance(s) synchronisée(s) avec Google Calendar`);
+      const syncPromises = [];
+      if (googleCalendarConnected) {
+        syncPromises.push(googleCalendarApi.syncAll());
+      }
+      if (appleCalendarConnected) {
+        syncPromises.push(appleCalendarApi.syncAll());
+      }
+      
+      const results = await Promise.all(syncPromises);
+      const totalSynced = results.reduce((sum, r) => sum + (r.synced || 0), 0);
+      
+      if (totalSynced > 0) {
+        success(`${totalSynced} séance(s) synchronisée(s)`);
       } else {
         info("Toutes les séances sont déjà synchronisées");
       }
@@ -97,6 +114,8 @@ export default function WorkoutPage() {
   const handleConnectCalendar = async () => {
     setIsConnecting(true);
     try {
+      // Sauvegarder l'URL actuelle pour y revenir après la connexion
+      localStorage.setItem("calendar_return_url", window.location.pathname);
       const { auth_url } = await googleCalendarApi.connect();
       window.location.href = auth_url;
     } catch (err) {
@@ -113,8 +132,13 @@ export default function WorkoutPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen overflow-hidden">
+        <BackgroundDecorations />
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-6 sm:py-8">
+          <SkeletonWorkoutDashboard />
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -250,15 +274,15 @@ export default function WorkoutPage() {
                     Planning
                   </CardTitle>
                   <div className="flex items-center gap-1 sm:gap-2">
-                    {/* Bouton sync Google Calendar */}
-                    {calendarConnected ? (
+                    {/* Bouton sync calendriers */}
+                    {(googleCalendarConnected || appleCalendarConnected) ? (
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-xs h-7 sm:h-9 px-2 sm:px-3"
                         onClick={handleSyncCalendar}
                         disabled={isSyncing}
-                        title="Synchroniser avec Google Calendar"
+                        title="Synchroniser avec les calendriers"
                       >
                         {isSyncing ? (
                           <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -274,14 +298,14 @@ export default function WorkoutPage() {
                         className="text-xs h-7 sm:h-9 px-2 sm:px-3"
                         onClick={handleConnectCalendar}
                         disabled={isConnecting}
-                        title="Connecter Google Calendar"
+                        title="Connecter un calendrier"
                       >
                         {isConnecting ? (
                           <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                         ) : (
                           <Link2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         )}
-                        <span className="hidden sm:inline ml-1">Google Cal</span>
+                        <span className="hidden sm:inline ml-1">Calendrier</span>
                       </Button>
                     )}
                     <Button

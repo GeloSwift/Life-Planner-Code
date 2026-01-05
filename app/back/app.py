@@ -23,6 +23,7 @@ from core.config import settings
 from auth.routes import router as auth_router
 from workout.routes import router as workout_router
 from workout.calendar_routes import router as calendar_router
+from workout.apple_calendar_routes import router as apple_calendar_router
 
 
 @asynccontextmanager
@@ -100,6 +101,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(workout_router)
 app.include_router(calendar_router)
+app.include_router(apple_calendar_router)
 
 
 # =============================================================================

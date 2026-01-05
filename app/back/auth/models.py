@@ -91,6 +91,20 @@ class User(Base):
         Boolean, default=False, nullable=False
     )
     
+    # Apple Calendar integration (CalDAV)
+    apple_calendar_apple_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    apple_calendar_app_password: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    apple_calendar_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True
+    )
+    apple_calendar_connected: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    
     # Timestamps automatiques
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

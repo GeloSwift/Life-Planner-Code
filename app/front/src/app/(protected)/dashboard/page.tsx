@@ -4,19 +4,18 @@
  * Page Dashboard - Page d'accueil après connexion.
  * 
  * Cette page est protégée et nécessite une authentification.
- * Le middleware redirige vers /login si non connecté.
+ * La vérification d'auth est gérée par le ProtectedLayout parent.
  */
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
+import { SkeletonDashboard } from "@/components/ui/skeleton";
 import {
-  Loader2,
   Dumbbell,
   Utensils,
   Wallet,
@@ -27,26 +26,22 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  // L'auth est déjà vérifiée par le ProtectedLayout
+  const { user } = useAuth();
   const router = useRouter();
 
-  // Redirige vers login si non authentifié (après le chargement)
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
-      return;
-    }
-    
-    // Redirige vers le profil si l'email n'est pas vérifié (sauf pour OAuth)
-    if (!isLoading && user && !user.is_email_verified && user.auth_provider === "local") {
-      router.replace("/profile");
-    }
-  }, [isLoading, isAuthenticated, user, router]);
-
-  if (isLoading || !user) {
+  // Affiche un skeleton si les données user ne sont pas encore chargées
+  // Cela ne devrait pas arriver car le layout attend le chargement,
+  // mais c'est une sécurité pour les transitions
+  if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen overflow-hidden">
+        <BackgroundDecorations />
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-6 sm:py-8">
+          <SkeletonDashboard />
+        </main>
+        <Footer />
       </div>
     );
   }

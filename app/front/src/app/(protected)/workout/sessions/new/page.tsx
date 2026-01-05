@@ -35,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { workoutApi } from "@/lib/workout-api";
-import { googleCalendarApi } from "@/lib/api";
+import { googleCalendarApi, appleCalendarApi } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
 import type { Exercise, ActivityType, UserActivityType, CustomFieldDefinition } from "@/lib/workout-types";
@@ -674,14 +674,25 @@ export default function NewSessionPage() {
         }),
       });
 
-      // Sync automatique avec Google Calendar (silencieux)
-      try {
-        const calendarStatus = await googleCalendarApi.getStatus();
-        if (calendarStatus.connected && createdSession.id) {
-          await googleCalendarApi.syncSession(createdSession.id);
+      // Sync automatique avec les calendriers (silencieux)
+      if (createdSession.id) {
+        try {
+          const [googleStatus, appleStatus] = await Promise.all([
+            googleCalendarApi.getStatus().catch(() => ({ connected: false })),
+            appleCalendarApi.getStatus().catch(() => ({ connected: false })),
+          ]);
+          
+          const syncPromises = [];
+          if (googleStatus.connected) {
+            syncPromises.push(googleCalendarApi.syncSession(createdSession.id));
+          }
+          if (appleStatus.connected) {
+            syncPromises.push(appleCalendarApi.syncSession(createdSession.id));
+          }
+          await Promise.all(syncPromises);
+        } catch {
+          // Silencieux - ne pas bloquer si la sync échoue
         }
-      } catch {
-        // Silencieux - ne pas bloquer si la sync échoue
       }
 
       success(`Séance "${name}" créée avec succès`);

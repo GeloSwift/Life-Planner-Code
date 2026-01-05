@@ -41,6 +41,7 @@ import {
   type Exercise,
   type UserActivityType,
 } from "@/lib/workout-types";
+import { SkeletonExercisesList } from "@/components/ui/skeleton";
 import {
   Loader2,
   Dumbbell,
@@ -579,9 +580,7 @@ export default function ExercisesPage() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <SkeletonExercisesList />
         ) : exercises.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">

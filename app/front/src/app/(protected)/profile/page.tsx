@@ -12,7 +12,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { authApi, googleCalendarApi } from "@/lib/api";
+import { authApi, googleCalendarApi, appleCalendarApi } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,9 +33,9 @@ import {
   CalendarSync,
   Link2,
   Unlink,
-  RefreshCw,
 } from "lucide-react";
 import { useToast, ToastContainer } from "@/components/ui/toast";
+import { SkeletonProfile } from "@/components/ui/skeleton";
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
@@ -59,7 +59,14 @@ export default function ProfilePage() {
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
-  const [isSyncingCalendar, setIsSyncingCalendar] = useState(false);
+  
+  // Apple Calendar states
+  const [appleCalendarConnected, setAppleCalendarConnected] = useState(false);
+  const [isLoadingAppleCalendar, setIsLoadingAppleCalendar] = useState(true);
+  const [isConnectingAppleCalendar, setIsConnectingAppleCalendar] = useState(false);
+  const [showAppleConnectForm, setShowAppleConnectForm] = useState(false);
+  const [appleId, setAppleId] = useState("");
+  const [appPassword, setAppPassword] = useState("");
   
   // Charge le statut Google Calendar
   const loadCalendarStatus = useCallback(async () => {
@@ -74,20 +81,26 @@ export default function ProfilePage() {
     }
   }, []);
   
+  // Charge le statut Apple Calendar
+  const loadAppleCalendarStatus = useCallback(async () => {
+    try {
+      const status = await appleCalendarApi.getStatus();
+      setAppleCalendarConnected(status.connected);
+    } catch {
+      setAppleCalendarConnected(false);
+    } finally {
+      setIsLoadingAppleCalendar(false);
+    }
+  }, []);
+  
   // Initialise les valeurs depuis l'utilisateur
   useEffect(() => {
     if (user) {
       setFullName(user.full_name || "");
       loadCalendarStatus();
+      loadAppleCalendarStatus();
     }
-  }, [user, loadCalendarStatus]);
-
-  // Redirige vers login si non authentifié (après le chargement)
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
-    }
-  }, [isLoading, isAuthenticated, router]);
+  }, [user, loadCalendarStatus, loadAppleCalendarStatus]);
 
   // Gère la redirection depuis d'autres pages (email non vérifié)
   useEffect(() => {
@@ -110,10 +123,16 @@ export default function ProfilePage() {
     }
   }, [searchParams, user, warning, router]);
 
+  // Affiche un skeleton pendant le chargement (au lieu d'un spinner plein écran)
   if (isLoading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen overflow-hidden">
+        <BackgroundDecorations />
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-6 sm:py-8">
+          <SkeletonProfile />
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -229,6 +248,8 @@ export default function ProfilePage() {
   const handleConnectCalendar = async () => {
     setIsConnectingCalendar(true);
     try {
+      // Sauvegarder l'URL actuelle pour y revenir après la connexion
+      localStorage.setItem("calendar_return_url", window.location.pathname);
       const { auth_url } = await googleCalendarApi.connect();
       // Redirige vers Google pour l'autorisation
       window.location.href = auth_url;
@@ -250,20 +271,40 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSyncCalendar = async () => {
-    setIsSyncingCalendar(true);
+  // Gestion de la connexion Apple Calendar
+  const handleConnectAppleCalendar = async () => {
+    if (!appleId.trim() || !appPassword.trim()) {
+      error("Veuillez entrer votre Apple ID et votre mot de passe d'application");
+      return;
+    }
+    
+    setIsConnectingAppleCalendar(true);
     try {
-      const result = await googleCalendarApi.syncAll();
-      if (result.synced > 0) {
-        success(`${result.synced} séance(s) synchronisée(s) avec Google Calendar`);
-      } else {
-        success("Toutes les séances sont déjà synchronisées");
-      }
+      await appleCalendarApi.connect({
+        apple_id: appleId,
+        app_password: appPassword,
+      });
+      setAppleCalendarConnected(true);
+      setShowAppleConnectForm(false);
+      setAppleId("");
+      setAppPassword("");
+      success("Apple Calendar connecté avec succès");
     } catch (err) {
-      console.error("Erreur lors de la synchronisation:", err);
-      error("Erreur lors de la synchronisation");
+      console.error("Erreur lors de la connexion à Apple Calendar:", err);
+      error("Erreur lors de la connexion. Vérifiez vos identifiants.");
     } finally {
-      setIsSyncingCalendar(false);
+      setIsConnectingAppleCalendar(false);
+    }
+  };
+
+  const handleDisconnectAppleCalendar = async () => {
+    try {
+      await appleCalendarApi.disconnect();
+      setAppleCalendarConnected(false);
+      success("Apple Calendar déconnecté");
+    } catch (err) {
+      console.error("Erreur lors de la déconnexion:", err);
+      error("Erreur lors de la déconnexion");
     }
   };
 
@@ -490,39 +531,19 @@ export default function ProfilePage() {
                 <span className="text-sm">Chargement...</span>
               </div>
             ) : calendarConnected ? (
-              <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
                   <CheckCircle2 className="h-5 w-5" />
                   <span className="text-sm font-medium">Google Calendar connecté</span>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={handleSyncCalendar}
-                    disabled={isSyncingCalendar}
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                  >
-                    {isSyncingCalendar ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    Synchroniser
-                  </Button>
-                  <Button
-                    onClick={handleDisconnectCalendar}
-                    variant="destructive"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Unlink className="h-4 w-4 mr-2" />
-                    Déconnecter
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Vos séances planifiées seront automatiquement ajoutées à votre Google Calendar.
-                </p>
+                <Button
+                  onClick={handleDisconnectCalendar}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Déconnecter
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -541,6 +562,102 @@ export default function ProfilePage() {
                     <Link2 className="h-4 w-4 mr-2" />
                   )}
                   Connecter Google Calendar
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Apple Calendar */}
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-gray-600" />
+              Apple Calendar
+            </CardTitle>
+            <CardDescription className="text-sm">
+              Synchronisez vos séances avec votre calendrier iCloud
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingAppleCalendar ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Chargement...</span>
+              </div>
+            ) : appleCalendarConnected ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="text-sm font-medium">Apple Calendar connecté</span>
+                </div>
+                <Button
+                  onClick={handleDisconnectAppleCalendar}
+                  variant="destructive"
+                  size="sm"
+                >
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Déconnecter
+                </Button>
+              </div>
+            ) : showAppleConnectForm ? (
+              <div className="space-y-4">
+                <p className="text-xs text-muted-foreground mb-4">
+                  Pour vous connecter, créez un mot de passe d&apos;application sur{" "}
+                  <a 
+                    href="https://appleid.apple.com/account/manage" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    appleid.apple.com
+                  </a>
+                  {" "}→ Sécurité → Mots de passe pour app.
+                </p>
+                <Input
+                  type="email"
+                  placeholder="Apple ID (email)"
+                  value={appleId}
+                  onChange={(e) => setAppleId(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder="Mot de passe d'application"
+                  value={appPassword}
+                  onChange={(e) => setAppPassword(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleConnectAppleCalendar}
+                    disabled={isConnectingAppleCalendar}
+                    className="flex-1"
+                  >
+                    {isConnectingAppleCalendar ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Link2 className="h-4 w-4 mr-2" />
+                    )}
+                    Connecter
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowAppleConnectForm(false)}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Connectez votre compte iCloud pour synchroniser vos séances avec Apple Calendar.
+                </p>
+                <Button
+                  onClick={() => setShowAppleConnectForm(true)}
+                  className="w-full sm:w-auto"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Connecter Apple Calendar
                 </Button>
               </div>
             )}

@@ -409,6 +409,83 @@ export const googleCalendarApi = {
 };
 
 // =============================================================================
+// APPLE CALENDAR API (CalDAV)
+// =============================================================================
+
+interface AppleCalendarStatus {
+  connected: boolean;
+  apple_id?: string;
+  calendar_url?: string;
+  message: string;
+}
+
+interface AppleCalendarConnectRequest {
+  apple_id: string;
+  app_password: string;
+  calendar_url?: string;
+}
+
+interface AppleCalendarConnectResponse {
+  success: boolean;
+  message: string;
+  calendar_url?: string;
+  calendars?: { href: string; name: string }[];
+}
+
+export const appleCalendarApi = {
+  /**
+   * Récupère le statut de connexion Apple Calendar.
+   */
+  async getStatus(): Promise<AppleCalendarStatus> {
+    return apiFetch<AppleCalendarStatus>("/workout/apple-calendar/status");
+  },
+
+  /**
+   * Connecte Apple Calendar avec les identifiants iCloud.
+   */
+  async connect(data: AppleCalendarConnectRequest): Promise<AppleCalendarConnectResponse> {
+    return apiFetch<AppleCalendarConnectResponse>("/workout/apple-calendar/connect", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Déconnecte Apple Calendar.
+   */
+  async disconnect(): Promise<{ success: boolean; message: string }> {
+    return apiFetch("/workout/apple-calendar/disconnect", {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Liste les calendriers disponibles.
+   */
+  async listCalendars(): Promise<{ calendars: { href: string; name: string }[] }> {
+    return apiFetch("/workout/apple-calendar/calendars");
+  },
+
+  /**
+   * Synchronise toutes les séances planifiées avec Apple Calendar.
+   */
+  async syncAll(): Promise<CalendarSyncResponse> {
+    return apiFetch<CalendarSyncResponse>("/workout/apple-calendar/sync", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Synchronise une séance spécifique avec Apple Calendar.
+   */
+  async syncSession(sessionId: number): Promise<{ success: boolean; event_uid?: string }> {
+    return apiFetch(`/workout/apple-calendar/sync/${sessionId}`, {
+      method: "POST",
+    });
+  },
+};
+
+// =============================================================================
 // DEFAULT EXPORT
 // =============================================================================
 
@@ -416,6 +493,7 @@ export const api = {
   auth: authApi,
   health: healthApi,
   googleCalendar: googleCalendarApi,
+  appleCalendar: appleCalendarApi,
 };
 
 export default api;

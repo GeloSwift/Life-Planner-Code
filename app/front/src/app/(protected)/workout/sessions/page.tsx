@@ -41,6 +41,7 @@ import {
   SessionStatus,
   SESSION_STATUS_LABELS,
 } from "@/lib/workout-types";
+import { SkeletonSessionsList } from "@/components/ui/skeleton";
 import {
   Loader2,
   ArrowLeft,
@@ -505,8 +506,13 @@ export default function SessionsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen overflow-hidden">
+        <BackgroundDecorations />
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl pb-32">
+          <SkeletonSessionsList />
+        </main>
+        <Footer />
       </div>
     );
   }
