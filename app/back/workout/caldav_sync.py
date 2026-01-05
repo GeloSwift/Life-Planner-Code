@@ -196,6 +196,10 @@ def build_icalendar_event(
     
     now = datetime.utcnow()
     
+    # Échapper les sauts de ligne pour iCalendar (doit être fait avant le f-string)
+    newline_escape = "\\n"
+    escaped_description = description.replace("\n", newline_escape)
+    
     return f"""BEGIN:VCALENDAR
 CALSCALE:GREGORIAN
 PRODID:-//Life Planner//Workout Sessions//FR
@@ -209,7 +213,7 @@ DTEND;TZID=Europe/Paris:{format_datetime(end_time)}
 LAST-MODIFIED:{format_datetime(now)}Z
 SEQUENCE:0
 SUMMARY:🏋️ {title}
-DESCRIPTION:{description.replace(chr(10), '\\n')}
+DESCRIPTION:{escaped_description}
 BEGIN:VALARM
 ACTION:DISPLAY
 DESCRIPTION:Reminder
