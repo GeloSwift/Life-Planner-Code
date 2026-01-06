@@ -12,6 +12,7 @@ Endpoints :
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from pydantic import BaseModel
 
 from core.db import get_db
@@ -210,6 +211,7 @@ async def sync_all_sessions_apple(
     ).all()
     
     # Récupérer les types d'activités pour les noms (par défaut + personnels)
+    from sqlalchemy import or_
     all_user_activity_types = db.query(UserActivityType).filter(
         or_(
             UserActivityType.is_default.is_(True),  # Activités par défaut
@@ -360,7 +362,6 @@ async def sync_single_session_apple(
         raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
     
     # Récupérer les types d'activités (par défaut + personnels)
-    from sqlalchemy import or_
     all_user_activity_types = db.query(UserActivityType).filter(
         or_(
             UserActivityType.is_default.is_(True),  # Activités par défaut
