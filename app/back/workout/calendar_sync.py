@@ -15,6 +15,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 import httpx
 from urllib.parse import urlencode
+import pytz
 
 from core.config import settings
 
@@ -197,16 +198,28 @@ async def update_calendar_event(
     if end_time is None:
         end_time = start_time + timedelta(hours=1, minutes=30)  # 1h30 par défaut
     
+    # Convertir en Europe/Paris si le datetime a un timezone (UTC -> Europe/Paris)
+    paris_tz = pytz.timezone("Europe/Paris")
+    if start_time.tzinfo is None:
+        start_time_paris = paris_tz.localize(start_time)
+    else:
+        start_time_paris = start_time.astimezone(paris_tz)
+    
+    if end_time.tzinfo is None:
+        end_time_paris = paris_tz.localize(end_time)
+    else:
+        end_time_paris = end_time.astimezone(paris_tz)
+    
     event = {
         "summary": title,
         "description": description,
         "colorId": "11",  # Tomato (Rouge)
         "start": {
-            "dateTime": start_time.isoformat(),
+            "dateTime": start_time_paris.isoformat(),
             "timeZone": "Europe/Paris",
         },
         "end": {
-            "dateTime": end_time.isoformat(),
+            "dateTime": end_time_paris.isoformat(),
             "timeZone": "Europe/Paris",
         },
     }
@@ -259,15 +272,15 @@ def build_session_description(
     
     # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
-        lines.append("══════════════════════")
+        lines.append("══════════════")
         lines.append(f"📋 ACTIVITÉS: {', '.join(activity_types)}")
-        lines.append("══════════════════════")
+        lines.append("══════════════")
         lines.append("")
     
     # === EXERCICES (Informations détaillées) ===
     if exercises:
         lines.append("💪 EXERCICES PLANIFIÉS:")
-        lines.append("─" * 30)
+        lines.append("─" * 25)
         for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
@@ -291,11 +304,11 @@ def build_session_description(
         lines.append("")
     
     # === ACTION RAPIDE ===
-    lines.append("══════════════════════")
+    lines.append("══════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
     lines.append(f"🚀 LANCER LA SÉANCE")
     lines.append(session_url)
-    lines.append("══════════════════════")
+    lines.append("══════════════")
     
     return "\n".join(lines)
 

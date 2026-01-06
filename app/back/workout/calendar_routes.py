@@ -194,11 +194,17 @@ async def sync_all_sessions(
                 import json
                 try:
                     ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
+                    # S'assurer que ids est une liste
+                    if not isinstance(ids, list):
+                        ids = [ids]
                     for aid in ids:
-                        if aid in activity_types_map and aid not in seen_ids:
-                            activity_names.append(activity_types_map[aid])
-                            seen_ids.add(aid)
-                except Exception:
+                        # Convertir en int si nécessaire (les IDs peuvent être strings dans le JSON)
+                        aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else aid
+                        if aid_int in activity_types_map and aid_int not in seen_ids:
+                            activity_names.append(activity_types_map[aid_int])
+                            seen_ids.add(aid_int)
+                except Exception as e:
+                    print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
                     pass
             
             # 2) Récupérer depuis custom_activity_type_id (singulier)
@@ -307,11 +313,17 @@ async def sync_single_session(
     if session.custom_activity_type_ids:
         try:
             ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
+            # S'assurer que ids est une liste
+            if not isinstance(ids, list):
+                ids = [ids]
             for aid in ids:
-                if aid in activity_types_map and aid not in seen_ids:
-                    activity_names.append(activity_types_map[aid])
-                    seen_ids.add(aid)
-        except Exception:
+                # Convertir en int si nécessaire (les IDs peuvent être strings dans le JSON)
+                aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else aid
+                if aid_int in activity_types_map and aid_int not in seen_ids:
+                    activity_names.append(activity_types_map[aid_int])
+                    seen_ids.add(aid_int)
+        except Exception as e:
+            print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
             pass
     
     # 2) Récupérer depuis custom_activity_type_id (singulier)

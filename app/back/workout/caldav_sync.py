@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 import httpx
 import uuid
 from base64 import b64encode
+import pytz
 
 from core.config import settings
 
@@ -200,8 +201,23 @@ def build_icalendar_event(
     """
     Construit un événement au format iCalendar (ICS).
     """
-    # Formater les dates au format iCalendar
+    # Convertir en Europe/Paris si le datetime a un timezone (UTC -> Europe/Paris)
+    paris_tz = pytz.timezone("Europe/Paris")
+    if start_time.tzinfo is None:
+        start_time_paris = paris_tz.localize(start_time)
+    else:
+        start_time_paris = start_time.astimezone(paris_tz)
+    
+    if end_time.tzinfo is None:
+        end_time_paris = paris_tz.localize(end_time)
+    else:
+        end_time_paris = end_time.astimezone(paris_tz)
+    
+    # Formater les dates au format iCalendar (sans timezone dans la string, car on spécifie TZID)
     def format_datetime(dt: datetime) -> str:
+        # Si le datetime a un timezone, on le convertit en naive datetime en Europe/Paris
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(paris_tz).replace(tzinfo=None)
         return dt.strftime("%Y%m%dT%H%M%S")
     
     now = datetime.utcnow()
@@ -218,8 +234,8 @@ BEGIN:VEVENT
 UID:{uid}
 CREATED:{format_datetime(now)}Z
 DTSTAMP:{format_datetime(now)}Z
-DTSTART;TZID=Europe/Paris:{format_datetime(start_time)}
-DTEND;TZID=Europe/Paris:{format_datetime(end_time)}
+DTSTART;TZID=Europe/Paris:{format_datetime(start_time_paris)}
+DTEND;TZID=Europe/Paris:{format_datetime(end_time_paris)}
 LAST-MODIFIED:{format_datetime(now)}Z
 SEQUENCE:0
 SUMMARY:{title}
@@ -367,15 +383,15 @@ def build_session_description_caldav(
     
     # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
-        lines.append("══════════════════════")
+        lines.append("══════════════")
         lines.append(f"📋 ACTIVITÉS: {', '.join(activity_types)}")
-        lines.append("══════════════════════")
+        lines.append("══════════════")
         lines.append("")
     
     # === EXERCICES (Informations détaillées) ===
     if exercises:
         lines.append("💪 EXERCICES PLANIFIÉS:")
-        lines.append("─" * 30)
+        lines.append("─" * 25)
         for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
@@ -399,11 +415,11 @@ def build_session_description_caldav(
         lines.append("")
     
     # === ACTION RAPIDE ===
-    lines.append("══════════════════════")
+    lines.append("══════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
     lines.append(f"🚀 LANCER LA SÉANCE")
     lines.append(session_url)
-    lines.append("══════════════════════")
+    lines.append("══════════════")
     
     return "\\n".join(lines)
 
