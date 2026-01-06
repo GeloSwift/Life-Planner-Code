@@ -147,7 +147,7 @@ async def create_calendar_event(
         Événement créé avec son ID
     """
     if end_time is None:
-        end_time = start_time + timedelta(hours=1)
+        end_time = start_time + timedelta(hours=1, minutes=30)  # 1h30 par défaut
     
     event = {
         "summary": title,
@@ -195,7 +195,7 @@ async def update_calendar_event(
     Met à jour un événement dans Google Calendar.
     """
     if end_time is None:
-        end_time = start_time + timedelta(hours=1)
+        end_time = start_time + timedelta(hours=1, minutes=30)  # 1h30 par défaut
     
     event = {
         "summary": title,
@@ -259,14 +259,14 @@ def build_session_description(
     
     # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
-        lines.append("════════════════════════════════")
-        lines.append(f"ACTIVITÉS: {', '.join(activity_types)}")
-        lines.append("════════════════════════════════")
+        lines.append("══════════════════════")
+        lines.append(f"📋 ACTIVITÉS: {', '.join(activity_types)}")
+        lines.append("══════════════════════")
         lines.append("")
     
     # === EXERCICES (Informations détaillées) ===
     if exercises:
-        lines.append("EXERCICES PLANIFIÉS:")
+        lines.append("💪 EXERCICES PLANIFIÉS:")
         lines.append("─" * 30)
         for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
@@ -291,11 +291,11 @@ def build_session_description(
         lines.append("")
     
     # === ACTION RAPIDE ===
-    lines.append("════════════════════════════════")
+    lines.append("══════════════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
     lines.append(f"🚀 LANCER LA SÉANCE")
     lines.append(session_url)
-    lines.append("════════════════════════════════")
+    lines.append("══════════════════════")
     
     return "\n".join(lines)
 

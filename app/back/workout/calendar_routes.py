@@ -187,26 +187,28 @@ async def sync_all_sessions(
         try:
             # Construire la liste des types d'activités
             activity_names = []
+            seen_ids = set()
             
-            # 1) Essayer depuis custom_activity_type_ids
+            # 1) Récupérer depuis custom_activity_type_ids
             if session.custom_activity_type_ids:
                 import json
                 try:
                     ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
                     for aid in ids:
-                        if aid in activity_types_map:
+                        if aid in activity_types_map and aid not in seen_ids:
                             activity_names.append(activity_types_map[aid])
+                            seen_ids.add(aid)
                 except Exception:
                     pass
             
-            # 2) Essayer depuis custom_activity_type_id (singulier)
-            if not activity_names and session.custom_activity_type_id:
-                if session.custom_activity_type_id in activity_types_map:
+            # 2) Récupérer depuis custom_activity_type_id (singulier)
+            if session.custom_activity_type_id:
+                if session.custom_activity_type_id in activity_types_map and session.custom_activity_type_id not in seen_ids:
                     activity_names.append(activity_types_map[session.custom_activity_type_id])
+                    seen_ids.add(session.custom_activity_type_id)
             
-            # 3) Fallback: récupérer depuis les exercices de la séance
-            if not activity_names and session.exercises:
-                seen_ids = set()
+            # 3) Récupérer depuis les exercices de la séance (toujours, pour avoir tous les types)
+            if session.exercises:
                 for ex in session.exercises:
                     if ex.exercise and ex.exercise.custom_activity_type_id:
                         aid = ex.exercise.custom_activity_type_id
@@ -214,7 +216,7 @@ async def sync_all_sessions(
                             activity_names.append(activity_types_map[aid])
                             seen_ids.add(aid)
             
-            # 4) Fallback ultime: type d'activité de base
+            # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
             if not activity_names:
                 activity_names = [session.activity_type.value.capitalize()]
             
@@ -299,25 +301,27 @@ async def sync_single_session(
     
     # Construire la liste des types d'activités
     activity_names = []
+    seen_ids = set()
     
-    # 1) Essayer depuis custom_activity_type_ids
+    # 1) Récupérer depuis custom_activity_type_ids
     if session.custom_activity_type_ids:
         try:
             ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
             for aid in ids:
-                if aid in activity_types_map:
+                if aid in activity_types_map and aid not in seen_ids:
                     activity_names.append(activity_types_map[aid])
+                    seen_ids.add(aid)
         except Exception:
             pass
     
-    # 2) Essayer depuis custom_activity_type_id (singulier)
-    if not activity_names and session.custom_activity_type_id:
-        if session.custom_activity_type_id in activity_types_map:
+    # 2) Récupérer depuis custom_activity_type_id (singulier)
+    if session.custom_activity_type_id:
+        if session.custom_activity_type_id in activity_types_map and session.custom_activity_type_id not in seen_ids:
             activity_names.append(activity_types_map[session.custom_activity_type_id])
+            seen_ids.add(session.custom_activity_type_id)
     
-    # 3) Fallback: récupérer depuis les exercices de la séance
-    if not activity_names and session.exercises:
-        seen_ids = set()
+    # 3) Récupérer depuis les exercices de la séance (toujours, pour avoir tous les types)
+    if session.exercises:
         for ex in session.exercises:
             if ex.exercise and ex.exercise.custom_activity_type_id:
                 aid = ex.exercise.custom_activity_type_id
@@ -325,7 +329,7 @@ async def sync_single_session(
                     activity_names.append(activity_types_map[aid])
                     seen_ids.add(aid)
     
-    # 4) Fallback ultime: type d'activité de base
+    # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
     if not activity_names:
         activity_names = [session.activity_type.value.capitalize()]
     

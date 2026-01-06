@@ -76,16 +76,29 @@ async def connect_apple_calendar(
     # Déterminer l'URL du calendrier à utiliser
     calendar_url = request.calendar_url
     if not calendar_url and discovery.get("calendars"):
-        # Chercher d'abord un calendrier "Sport" ou "Sports"
+        # Chercher d'abord un calendrier "Sport" ou variantes (insensible à la casse)
+        calendar_names_to_check = [
+            "sport", "sports", "entraînement", "entrainement", "training", 
+            "workout", "fitness", "gym", "musculation", "salle"
+        ]
+        
         sport_calendars = [
             cal for cal in discovery["calendars"]
-            if cal.get("name", "").lower() in ["sport", "sports", "entraînement", "training", "workout"]
+            if cal.get("name", "").lower().strip() in calendar_names_to_check
+            or any(keyword in cal.get("name", "").lower() for keyword in calendar_names_to_check)
         ]
         if sport_calendars:
             calendar_url = sport_calendars[0]["href"]
         else:
-            # Sinon, utiliser le premier calendrier disponible
-            calendar_url = discovery["calendars"][0]["href"]
+            # Sinon, utiliser le premier calendrier disponible (pas "École")
+            non_school_calendars = [
+                cal for cal in discovery["calendars"]
+                if cal.get("name", "").lower() not in ["école", "ecole", "school", "travail", "work"]
+            ]
+            if non_school_calendars:
+                calendar_url = non_school_calendars[0]["href"]
+            else:
+                calendar_url = discovery["calendars"][0]["href"]
     
     if not calendar_url:
         raise HTTPException(
@@ -211,25 +224,27 @@ async def sync_all_sessions_apple(
         try:
             # Construire la liste des types d'activités
             activity_names = []
+            seen_ids = set()
             
-            # 1) Essayer depuis custom_activity_type_ids
+            # 1) Récupérer depuis custom_activity_type_ids
             if session.custom_activity_type_ids:
                 try:
                     ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
                     for aid in ids:
-                        if aid in activity_types_map:
+                        if aid in activity_types_map and aid not in seen_ids:
                             activity_names.append(activity_types_map[aid])
+                            seen_ids.add(aid)
                 except Exception:
                     pass
             
-            # 2) Essayer depuis custom_activity_type_id (singulier)
-            if not activity_names and session.custom_activity_type_id:
-                if session.custom_activity_type_id in activity_types_map:
+            # 2) Récupérer depuis custom_activity_type_id (singulier)
+            if session.custom_activity_type_id:
+                if session.custom_activity_type_id in activity_types_map and session.custom_activity_type_id not in seen_ids:
                     activity_names.append(activity_types_map[session.custom_activity_type_id])
+                    seen_ids.add(session.custom_activity_type_id)
             
-            # 3) Fallback: récupérer depuis les exercices de la séance
-            if not activity_names and session.exercises:
-                seen_ids = set()
+            # 3) Récupérer depuis les exercices de la séance (toujours, pour avoir tous les types)
+            if session.exercises:
                 for ex in session.exercises:
                     if ex.exercise and ex.exercise.custom_activity_type_id:
                         aid = ex.exercise.custom_activity_type_id
@@ -237,7 +252,7 @@ async def sync_all_sessions_apple(
                             activity_names.append(activity_types_map[aid])
                             seen_ids.add(aid)
             
-            # 4) Fallback ultime: type d'activité de base
+            # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
             if not activity_names:
                 activity_names = [session.activity_type.value.capitalize()]
             
@@ -324,25 +339,27 @@ async def sync_single_session_apple(
     
     # Construire la liste des types d'activités
     activity_names = []
+    seen_ids = set()
     
-    # 1) Essayer depuis custom_activity_type_ids
+    # 1) Récupérer depuis custom_activity_type_ids
     if session.custom_activity_type_ids:
         try:
             ids = json.loads(session.custom_activity_type_ids) if isinstance(session.custom_activity_type_ids, str) else session.custom_activity_type_ids
             for aid in ids:
-                if aid in activity_types_map:
+                if aid in activity_types_map and aid not in seen_ids:
                     activity_names.append(activity_types_map[aid])
+                    seen_ids.add(aid)
         except Exception:
             pass
     
-    # 2) Essayer depuis custom_activity_type_id (singulier)
-    if not activity_names and session.custom_activity_type_id:
-        if session.custom_activity_type_id in activity_types_map:
+    # 2) Récupérer depuis custom_activity_type_id (singulier)
+    if session.custom_activity_type_id:
+        if session.custom_activity_type_id in activity_types_map and session.custom_activity_type_id not in seen_ids:
             activity_names.append(activity_types_map[session.custom_activity_type_id])
+            seen_ids.add(session.custom_activity_type_id)
     
-    # 3) Fallback: récupérer depuis les exercices de la séance
-    if not activity_names and session.exercises:
-        seen_ids = set()
+    # 3) Récupérer depuis les exercices de la séance (toujours, pour avoir tous les types)
+    if session.exercises:
         for ex in session.exercises:
             if ex.exercise and ex.exercise.custom_activity_type_id:
                 aid = ex.exercise.custom_activity_type_id
@@ -350,7 +367,7 @@ async def sync_single_session_apple(
                     activity_names.append(activity_types_map[aid])
                     seen_ids.add(aid)
     
-    # 4) Fallback ultime: type d'activité de base
+    # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
     if not activity_names:
         activity_names = [session.activity_type.value.capitalize()]
     
