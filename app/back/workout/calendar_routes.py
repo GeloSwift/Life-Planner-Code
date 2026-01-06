@@ -12,6 +12,7 @@ import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from pydantic import BaseModel
 
 from core.db import get_db
@@ -172,17 +173,19 @@ async def sync_all_sessions(
         WorkoutSession.scheduled_at.isnot(None),
     ).all()
     
-    # Récupérer les types d'activités pour les noms
-    # Utiliser refresh pour s'assurer que les données sont à jour
-    db.refresh(session)
+    # Récupérer les types d'activités pour les noms (par défaut + personnels)
+    from sqlalchemy import or_
     all_user_activity_types = db.query(UserActivityType).filter(
-        UserActivityType.user_id == current_user.id
+        or_(
+            UserActivityType.is_default.is_(True),  # Activités par défaut
+            UserActivityType.user_id == current_user.id,  # Activités personnelles
+        )
     ).all()
     activity_types_map = {
         at.id: at.name 
         for at in all_user_activity_types
     }
-    print(f"Session {session.id}: Found {len(all_user_activity_types)} user activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
+    print(f"Session {session.id}: Found {len(all_user_activity_types)} activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
     
     synced_count = 0
     errors = []
@@ -322,17 +325,18 @@ async def sync_single_session(
     if not session.scheduled_at:
         raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
     
-    # Récupérer les types d'activités
-    # Utiliser refresh pour s'assurer que les données sont à jour
-    db.refresh(session)
+    # Récupérer les types d'activités (par défaut + personnels)
     all_user_activity_types = db.query(UserActivityType).filter(
-        UserActivityType.user_id == current_user.id
+        or_(
+            UserActivityType.is_default.is_(True),  # Activités par défaut
+            UserActivityType.user_id == current_user.id,  # Activités personnelles
+        )
     ).all()
     activity_types_map = {
         at.id: at.name 
         for at in all_user_activity_types
     }
-    print(f"Session {session.id} (single sync): Found {len(all_user_activity_types)} user activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
+    print(f"Session {session.id} (single sync): Found {len(all_user_activity_types)} activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
     
     # Construire la liste des types d'activités
     activity_names = []
@@ -361,8 +365,12 @@ async def sync_single_session(
                 elif aid_int not in activity_types_map:
                     # Si pas dans la map, essayer de récupérer directement depuis la DB
                     activity_type = db.query(UserActivityType).filter(
-                        UserActivityType.id == aid_int,
-                        UserActivityType.user_id == current_user.id
+                        UserActivityType.id == aid_int
+                    ).filter(
+                        or_(
+                            UserActivityType.is_default.is_(True),
+                            UserActivityType.user_id == current_user.id
+                        )
                     ).first()
                     if activity_type and aid_int not in seen_ids:
                         activity_names.append(activity_type.name)
