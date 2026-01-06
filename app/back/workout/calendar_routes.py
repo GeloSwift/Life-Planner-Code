@@ -173,12 +173,16 @@ async def sync_all_sessions(
     ).all()
     
     # Récupérer les types d'activités pour les noms
+    # Utiliser refresh pour s'assurer que les données sont à jour
+    db.refresh(session)
+    all_user_activity_types = db.query(UserActivityType).filter(
+        UserActivityType.user_id == current_user.id
+    ).all()
     activity_types_map = {
         at.id: at.name 
-        for at in db.query(UserActivityType).filter(
-            UserActivityType.user_id == current_user.id
-        ).all()
+        for at in all_user_activity_types
     }
+    print(f"Session {session.id}: Found {len(all_user_activity_types)} user activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
     
     synced_count = 0
     errors = []
@@ -210,6 +214,16 @@ async def sync_all_sessions(
                             activity_names.append(activity_types_map[aid_int])
                             seen_ids.add(aid_int)
                             print(f"Session {session.id}: Added {activity_types_map[aid_int]}")
+                        elif aid_int not in activity_types_map:
+                            # Si pas dans la map, essayer de récupérer directement depuis la DB
+                            activity_type = db.query(UserActivityType).filter(
+                                UserActivityType.id == aid_int,
+                                UserActivityType.user_id == current_user.id
+                            ).first()
+                            if activity_type and aid_int not in seen_ids:
+                                activity_names.append(activity_type.name)
+                                seen_ids.add(aid_int)
+                                print(f"Session {session.id}: Added {activity_type.name} (retrieved from DB)")
                 except Exception as e:
                     print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
                     import traceback
@@ -309,12 +323,16 @@ async def sync_single_session(
         raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
     
     # Récupérer les types d'activités
+    # Utiliser refresh pour s'assurer que les données sont à jour
+    db.refresh(session)
+    all_user_activity_types = db.query(UserActivityType).filter(
+        UserActivityType.user_id == current_user.id
+    ).all()
     activity_types_map = {
         at.id: at.name 
-        for at in db.query(UserActivityType).filter(
-            UserActivityType.user_id == current_user.id
-        ).all()
+        for at in all_user_activity_types
     }
+    print(f"Session {session.id} (single sync): Found {len(all_user_activity_types)} user activity types: {[(at.id, at.name) for at in all_user_activity_types]}")
     
     # Construire la liste des types d'activités
     activity_names = []
@@ -340,6 +358,16 @@ async def sync_single_session(
                     activity_names.append(activity_types_map[aid_int])
                     seen_ids.add(aid_int)
                     print(f"Session {session.id} (single sync): Added {activity_types_map[aid_int]}")
+                elif aid_int not in activity_types_map:
+                    # Si pas dans la map, essayer de récupérer directement depuis la DB
+                    activity_type = db.query(UserActivityType).filter(
+                        UserActivityType.id == aid_int,
+                        UserActivityType.user_id == current_user.id
+                    ).first()
+                    if activity_type and aid_int not in seen_ids:
+                        activity_names.append(activity_type.name)
+                        seen_ids.add(aid_int)
+                        print(f"Session {session.id} (single sync): Added {activity_type.name} (retrieved from DB)")
         except Exception as e:
             print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
             import traceback
