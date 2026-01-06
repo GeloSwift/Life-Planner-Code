@@ -76,8 +76,16 @@ async def connect_apple_calendar(
     # Déterminer l'URL du calendrier à utiliser
     calendar_url = request.calendar_url
     if not calendar_url and discovery.get("calendars"):
-        # Utiliser le premier calendrier disponible
-        calendar_url = discovery["calendars"][0]["href"]
+        # Chercher d'abord un calendrier "Sport" ou "Sports"
+        sport_calendars = [
+            cal for cal in discovery["calendars"]
+            if cal.get("name", "").lower() in ["sport", "sports", "entraînement", "training", "workout"]
+        ]
+        if sport_calendars:
+            calendar_url = sport_calendars[0]["href"]
+        else:
+            # Sinon, utiliser le premier calendrier disponible
+            calendar_url = discovery["calendars"][0]["href"]
     
     if not calendar_url:
         raise HTTPException(

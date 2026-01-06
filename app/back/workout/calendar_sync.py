@@ -152,6 +152,7 @@ async def create_calendar_event(
     event = {
         "summary": title,
         "description": description,
+        "colorId": "11",  # Tomato (Rouge)
         "start": {
             "dateTime": start_time.isoformat(),
             "timeZone": "Europe/Paris",
@@ -199,6 +200,7 @@ async def update_calendar_event(
     event = {
         "summary": title,
         "description": description,
+        "colorId": "11",  # Tomato (Rouge)
         "start": {
             "dateTime": start_time.isoformat(),
             "timeZone": "Europe/Paris",
@@ -250,19 +252,23 @@ def build_session_description(
     frontend_url: str,
 ) -> str:
     """
-    Construit une description propre pour l'événement Google Calendar.
+    Construit une description claire et organisée pour l'événement Google Calendar.
+    Hiérarchie visuelle optimisée pour une lecture rapide.
     """
     lines = []
     
-    # Types d'activités
+    # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
-        lines.append(f"Activités: {', '.join(activity_types)}")
+        lines.append("════════════════════════════════")
+        lines.append(f"ACTIVITÉS: {', '.join(activity_types)}")
+        lines.append("════════════════════════════════")
         lines.append("")
     
-    # Liste des exercices
+    # === EXERCICES (Informations détaillées) ===
     if exercises:
-        lines.append("Exercices:")
-        for ex in exercises[:10]:  # Max 10 exercices
+        lines.append("EXERCICES PLANIFIÉS:")
+        lines.append("─" * 30)
+        for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
             reps = ex.get("reps", "")
@@ -276,16 +282,20 @@ def build_session_description(
             if weight:
                 details.append(f"{weight}kg")
             
-            detail_str = f" ({', '.join(details)})" if details else ""
-            lines.append(f"- {name}{detail_str}")
+            detail_str = f" → {', '.join(details)}" if details else ""
+            lines.append(f"{idx}. {name}{detail_str}")
         
         if len(exercises) > 10:
-            lines.append(f"... et {len(exercises) - 10} autres")
+            lines.append(f"... et {len(exercises) - 10} exercice(s) supplémentaire(s)")
+        
         lines.append("")
     
-    # Lien vers la séance
+    # === ACTION RAPIDE ===
+    lines.append("════════════════════════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
-    lines.append(f"Lancer: {session_url}")
+    lines.append(f"🚀 LANCER LA SÉANCE")
+    lines.append(session_url)
+    lines.append("════════════════════════════════")
     
     return "\n".join(lines)
 
