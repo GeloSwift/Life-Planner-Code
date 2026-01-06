@@ -189,6 +189,10 @@ async def sync_all_sessions(
             activity_names = []
             seen_ids = set()
             
+            # Debug: Log pour comprendre ce qui se passe
+            print(f"Session {session.id}: custom_activity_type_ids = {session.custom_activity_type_ids}")
+            print(f"Session {session.id}: activity_types_map keys = {list(activity_types_map.keys())}")
+            
             # 1) Récupérer depuis custom_activity_type_ids
             if session.custom_activity_type_ids:
                 import json
@@ -197,14 +201,19 @@ async def sync_all_sessions(
                     # S'assurer que ids est une liste
                     if not isinstance(ids, list):
                         ids = [ids]
+                    print(f"Session {session.id}: Parsed IDs = {ids}")
                     for aid in ids:
                         # Convertir en int si nécessaire (les IDs peuvent être strings dans le JSON)
-                        aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else aid
+                        aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else (int(aid) if isinstance(aid, (float, str)) else aid)
+                        print(f"Session {session.id}: Processing ID {aid} -> {aid_int}, in map: {aid_int in activity_types_map}")
                         if aid_int in activity_types_map and aid_int not in seen_ids:
                             activity_names.append(activity_types_map[aid_int])
                             seen_ids.add(aid_int)
+                            print(f"Session {session.id}: Added {activity_types_map[aid_int]}")
                 except Exception as e:
                     print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     pass
             
             # 2) Récupérer depuis custom_activity_type_id (singulier)
@@ -225,6 +234,8 @@ async def sync_all_sessions(
             # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
             if not activity_names:
                 activity_names = [session.activity_type.value.capitalize()]
+            
+            print(f"Session {session.id}: Final activity_names = {activity_names}")
             
             # Construire la liste des exercices
             exercises_data = []
@@ -309,6 +320,10 @@ async def sync_single_session(
     activity_names = []
     seen_ids = set()
     
+    # Debug: Log pour comprendre ce qui se passe
+    print(f"Session {session.id} (single sync): custom_activity_type_ids = {session.custom_activity_type_ids}")
+    print(f"Session {session.id} (single sync): activity_types_map keys = {list(activity_types_map.keys())}")
+    
     # 1) Récupérer depuis custom_activity_type_ids
     if session.custom_activity_type_ids:
         try:
@@ -316,14 +331,19 @@ async def sync_single_session(
             # S'assurer que ids est une liste
             if not isinstance(ids, list):
                 ids = [ids]
+            print(f"Session {session.id} (single sync): Parsed IDs = {ids}")
             for aid in ids:
                 # Convertir en int si nécessaire (les IDs peuvent être strings dans le JSON)
-                aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else aid
+                aid_int = int(aid) if isinstance(aid, str) and aid.isdigit() else (int(aid) if isinstance(aid, (float, str)) else aid)
+                print(f"Session {session.id} (single sync): Processing ID {aid} -> {aid_int}, in map: {aid_int in activity_types_map}")
                 if aid_int in activity_types_map and aid_int not in seen_ids:
                     activity_names.append(activity_types_map[aid_int])
                     seen_ids.add(aid_int)
+                    print(f"Session {session.id} (single sync): Added {activity_types_map[aid_int]}")
         except Exception as e:
             print(f"Erreur parsing custom_activity_type_ids pour session {session.id}: {e}")
+            import traceback
+            traceback.print_exc()
             pass
     
     # 2) Récupérer depuis custom_activity_type_id (singulier)
@@ -344,6 +364,8 @@ async def sync_single_session(
     # 4) Fallback ultime: type d'activité de base (seulement si aucun type trouvé)
     if not activity_names:
         activity_names = [session.activity_type.value.capitalize()]
+    
+    print(f"Session {session.id} (single sync): Final activity_names = {activity_names}")
     
     # Construire la liste des exercices
     exercises_data = []
