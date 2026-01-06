@@ -383,15 +383,16 @@ def build_session_description_caldav(
     
     # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
-        lines.append("══════════════")
+        lines.append("════════════════════")
         lines.append(f"📋 ACTIVITÉS: {', '.join(activity_types)}")
-        lines.append("══════════════")
+        lines.append("════════════════════")
         lines.append("")
     
     # === EXERCICES (Informations détaillées) ===
     if exercises:
+        lines.append("════════════════════")
         lines.append("💪 EXERCICES PLANIFIÉS:")
-        lines.append("─" * 25)
+        lines.append("════════════════════")
         for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
             sets = ex.get("sets", "")
@@ -415,11 +416,11 @@ def build_session_description_caldav(
         lines.append("")
     
     # === ACTION RAPIDE ===
-    lines.append("══════════════")
+    lines.append("════════════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
     lines.append(f"🚀 LANCER LA SÉANCE")
     lines.append(session_url)
-    lines.append("══════════════")
+    lines.append("════════════════════")
     
     return "\\n".join(lines)
 
