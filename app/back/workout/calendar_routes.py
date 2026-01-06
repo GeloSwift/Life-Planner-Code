@@ -174,7 +174,6 @@ async def sync_all_sessions(
     ).all()
     
     # Récupérer les types d'activités pour les noms (par défaut + personnels)
-    from sqlalchemy import or_
     all_user_activity_types = db.query(UserActivityType).filter(
         or_(
             UserActivityType.is_default.is_(True),  # Activités par défaut

@@ -280,7 +280,7 @@ def build_session_description(
     # === EXERCICES (Informations détaillées) ===
     if exercises:
         lines.append("════════════════════")
-        lines.append("💪 EXERCICES PLANIFIÉS:")
+        lines.append("💪 EXERCICES PLANIFIÉS")
         lines.append("════════════════════")
         for idx, ex in enumerate(exercises[:10], 1):  # Max 10 exercices
             name = ex.get("name", "Exercice")
@@ -306,10 +306,10 @@ def build_session_description(
     
     # === ACTION RAPIDE ===
     lines.append("════════════════════")
-    session_url = f"{frontend_url}/workout/sessions/{session_id}"
-    lines.append(f"🚀 LANCER LA SÉANCE")
-    lines.append(session_url)
+    lines.append("🚀 LANCER LA SÉANCE")
     lines.append("════════════════════")
+    session_url = f"{frontend_url}/workout/sessions/{session_id}"
+    lines.append(session_url)
     
     return "\n".join(lines)
 

@@ -37,7 +37,6 @@ import {
   TrendingUp,
   Calendar,
   ArrowRight,
-  RefreshCw,
   CalendarSync,
   Link2,
 } from "lucide-react";
