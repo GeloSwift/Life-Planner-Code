@@ -389,6 +389,7 @@ async def create_caldav_event(
         description=description,
         start_time=start_time,
         end_time=end_time,
+        rrule=rrule,
     )
     
     async with httpx.AsyncClient() as client:
