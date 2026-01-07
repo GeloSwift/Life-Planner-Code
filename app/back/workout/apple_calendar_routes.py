@@ -289,11 +289,6 @@ async def sync_all_sessions_apple(
                     "weight": ex.target_weight,
                 })
             
-            print(f"[DEBUG Apple Calendar Route] Session {session.id}:")
-            print(f"  - recurrence_type: {session.recurrence_type} (type: {type(session.recurrence_type)})")
-            print(f"  - recurrence_data: {session.recurrence_data} (type: {type(session.recurrence_data)})")
-            print(f"  - scheduled_at: {session.scheduled_at}")
-            
             event_uid = await sync_session_to_apple_calendar(
                 current_user.apple_calendar_apple_id,
                 current_user.apple_calendar_app_password,
@@ -432,11 +427,6 @@ async def sync_single_session_apple(
             "reps": ex.target_reps,
             "weight": ex.target_weight,
         })
-    
-    print(f"[DEBUG Apple Calendar Route - Single Sync] Session {session.id}:")
-    print(f"  - recurrence_type: {session.recurrence_type} (type: {type(session.recurrence_type)})")
-    print(f"  - recurrence_data: {session.recurrence_data} (type: {type(session.recurrence_data)})")
-    print(f"  - scheduled_at: {session.scheduled_at}")
     
     event_uid = await sync_session_to_apple_calendar(
         current_user.apple_calendar_apple_id,

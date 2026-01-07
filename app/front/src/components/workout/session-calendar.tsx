@@ -105,26 +105,13 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     recurrenceData: (number | string)[] | null | undefined,
     monthsAhead: number = 3
   ): Date[] => {
-    console.log("[DEBUG] generateRecurringDates called:", {
-      startDate: startDate.toISOString(),
-      recurrenceType,
-      recurrenceData,
-      monthsAhead,
-    });
-    
     if (!recurrenceType || !startDate) {
-      console.log("[DEBUG] No recurrence, returning single date");
       return [startDate];
     }
     
     const dates: Date[] = [];
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + monthsAhead);
-    
-    console.log("[DEBUG] Date range:", {
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-    });
     
     // Mapping des jours de la semaine
     const dayMapping: Record<string, number> = {
@@ -151,10 +138,8 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         current.setDate(current.getDate() + 1);
       }
     } else if (recurrenceType === "weekly") {
-      console.log("[DEBUG] Weekly recurrence, recurrenceData:", recurrenceData);
       if (!recurrenceData || recurrenceData.length === 0) {
         // Par défaut, même jour de la semaine
-        console.log("[DEBUG] No recurrenceData, using same day of week");
         let current = new Date(startDate);
         while (current <= endDate) {
           dates.push(new Date(current));
@@ -164,37 +149,31 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         // Jours spécifiques de la semaine
         const targetDays = recurrenceData.map(day => {
           const dayStr = String(day).toLowerCase();
-          const mapped = dayMapping[dayStr] ?? null;
-          console.log("[DEBUG] Mapping day:", dayStr, "->", mapped);
-          return mapped;
+          return dayMapping[dayStr] ?? null;
         }).filter((d): d is number => d !== null);
         
-        console.log("[DEBUG] Target days (0=Sunday, 1=Monday, etc.):", targetDays);
-        
         if (targetDays.length > 0) {
-          // Commencer à partir de la date de départ et chercher le prochain jour correspondant
+          // Commencer à partir de la date de départ et chercher tous les jours correspondants
           let current = new Date(startDate);
           const startDayOfWeek = startDate.getDay();
           
           // Si le jour de départ correspond déjà, l'ajouter
           if (targetDays.includes(startDayOfWeek)) {
             dates.push(new Date(startDate));
-            console.log("[DEBUG] Added start date:", startDate.toISOString());
           }
           
-          // Continuer à partir du jour suivant
+          // Continuer à partir du jour suivant jusqu'à la fin
           current.setDate(current.getDate() + 1);
           
           while (current <= endDate) {
             const currentDay = current.getDay();
             if (targetDays.includes(currentDay)) {
               dates.push(new Date(current));
-              console.log("[DEBUG] Added date:", current.toISOString(), "day:", currentDay);
             }
             current.setDate(current.getDate() + 1);
           }
         } else {
-          console.log("[DEBUG] No valid target days found, falling back to same day of week");
+          // Fallback: même jour de la semaine
           let current = new Date(startDate);
           while (current <= endDate) {
             dates.push(new Date(current));
@@ -253,37 +232,22 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
     
-    console.log("[DEBUG] Processing sessions:", sessions.length);
-    
     sessions.forEach((session) => {
-      console.log("[DEBUG] Processing session:", {
-        id: session.id,
-        name: session.name,
-        scheduled_at: session.scheduled_at,
-        recurrence_type: session.recurrence_type,
-        recurrence_data: session.recurrence_data,
-      });
-      
       const sessionDate = session.scheduled_at
         ? new Date(session.scheduled_at)
         : session.started_at
         ? new Date(session.started_at)
         : null;
       
-      if (!sessionDate) {
-        console.log("[DEBUG] No session date, skipping");
-        return;
-      }
+      if (!sessionDate) return;
       
-      // Parser recurrence_data si c'est une string JSON
+      // Parser recurrence_data si c'est une string JSON (au cas où Pydantic ne l'a pas fait)
       let parsedRecurrenceData: (number | string)[] | null = null;
       if (session.recurrence_data) {
         if (typeof session.recurrence_data === "string") {
           try {
             parsedRecurrenceData = JSON.parse(session.recurrence_data);
-            console.log("[DEBUG] Parsed recurrence_data from string:", parsedRecurrenceData);
-          } catch (e) {
-            console.error("[DEBUG] Failed to parse recurrence_data:", e);
+          } catch {
             parsedRecurrenceData = null;
           }
         } else if (Array.isArray(session.recurrence_data)) {
@@ -291,15 +255,13 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         }
       }
       
-      // Générer toutes les dates récurrentes
+      // Générer toutes les dates récurrentes (6 mois à l'avance pour être sûr)
       const recurringDates = generateRecurringDates(
         sessionDate,
         session.recurrence_type ?? null,
         parsedRecurrenceData,
-        3 // 3 mois à l'avance
+        6 // 6 mois à l'avance pour couvrir une large période
       );
-      
-      console.log("[DEBUG] Generated", recurringDates.length, "recurring dates for session", session.id);
       
       // Ajouter chaque occurrence au mapping
       recurringDates.forEach((date) => {
@@ -308,9 +270,6 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         map.set(key, [...existing, session]);
       });
     });
-    
-    console.log("[DEBUG] Final sessionsByDay map size:", map.size);
-    console.log("[DEBUG] Sample keys:", Array.from(map.keys()).slice(0, 10));
     
     return map;
   }, [sessions]);

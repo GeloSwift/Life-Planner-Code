@@ -206,10 +206,7 @@ def build_icalendar_rrule(
     Returns:
         String RRULE pour iCalendar, ou None si pas de récurrence
     """
-    print(f"[DEBUG build_icalendar_rrule] Input: recurrence_type={recurrence_type}, recurrence_data={recurrence_data} (type: {type(recurrence_data)})")
-    
     if not recurrence_type:
-        print("[DEBUG build_icalendar_rrule] No recurrence_type, returning None")
         return None
     
     # Mapping des jours de la semaine (français -> iCalendar)
@@ -234,38 +231,26 @@ def build_icalendar_rrule(
         return "RRULE:FREQ=DAILY"
     
     elif recurrence_type == "weekly":
-        print("[DEBUG build_icalendar_rrule] Processing weekly recurrence")
         if not recurrence_data:
-            print("[DEBUG build_icalendar_rrule] No recurrence_data, returning FREQ=WEEKLY")
             return "RRULE:FREQ=WEEKLY"
         
         try:
             days = json.loads(recurrence_data) if isinstance(recurrence_data, str) else recurrence_data
-            print(f"[DEBUG build_icalendar_rrule] Parsed days: {days} (type: {type(days)})")
             if not isinstance(days, list) or len(days) == 0:
-                print("[DEBUG build_icalendar_rrule] Days is not a list or empty, returning FREQ=WEEKLY")
                 return "RRULE:FREQ=WEEKLY"
             
             # Convertir les jours en format iCalendar
             byday = []
             for day in days:
                 day_str = str(day).lower()
-                print(f"[DEBUG build_icalendar_rrule] Processing day: {day} -> {day_str}")
                 if day_str in day_mapping:
                     byday.append(day_mapping[day_str])
-                    print(f"[DEBUG build_icalendar_rrule] Mapped to: {day_mapping[day_str]}")
-                else:
-                    print(f"[DEBUG build_icalendar_rrule] Day {day_str} not found in mapping")
             
             if byday:
-                rrule = f"RRULE:FREQ=WEEKLY;BYDAY={','.join(byday)}"
-                print(f"[DEBUG build_icalendar_rrule] Generated RRULE: {rrule}")
-                return rrule
+                return f"RRULE:FREQ=WEEKLY;BYDAY={','.join(byday)}"
             else:
-                print("[DEBUG build_icalendar_rrule] No valid days mapped, returning FREQ=WEEKLY")
                 return "RRULE:FREQ=WEEKLY"
-        except Exception as e:
-            print(f"[DEBUG build_icalendar_rrule] Exception parsing recurrence_data: {e}")
+        except Exception:
             return "RRULE:FREQ=WEEKLY"
     
     elif recurrence_type == "monthly":
@@ -581,9 +566,7 @@ async def sync_session_to_apple_calendar(
         )
         
         # Construire la récurrence si nécessaire
-        print(f"[DEBUG Apple Calendar] Session {session_id}: recurrence_type={recurrence_type}, recurrence_data={recurrence_data}")
         rrule = build_icalendar_rrule(recurrence_type, recurrence_data)
-        print(f"[DEBUG Apple Calendar] Session {session_id}: Generated RRULE={rrule}")
         
         if existing_event_uid:
             return await update_caldav_event(
