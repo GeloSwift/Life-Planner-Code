@@ -520,9 +520,26 @@ class WorkoutSessionListResponse(BaseModel):
     rating: Optional[int] = None
     exercises_count: int = 0
     completed_exercises_count: int = 0
+    recurrence_type: Optional[str] = None
+    recurrence_data: Optional[list[Union[int, str]]] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator("recurrence_data", mode="before")
+    @classmethod
+    def parse_recurrence_data(cls, v):
+        """Parse recurrence_data from JSON string to list."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return None
+        return None
 
 
 # =============================================================================

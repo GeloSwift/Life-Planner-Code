@@ -420,6 +420,9 @@ async def update_caldav_event(
 ) -> str:
     """
     Met à jour un événement existant dans Apple Calendar.
+    
+    Note: Pour les événements récurrents, il faut parfois supprimer et recréer
+    car certains serveurs CalDAV ne mettent pas à jour correctement la RRULE.
     """
     if end_time is None:
         end_time = start_time + timedelta(hours=1, minutes=30)  # 1h30 par défaut
@@ -427,6 +430,29 @@ async def update_caldav_event(
     auth_header = get_auth_header(apple_id, app_password)
     event_url = f"{calendar_url}{event_uid}.ics"
     
+    # Si on a une récurrence, on supprime l'ancien événement et on en crée un nouveau
+    # car certains serveurs CalDAV (iCloud) ne mettent pas à jour correctement la RRULE
+    if rrule:
+        # Supprimer l'ancien événement
+        async with httpx.AsyncClient() as client:
+            await client.delete(
+                event_url,
+                headers={"Authorization": auth_header},
+            )
+        
+        # Créer un nouvel événement avec la récurrence
+        return await create_caldav_event(
+            apple_id,
+            app_password,
+            calendar_url,
+            title,
+            description,
+            start_time,
+            end_time,
+            rrule=rrule,
+        )
+    
+    # Sinon, mise à jour normale
     ics_content = build_icalendar_event(
         uid=event_uid,
         title=title,
@@ -532,7 +558,9 @@ def build_session_description_caldav(
     lines.append("🚀 LANCER LA SÉANCE")
     lines.append("════════════════════")
     session_url = f"{frontend_url}/workout/sessions/{session_id}"
+    # S'assurer que le lien est sur une ligne séparée et bien formaté
     lines.append(session_url)
+    lines.append("")  # Ligne vide pour séparer le lien
     
     return "\\n".join(lines)
 

@@ -812,6 +812,8 @@ def get_dashboard(
             rating=s.rating,
             exercises_count=len(s.exercises),
             completed_exercises_count=sum(1 for e in s.exercises if e.is_completed),
+            recurrence_type=s.recurrence_type,
+            recurrence_data=s.recurrence_data,
             created_at=s.created_at,
         )
         for s in recent
@@ -835,6 +837,8 @@ def get_dashboard(
             rating=s.rating,
             exercises_count=len(s.exercises),
             completed_exercises_count=sum(1 for e in s.exercises if e.is_completed),
+            recurrence_type=s.recurrence_type,
+            recurrence_data=s.recurrence_data,
             created_at=s.created_at,
         )
         for s in upcoming
