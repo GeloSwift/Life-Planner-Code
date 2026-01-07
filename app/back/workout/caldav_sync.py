@@ -384,8 +384,10 @@ def build_session_description_caldav(
     # === INFORMATIONS ESSENTIELLES ===
     if activity_types:
         lines.append("════════════════════")
-        lines.append(f"📋 ACTIVITÉS: {', '.join(activity_types)}")
+        lines.append("📋 ACTIVITÉS")
         lines.append("════════════════════")
+        for activity in activity_types:
+            lines.append(f"- {activity}")
         lines.append("")
     
     # === EXERCICES (Informations détaillées) ===
