@@ -270,12 +270,6 @@ async def create_calendar_event(
     if recurrence:
         event["recurrence"] = recurrence
     
-    # Debug: vérifier que le lien est bien dans la description
-    if f"/workout/sessions/{session_id}" not in description:
-        print(f"[WARNING] Session ID {session_id} not found in description!")
-        print(f"[WARNING] Description length: {len(description)}")
-        print(f"[WARNING] Description preview: {description[:200]}...")
-    
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",

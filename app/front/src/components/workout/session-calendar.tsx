@@ -132,7 +132,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     };
     
     if (recurrenceType === "daily") {
-      let current = new Date(startDate);
+      const current = new Date(startDate);
       while (current <= endDate) {
         dates.push(new Date(current));
         current.setDate(current.getDate() + 1);
@@ -140,7 +140,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     } else if (recurrenceType === "weekly") {
       if (!recurrenceData || recurrenceData.length === 0) {
         // Par défaut, même jour de la semaine
-        let current = new Date(startDate);
+        const current = new Date(startDate);
         while (current <= endDate) {
           dates.push(new Date(current));
           current.setDate(current.getDate() + 7);
@@ -154,7 +154,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         
         if (targetDays.length > 0) {
           // Commencer à partir de la date de départ et chercher tous les jours correspondants
-          let current = new Date(startDate);
+          const current = new Date(startDate);
           const startDayOfWeek = startDate.getDay();
           
           // Si le jour de départ correspond déjà, l'ajouter
@@ -174,7 +174,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           }
         } else {
           // Fallback: même jour de la semaine
-          let current = new Date(startDate);
+          const current = new Date(startDate);
           while (current <= endDate) {
             dates.push(new Date(current));
             current.setDate(current.getDate() + 7);
@@ -184,7 +184,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     } else if (recurrenceType === "monthly") {
       if (!recurrenceData || recurrenceData.length === 0) {
         // Par défaut, même jour du mois
-        let current = new Date(startDate);
+        const current = new Date(startDate);
         while (current <= endDate) {
           dates.push(new Date(current));
           current.setMonth(current.getMonth() + 1);
@@ -199,7 +199,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           .filter((d): d is number => d !== null && d >= 1 && d <= 31);
         
         if (targetDays.length > 0) {
-          let current = new Date(startDate);
+          const current = new Date(startDate);
           const startDay = startDate.getDate();
           
           // Ajouter la date de départ si elle correspond

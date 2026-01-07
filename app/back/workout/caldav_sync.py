@@ -433,14 +433,23 @@ async def update_caldav_event(
     # Si on a une récurrence, on supprime l'ancien événement et on en crée un nouveau
     # car certains serveurs CalDAV (iCloud) ne mettent pas à jour correctement la RRULE
     if rrule:
-        # Supprimer l'ancien événement
+        # Supprimer l'ancien événement (ignorer les erreurs 404 si déjà supprimé)
         async with httpx.AsyncClient() as client:
-            await client.delete(
-                event_url,
-                headers={"Authorization": auth_header},
-            )
+            try:
+                delete_response = await client.delete(
+                    event_url,
+                    headers={"Authorization": auth_header},
+                )
+                # 404 est OK (événement déjà supprimé), 412 peut indiquer un problème de précondition
+                if delete_response.status_code not in (200, 204, 404):
+                    # Si erreur autre que 404, on continue quand même avec la création
+                    pass
+            except Exception:
+                # En cas d'erreur, on continue quand même avec la création
+                pass
         
-        # Créer un nouvel événement avec la récurrence
+        # Créer un nouvel événement avec la récurrence (générer un nouvel UID)
+        new_uid = str(uuid.uuid4())
         return await create_caldav_event(
             apple_id,
             app_password,
@@ -450,6 +459,7 @@ async def update_caldav_event(
             start_time,
             end_time,
             rrule=rrule,
+            event_uid=new_uid,
         )
     
     # Sinon, mise à jour normale
