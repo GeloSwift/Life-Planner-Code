@@ -293,6 +293,7 @@ def build_icalendar_event(
     start_time: datetime,
     end_time: datetime,
     rrule: Optional[str] = None,
+    exdates: Optional[list[str]] = None,
 ) -> str:
     """
     Construit un événement au format iCalendar (ICS).
@@ -321,6 +322,33 @@ def build_icalendar_event(
     # Échapper les sauts de ligne pour iCalendar (doit être fait avant le f-string)
     newline_escape = "\\n"
     escaped_description = description.replace("\n", newline_escape)
+
+    def build_exdate_line() -> Optional[str]:
+        """
+        Construit une ligne EXDATE à partir de dates (YYYY-MM-DD).
+        Les EXDATE doivent inclure l'heure de début de la séance.
+        """
+        if not exdates:
+            return None
+
+        # Heure de référence = heure de la séance (Europe/Paris)
+        ref_dt = start_time_paris
+        ref_time = (ref_dt.hour, ref_dt.minute, ref_dt.second)
+
+        values: list[str] = []
+        for d in exdates:
+            try:
+                # d attendu: YYYY-MM-DD
+                y, m, day = [int(x) for x in str(d).split("-")]
+                dt = datetime(y, m, day, ref_time[0], ref_time[1], ref_time[2])
+                values.append(format_datetime(dt))
+            except Exception:
+                continue
+
+        if not values:
+            return None
+
+        return f"EXDATE;TZID=Europe/Paris:{','.join(values)}"
     
     # Construire le contenu de l'événement
     event_lines = [
@@ -346,6 +374,10 @@ def build_icalendar_event(
     # Ajouter la récurrence si fournie
     if rrule:
         event_lines.append(rrule)
+
+    exdate_line = build_exdate_line()
+    if exdate_line:
+        event_lines.append(exdate_line)
     
     event_lines.extend([
         "BEGIN:VALARM",
@@ -369,6 +401,7 @@ async def create_caldav_event(
     start_time: datetime,
     end_time: Optional[datetime] = None,
     rrule: Optional[str] = None,
+    exdates: Optional[list[str]] = None,
 ) -> str:
     """
     Crée un événement dans Apple Calendar via CalDAV.
@@ -390,6 +423,7 @@ async def create_caldav_event(
         start_time=start_time,
         end_time=end_time,
         rrule=rrule,
+        exdates=exdates,
     )
     
     async with httpx.AsyncClient() as client:
@@ -418,6 +452,7 @@ async def update_caldav_event(
     start_time: datetime,
     end_time: Optional[datetime] = None,
     rrule: Optional[str] = None,
+    exdates: Optional[list[str]] = None,
 ) -> str:
     """
     Met à jour un événement existant dans Apple Calendar.
@@ -442,15 +477,14 @@ async def update_caldav_event(
                     headers={"Authorization": auth_header},
                 )
                 # 404 est OK (événement déjà supprimé), 412 peut indiquer un problème de précondition
-                if delete_response.status_code not in (200, 204, 404):
+                if delete_response.status_code not in (200, 204, 404, 412):
                     # Si erreur autre que 404, on continue quand même avec la création
                     pass
             except Exception:
                 # En cas d'erreur, on continue quand même avec la création
                 pass
         
-        # Créer un nouvel événement avec la récurrence (générer un nouvel UID)
-        new_uid = str(uuid.uuid4())
+        # Créer un nouvel événement avec la récurrence (nouvel UID)
         return await create_caldav_event(
             apple_id,
             app_password,
@@ -460,7 +494,7 @@ async def update_caldav_event(
             start_time,
             end_time,
             rrule=rrule,
-            event_uid=new_uid,
+            exdates=exdates,
         )
     
     # Sinon, mise à jour normale
@@ -471,6 +505,7 @@ async def update_caldav_event(
         start_time=start_time,
         end_time=end_time,
         rrule=rrule,
+        exdates=exdates,
     )
     
     async with httpx.AsyncClient() as client:
@@ -510,6 +545,111 @@ async def delete_caldav_event(
         )
         
         return response.status_code in (200, 204, 404)
+
+
+async def fetch_caldav_event_ics(
+    apple_id: str,
+    app_password: str,
+    calendar_url: str,
+    event_uid: str,
+) -> tuple[int, Optional[str]]:
+    """
+    Récupère le contenu ICS d'un événement CalDAV.
+
+    Returns:
+        (status_code, ics_text_or_none)
+    """
+    auth_header = get_auth_header(apple_id, app_password)
+    event_url = f"{calendar_url}{event_uid}.ics"
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            event_url,
+            headers={"Authorization": auth_header},
+        )
+        if resp.status_code != 200:
+            return resp.status_code, None
+        return resp.status_code, resp.text
+
+
+def _unfold_ics_lines(ics_text: str) -> list[str]:
+    """
+    RFC5545 line unfolding: lines starting with space/tab continue previous line.
+    """
+    lines = ics_text.splitlines()
+    unfolded: list[str] = []
+    for line in lines:
+        if not line:
+            continue
+        if line.startswith((" ", "\t")) and unfolded:
+            unfolded[-1] = unfolded[-1] + line[1:]
+        else:
+            unfolded.append(line)
+    return unfolded
+
+
+def parse_recurrence_exceptions_from_ics(ics_text: str) -> set[str]:
+    """
+    Extrait les dates d'exception (suppression d'une occurrence) depuis un ICS.
+
+    On gère:
+    - EXDATE
+    - VEVENT avec RECURRENCE-ID + STATUS:CANCELLED (certaines apps)
+
+    Retourne des dates au format YYYY-MM-DD.
+    """
+    exceptions: set[str] = set()
+    lines = _unfold_ics_lines(ics_text)
+
+    # 1) EXDATE
+    for line in lines:
+        if line.startswith("EXDATE"):
+            try:
+                _, value = line.split(":", 1)
+            except ValueError:
+                continue
+            for part in value.split(","):
+                v = part.strip()
+                if len(v) >= 8 and v[:8].isdigit():
+                    y = v[0:4]
+                    m = v[4:6]
+                    d = v[6:8]
+                    exceptions.add(f"{y}-{m}-{d}")
+
+    # 2) VEVENT overrides with RECURRENCE-ID + STATUS:CANCELLED
+    in_vevent = False
+    current_recur_id: Optional[str] = None
+    current_cancelled = False
+    for line in lines:
+        if line == "BEGIN:VEVENT":
+            in_vevent = True
+            current_recur_id = None
+            current_cancelled = False
+            continue
+        if line == "END:VEVENT":
+            if in_vevent and current_cancelled and current_recur_id:
+                rid = current_recur_id
+                if len(rid) >= 8 and rid[:8].isdigit():
+                    y = rid[0:4]
+                    m = rid[4:6]
+                    d = rid[6:8]
+                    exceptions.add(f"{y}-{m}-{d}")
+            in_vevent = False
+            current_recur_id = None
+            current_cancelled = False
+            continue
+        if not in_vevent:
+            continue
+        if line.startswith("RECURRENCE-ID"):
+            try:
+                _, value = line.split(":", 1)
+                current_recur_id = value.strip()
+            except ValueError:
+                continue
+        if line.strip() == "STATUS:CANCELLED":
+            current_cancelled = True
+
+    return exceptions
 
 
 # =============================================================================
@@ -588,6 +728,7 @@ async def sync_session_to_apple_calendar(
     existing_event_uid: Optional[str] = None,
     recurrence_type: Optional[str] = None,
     recurrence_data: Optional[str] = None,
+    recurrence_exceptions: Optional[str] = None,
 ) -> Optional[str]:
     """
     Synchronise une session avec Apple Calendar via CalDAV.
@@ -606,6 +747,16 @@ async def sync_session_to_apple_calendar(
         
         # Construire la récurrence si nécessaire
         rrule = build_icalendar_rrule(recurrence_type, recurrence_data)
+
+        # EXDATE (dates à exclure) - stockées en JSON string (liste de YYYY-MM-DD)
+        exdates: Optional[list[str]] = None
+        if recurrence_exceptions:
+            try:
+                parsed = json.loads(recurrence_exceptions) if isinstance(recurrence_exceptions, str) else recurrence_exceptions
+                if isinstance(parsed, list):
+                    exdates = [str(x) for x in parsed]
+            except Exception:
+                exdates = None
         
         if existing_event_uid:
             return await update_caldav_event(
@@ -617,6 +768,7 @@ async def sync_session_to_apple_calendar(
                 description,
                 scheduled_at,
                 rrule=rrule,
+                exdates=exdates,
             )
         else:
             return await create_caldav_event(
@@ -627,6 +779,7 @@ async def sync_session_to_apple_calendar(
                 description,
                 scheduled_at,
                 rrule=rrule,
+                exdates=exdates,
             )
         
     except Exception as e:

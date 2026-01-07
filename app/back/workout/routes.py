@@ -458,12 +458,42 @@ def update_session(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Supprimer une session",
 )
-def delete_session(
+async def delete_session(
     session_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Supprime une session."""
+    # Récupérer la session pour connaître les IDs d'événements externes
+    db_session = SessionService.get_session(db, session_id, current_user.id)
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+
+    # Supprimer la série dans Google Calendar si connecté
+    if current_user.google_calendar_connected and current_user.google_calendar_refresh_token and db_session.google_calendar_event_id:
+        try:
+            from workout.calendar_sync import delete_session_from_calendar
+            await delete_session_from_calendar(
+                current_user.google_calendar_refresh_token,
+                db_session.google_calendar_event_id,
+            )
+        except Exception as e:
+            print(f"Google Calendar delete error: {e}")
+
+    # Supprimer la série dans Apple Calendar si connecté
+    if current_user.apple_calendar_connected and current_user.apple_calendar_apple_id and current_user.apple_calendar_url and db_session.apple_calendar_event_uid:
+        try:
+            from workout.caldav_sync import delete_session_from_apple_calendar
+            await delete_session_from_apple_calendar(
+                current_user.apple_calendar_apple_id,
+                current_user.apple_calendar_app_password,
+                current_user.apple_calendar_url,
+                db_session.apple_calendar_event_uid,
+            )
+        except Exception as e:
+            print(f"Apple Calendar delete error: {e}")
+
+    # Supprimer la session dans la base (supprime toute la récurrence côté planner)
     if not SessionService.delete_session(db, session_id, current_user.id):
         raise HTTPException(status_code=404, detail="Session non trouvée")
 
@@ -814,6 +844,7 @@ def get_dashboard(
             completed_exercises_count=sum(1 for e in s.exercises if e.is_completed),
             recurrence_type=s.recurrence_type,
             recurrence_data=s.recurrence_data,
+            recurrence_exceptions=s.recurrence_exceptions,
             created_at=s.created_at,
         )
         for s in recent
@@ -839,6 +870,7 @@ def get_dashboard(
             completed_exercises_count=sum(1 for e in s.exercises if e.is_completed),
             recurrence_type=s.recurrence_type,
             recurrence_data=s.recurrence_data,
+            recurrence_exceptions=s.recurrence_exceptions,
             created_at=s.created_at,
         )
         for s in upcoming

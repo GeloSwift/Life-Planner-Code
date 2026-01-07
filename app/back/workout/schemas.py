@@ -429,6 +429,7 @@ class WorkoutSessionBase(BaseModel):
     notes: Optional[str] = None
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence (jours de la semaine pour weekly, jours du mois pour monthly)
+    recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD) pour les occurrences supprimées
 
 
 class WorkoutSessionCreate(WorkoutSessionBase):
@@ -448,6 +449,7 @@ class WorkoutSessionUpdate(BaseModel):
     notes: Optional[str] = None
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence
+    recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD)
     rating: Optional[int] = Field(None, ge=1, le=5)
     perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
     calories_burned: Optional[int] = Field(None, ge=0)
@@ -505,6 +507,23 @@ class WorkoutSessionResponse(WorkoutSessionBase):
                 return None
         return None
 
+    @field_validator("recurrence_exceptions", mode="before")
+    @classmethod
+    def parse_recurrence_exceptions(cls, v):
+        """Parse recurrence_exceptions from JSON string to list[str]."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(x) for x in parsed]
+            except Exception:
+                return None
+        return None
+
 
 class WorkoutSessionListResponse(BaseModel):
     """Schema de réponse pour la liste des sessions (sans exercices détaillés)."""
@@ -522,6 +541,7 @@ class WorkoutSessionListResponse(BaseModel):
     completed_exercises_count: int = 0
     recurrence_type: Optional[str] = None
     recurrence_data: Optional[list[Union[int, str]]] = None
+    recurrence_exceptions: Optional[list[str]] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
@@ -537,6 +557,23 @@ class WorkoutSessionListResponse(BaseModel):
         if isinstance(v, str):
             try:
                 return json.loads(v)
+            except Exception:
+                return None
+        return None
+
+    @field_validator("recurrence_exceptions", mode="before")
+    @classmethod
+    def parse_recurrence_exceptions(cls, v):
+        """Parse recurrence_exceptions from JSON string to list[str]."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return [str(x) for x in v]
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(x) for x in parsed]
             except Exception:
                 return None
         return None

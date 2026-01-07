@@ -403,6 +403,8 @@ class WorkoutSession(Base):
     # Récurrence (quotidien/hebdomadaire/mensuel)
     recurrence_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # "daily", "weekly", "monthly"
     recurrence_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: pour weekly -> ["monday", "wednesday"], pour monthly -> [1, 15]
+    # Exceptions de récurrence (occurrences supprimées) - JSON list de dates "YYYY-MM-DD" (Europe/Paris)
+    recurrence_exceptions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Feedback
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

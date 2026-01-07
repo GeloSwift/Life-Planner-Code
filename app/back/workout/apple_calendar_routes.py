@@ -227,6 +227,48 @@ async def sync_all_sessions_apple(
     
     for session in sessions:
         try:
+            # Réconciliation: si l'événement Apple a été supprimé / modifié côté iCloud
+            if session.apple_calendar_event_uid:
+                from workout.caldav_sync import fetch_caldav_event_ics, parse_recurrence_exceptions_from_ics
+
+                status_code, ics_text = await fetch_caldav_event_ics(
+                    current_user.apple_calendar_apple_id,
+                    current_user.apple_calendar_app_password,
+                    current_user.apple_calendar_url,
+                    session.apple_calendar_event_uid,
+                )
+
+                # Série supprimée côté Apple -> supprimer la séance côté planner + Google
+                if status_code == 404:
+                    # Supprimer aussi côté Google si possible
+                    if current_user.google_calendar_connected and current_user.google_calendar_refresh_token and session.google_calendar_event_id:
+                        try:
+                            from workout.calendar_sync import delete_session_from_calendar
+                            await delete_session_from_calendar(
+                                current_user.google_calendar_refresh_token,
+                                session.google_calendar_event_id,
+                            )
+                        except Exception as e:
+                            print(f"Google Calendar delete error: {e}")
+
+                    db.delete(session)
+                    continue
+
+                # Occurrence(s) supprimée(s) côté Apple -> extraire EXDATE et stocker en DB
+                if status_code == 200 and ics_text and session.recurrence_type:
+                    ex = parse_recurrence_exceptions_from_ics(ics_text)
+                    if ex:
+                        existing_ex: set[str] = set()
+                        if session.recurrence_exceptions:
+                            try:
+                                parsed_existing = json.loads(session.recurrence_exceptions)
+                                if isinstance(parsed_existing, list):
+                                    existing_ex = {str(x) for x in parsed_existing}
+                            except Exception:
+                                existing_ex = set()
+                        merged = sorted(existing_ex.union(ex))
+                        session.recurrence_exceptions = json.dumps(merged)
+
             # Construire la liste des types d'activités
             activity_names = []
             seen_ids = set()
@@ -301,6 +343,7 @@ async def sync_all_sessions_apple(
                 session.apple_calendar_event_uid,
                 session.recurrence_type,
                 session.recurrence_data,
+                session.recurrence_exceptions,
             )
             
             if event_uid and event_uid != session.apple_calendar_event_uid:
@@ -353,6 +396,48 @@ async def sync_single_session_apple(
     
     if not session.scheduled_at:
         raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
+
+    # Réconciliation: si l'événement Apple a été supprimé / modifié côté iCloud
+    if session.apple_calendar_event_uid:
+        from workout.caldav_sync import fetch_caldav_event_ics, parse_recurrence_exceptions_from_ics
+
+        status_code, ics_text = await fetch_caldav_event_ics(
+            current_user.apple_calendar_apple_id,
+            current_user.apple_calendar_app_password,
+            current_user.apple_calendar_url,
+            session.apple_calendar_event_uid,
+        )
+
+        # Série supprimée côté Apple -> supprimer la séance côté planner + Google
+        if status_code == 404:
+            if current_user.google_calendar_connected and current_user.google_calendar_refresh_token and session.google_calendar_event_id:
+                try:
+                    from workout.calendar_sync import delete_session_from_calendar
+                    await delete_session_from_calendar(
+                        current_user.google_calendar_refresh_token,
+                        session.google_calendar_event_id,
+                    )
+                except Exception as e:
+                    print(f"Google Calendar delete error: {e}")
+            db.delete(session)
+            db.commit()
+            raise HTTPException(status_code=404, detail="Séance supprimée côté iCloud")
+
+        # Occurrence(s) supprimée(s) côté Apple -> extraire EXDATE et stocker en DB
+        if status_code == 200 and ics_text and session.recurrence_type:
+            ex = parse_recurrence_exceptions_from_ics(ics_text)
+            if ex:
+                existing_ex: set[str] = set()
+                if session.recurrence_exceptions:
+                    try:
+                        parsed_existing = json.loads(session.recurrence_exceptions)
+                        if isinstance(parsed_existing, list):
+                            existing_ex = {str(x) for x in parsed_existing}
+                    except Exception:
+                        existing_ex = set()
+                merged = sorted(existing_ex.union(ex))
+                session.recurrence_exceptions = json.dumps(merged)
+                db.commit()
     
     # Récupérer les types d'activités (par défaut + personnels)
     all_user_activity_types = db.query(UserActivityType).filter(
@@ -440,6 +525,7 @@ async def sync_single_session_apple(
         session.apple_calendar_event_uid,
         session.recurrence_type,
         session.recurrence_data,
+        session.recurrence_exceptions,
     )
     
     if event_uid:

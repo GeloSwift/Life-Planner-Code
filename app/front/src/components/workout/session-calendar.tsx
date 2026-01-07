@@ -254,6 +254,11 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           parsedRecurrenceData = session.recurrence_data;
         }
       }
+
+      // Exceptions de récurrence (dates à exclure)
+      const exceptionDates = new Set<string>(
+        (session.recurrence_exceptions ?? []).map((d) => String(d))
+      );
       
       // Générer toutes les dates récurrentes (6 mois à l'avance pour être sûr)
       const recurringDates = generateRecurringDates(
@@ -265,6 +270,12 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       
       // Ajouter chaque occurrence au mapping
       recurringDates.forEach((date) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        const isoDay = `${y}-${m}-${d}`;
+        if (exceptionDates.has(isoDay)) return;
+
         const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         const existing = map.get(key) || [];
         map.set(key, [...existing, session]);
@@ -406,7 +417,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     if (!isVisible || daySessions.length === 0) return null;
 
     return (
-      <div className="hidden sm:block absolute z-[100] bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-popover border rounded-lg shadow-xl p-2.5 pointer-events-none">
+      <div className="hidden sm:block absolute z-100 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-popover border rounded-lg shadow-xl p-2.5 pointer-events-none">
         <div className="text-xs font-medium text-muted-foreground mb-1.5 capitalize">
           {new Date(year, month, day).toLocaleDateString("fr-FR", {
             weekday: "short",

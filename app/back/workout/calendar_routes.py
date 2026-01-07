@@ -153,7 +153,15 @@ async def sync_all_sessions(
     Crée des événements pour les séances qui n'en ont pas encore.
     """
     from workout.models import WorkoutSession, SessionStatus
-    from workout.calendar_sync import sync_session_to_calendar
+    from workout.calendar_sync import (
+        sync_session_to_calendar,
+        refresh_access_token,
+        get_calendar_event,
+        list_calendar_event_instances,
+    )
+    from datetime import datetime
+    import pytz
+    import json
     
     if not current_user.google_calendar_connected or not current_user.google_calendar_refresh_token:
         raise HTTPException(
@@ -187,9 +195,73 @@ async def sync_all_sessions(
     
     synced_count = 0
     errors = []
+
+    # Token Google (réutilisé pour la réconciliation afin d'éviter un refresh par séance)
+    access_token = None
+    try:
+        tokens = await refresh_access_token(current_user.google_calendar_refresh_token)
+        access_token = tokens.get("access_token")
+    except Exception:
+        access_token = None
     
     for session in sessions:
         try:
+            # Réconciliation Google -> Planner:
+            # - si la série a été supprimée dans Google, supprimer la séance côté planner (+ Apple)
+            # - si une occurrence a été supprimée, stocker une exception (YYYY-MM-DD) en DB
+            if access_token and session.google_calendar_event_id:
+                ev = await get_calendar_event(access_token, session.google_calendar_event_id)
+                if ev is None:
+                    # Supprimer aussi côté Apple si connecté
+                    if current_user.apple_calendar_connected and current_user.apple_calendar_apple_id and current_user.apple_calendar_url and session.apple_calendar_event_uid:
+                        try:
+                            from workout.caldav_sync import delete_session_from_apple_calendar
+                            await delete_session_from_apple_calendar(
+                                current_user.apple_calendar_apple_id,
+                                current_user.apple_calendar_app_password,
+                                current_user.apple_calendar_url,
+                                session.apple_calendar_event_uid,
+                            )
+                        except Exception as e:
+                            print(f"Apple Calendar delete error: {e}")
+
+                    db.delete(session)
+                    continue
+
+                if session.recurrence_type:
+                    paris_tz = pytz.timezone("Europe/Paris")
+                    instances = await list_calendar_event_instances(access_token, session.google_calendar_event_id, show_deleted=True)
+                    cancelled_days: set[str] = set()
+                    for inst in instances:
+                        if inst.get("status") != "cancelled":
+                            continue
+                        ost = inst.get("originalStartTime") or {}
+                        dt_str = ost.get("dateTime")
+                        date_str = ost.get("date")
+                        if dt_str:
+                            try:
+                                s = dt_str.replace("Z", "+00:00")
+                                dt = datetime.fromisoformat(s)
+                                dt_paris = dt.astimezone(paris_tz)
+                                cancelled_days.add(dt_paris.date().isoformat())
+                            except Exception:
+                                continue
+                        elif date_str:
+                            # all-day occurrence
+                            cancelled_days.add(str(date_str))
+
+                    if cancelled_days:
+                        existing: set[str] = set()
+                        if session.recurrence_exceptions:
+                            try:
+                                parsed = json.loads(session.recurrence_exceptions)
+                                if isinstance(parsed, list):
+                                    existing = {str(x) for x in parsed}
+                            except Exception:
+                                existing = set()
+                        merged = sorted(existing.union(cancelled_days))
+                        session.recurrence_exceptions = json.dumps(merged)
+
             # Construire la liste des types d'activités
             activity_names = []
             seen_ids = set()
@@ -263,6 +335,7 @@ async def sync_all_sessions(
                 session.google_calendar_event_id,
                 session.recurrence_type,
                 session.recurrence_data,
+                session.recurrence_exceptions,
             )
             
             if event_id and event_id != session.google_calendar_event_id:
@@ -292,9 +365,16 @@ async def sync_single_session(
     Synchronise une séance spécifique avec Google Calendar.
     """
     from workout.models import WorkoutSession, UserActivityType, WorkoutSessionExercise
-    from workout.calendar_sync import sync_session_to_calendar
+    from workout.calendar_sync import (
+        sync_session_to_calendar,
+        refresh_access_token,
+        get_calendar_event,
+        list_calendar_event_instances,
+    )
     from sqlalchemy.orm import joinedload
+    from datetime import datetime
     import json
+    import pytz
     
     if not current_user.google_calendar_connected or not current_user.google_calendar_refresh_token:
         raise HTTPException(
@@ -315,6 +395,69 @@ async def sync_single_session(
     
     if not session.scheduled_at:
         raise HTTPException(status_code=400, detail="Cette séance n'a pas de date planifiée")
+
+    # Réconciliation Google -> Planner (séance unique)
+    try:
+        tokens = await refresh_access_token(current_user.google_calendar_refresh_token)
+        access_token = tokens.get("access_token")
+        if access_token and session.google_calendar_event_id:
+            ev = await get_calendar_event(access_token, session.google_calendar_event_id)
+            if ev is None:
+                # Série supprimée côté Google -> supprimer côté planner + Apple
+                if current_user.apple_calendar_connected and current_user.apple_calendar_apple_id and current_user.apple_calendar_url and session.apple_calendar_event_uid:
+                    try:
+                        from workout.caldav_sync import delete_session_from_apple_calendar
+                        await delete_session_from_apple_calendar(
+                            current_user.apple_calendar_apple_id,
+                            current_user.apple_calendar_app_password,
+                            current_user.apple_calendar_url,
+                            session.apple_calendar_event_uid,
+                        )
+                    except Exception as e:
+                        print(f"Apple Calendar delete error: {e}")
+
+                db.delete(session)
+                db.commit()
+                raise HTTPException(status_code=404, detail="Séance supprimée côté Google Calendar")
+
+            if session.recurrence_type:
+                paris_tz = pytz.timezone("Europe/Paris")
+                instances = await list_calendar_event_instances(access_token, session.google_calendar_event_id, show_deleted=True)
+                cancelled_days: set[str] = set()
+                for inst in instances:
+                    if inst.get("status") != "cancelled":
+                        continue
+                    ost = inst.get("originalStartTime") or {}
+                    dt_str = ost.get("dateTime")
+                    date_str = ost.get("date")
+                    if dt_str:
+                        try:
+                            s = dt_str.replace("Z", "+00:00")
+                            dt = datetime.fromisoformat(s)
+                            dt_paris = dt.astimezone(paris_tz)
+                            cancelled_days.add(dt_paris.date().isoformat())
+                        except Exception:
+                            continue
+                    elif date_str:
+                        cancelled_days.add(str(date_str))
+
+                if cancelled_days:
+                    existing: set[str] = set()
+                    if session.recurrence_exceptions:
+                        try:
+                            parsed = json.loads(session.recurrence_exceptions)
+                            if isinstance(parsed, list):
+                                existing = {str(x) for x in parsed}
+                        except Exception:
+                            existing = set()
+                    merged = sorted(existing.union(cancelled_days))
+                    session.recurrence_exceptions = json.dumps(merged)
+                    db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        # On ne bloque pas le sync en cas d'erreur de réconciliation
+        pass
     
     # Récupérer les types d'activités (par défaut + personnels)
     all_user_activity_types = db.query(UserActivityType).filter(
@@ -400,6 +543,7 @@ async def sync_single_session(
         session.google_calendar_event_id,
         session.recurrence_type,
         session.recurrence_data,
+        session.recurrence_exceptions,
     )
     
     if event_id:

@@ -598,6 +598,7 @@ class SessionService:
             notes=session.notes,
             recurrence_type=session.recurrence_type,
             recurrence_data=recurrence_data_json,
+            recurrence_exceptions=None,
         )
         db.add(db_session)
         db.flush()
@@ -792,6 +793,7 @@ class SessionService:
             if update_data["recurrence_type"] is None:
                 update_data["recurrence_type"] = None
                 update_data["recurrence_data"] = None
+                update_data["recurrence_exceptions"] = None
             else:
                 # Si recurrence_type est défini, s'assurer que recurrence_data est aussi traité
                 if "recurrence_data" in update_data:
@@ -800,6 +802,12 @@ class SessionService:
                         update_data["recurrence_data"] = json.dumps(recurrence_data)
                     else:
                         update_data["recurrence_data"] = None
+                if "recurrence_exceptions" in update_data:
+                    recurrence_exceptions = update_data.get("recurrence_exceptions")
+                    if recurrence_exceptions is not None:
+                        update_data["recurrence_exceptions"] = json.dumps(recurrence_exceptions)
+                    else:
+                        update_data["recurrence_exceptions"] = None
         
         # Gérer recurrence_data séparément si recurrence_type n'est pas dans update_data
         if "recurrence_data" in update_data and "recurrence_type" not in update_data:
@@ -808,6 +816,14 @@ class SessionService:
                 update_data["recurrence_data"] = json.dumps(recurrence_data)
             else:
                 update_data["recurrence_data"] = None
+
+        # Gérer recurrence_exceptions séparément si recurrence_type n'est pas dans update_data
+        if "recurrence_exceptions" in update_data and "recurrence_type" not in update_data:
+            recurrence_exceptions = update_data.get("recurrence_exceptions")
+            if recurrence_exceptions is not None:
+                update_data["recurrence_exceptions"] = json.dumps(recurrence_exceptions)
+            else:
+                update_data["recurrence_exceptions"] = None
         
         # Si des exercices sont fournis, remplacer les exercices existants
         if "exercises" in update_data and update_data["exercises"] is not None:

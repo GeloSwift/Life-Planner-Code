@@ -1,0 +1,28 @@
+"""add recurrence exceptions to sessions
+
+Revision ID: add_recurrence_exceptions
+Revises: add_recurrence_sessions
+Create Date: 2026-01-07 18:00:00.000000
+
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = "add_recurrence_exceptions"
+down_revision: Union[str, None] = "add_recurrence_sessions"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column("workout_sessions", sa.Column("recurrence_exceptions", sa.Text(), nullable=True))
+
+
+def downgrade() -> None:
+    op.drop_column("workout_sessions", "recurrence_exceptions")
+

@@ -374,6 +374,7 @@ export interface WorkoutSession {
   calories_burned: number | null;
   recurrence_type?: "daily" | "weekly" | "monthly" | null;
   recurrence_data?: (number | string)[] | null; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
+  recurrence_exceptions?: string[] | null; // Dates d'exclusion "YYYY-MM-DD"
   created_at: string;
   updated_at: string;
   exercises?: WorkoutSessionExercise[];
@@ -389,6 +390,7 @@ export interface WorkoutSessionCreate {
   notes?: string;
   recurrence_type?: "daily" | "weekly" | "monthly";
   recurrence_data?: (number | string)[]; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
+  recurrence_exceptions?: string[]; // Dates d'exclusion "YYYY-MM-DD"
   exercises?: Array<{
     exercise_id: number;
     order?: number;
@@ -415,6 +417,7 @@ export interface WorkoutSessionUpdate {
   calories_burned?: number;
   recurrence_type?: "daily" | "weekly" | "monthly";
   recurrence_data?: (number | string)[]; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
+  recurrence_exceptions?: string[]; // Dates d'exclusion "YYYY-MM-DD"
   exercises?: Array<{
     exercise_id: number;
     order?: number;
