@@ -261,6 +261,8 @@ async def sync_all_sessions(
                 session.scheduled_at,
                 exercises_data,
                 session.google_calendar_event_id,
+                session.recurrence_type,
+                session.recurrence_data,
             )
             
             if event_id and event_id != session.google_calendar_event_id:
@@ -396,6 +398,8 @@ async def sync_single_session(
         session.scheduled_at,
         exercises_data,
         session.google_calendar_event_id,
+        session.recurrence_type,
+        session.recurrence_data,
     )
     
     if event_id:

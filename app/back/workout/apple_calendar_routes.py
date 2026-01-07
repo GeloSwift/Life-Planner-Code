@@ -299,6 +299,8 @@ async def sync_all_sessions_apple(
                 session.scheduled_at,
                 exercises_data,
                 session.apple_calendar_event_uid,
+                session.recurrence_type,
+                session.recurrence_data,
             )
             
             if event_uid and event_uid != session.apple_calendar_event_uid:
@@ -436,6 +438,8 @@ async def sync_single_session_apple(
         session.scheduled_at,
         exercises_data,
         session.apple_calendar_event_uid,
+        session.recurrence_type,
+        session.recurrence_data,
     )
     
     if event_uid:

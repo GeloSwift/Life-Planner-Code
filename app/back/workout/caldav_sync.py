@@ -19,6 +19,7 @@ import httpx
 import uuid
 from base64 import b64encode
 import pytz
+import json
 
 from core.config import settings
 
@@ -188,6 +189,100 @@ async def verify_caldav_credentials(apple_id: str, app_password: str) -> bool:
 
 
 # =============================================================================
+# Recurrence Helpers
+# =============================================================================
+
+def build_icalendar_rrule(
+    recurrence_type: Optional[str],
+    recurrence_data: Optional[str],
+) -> Optional[str]:
+    """
+    Construit la règle de récurrence au format iCalendar (RRULE).
+    
+    Args:
+        recurrence_type: "daily", "weekly", "monthly"
+        recurrence_data: JSON string avec les données (jours de la semaine pour weekly, jours du mois pour monthly)
+    
+    Returns:
+        String RRULE pour iCalendar, ou None si pas de récurrence
+    """
+    if not recurrence_type:
+        return None
+    
+    # Mapping des jours de la semaine (français -> iCalendar)
+    day_mapping = {
+        "monday": "MO",
+        "tuesday": "TU",
+        "wednesday": "WE",
+        "thursday": "TH",
+        "friday": "FR",
+        "saturday": "SA",
+        "sunday": "SU",
+        "lundi": "MO",
+        "mardi": "TU",
+        "mercredi": "WE",
+        "jeudi": "TH",
+        "vendredi": "FR",
+        "samedi": "SA",
+        "dimanche": "SU",
+    }
+    
+    if recurrence_type == "daily":
+        return "RRULE:FREQ=DAILY"
+    
+    elif recurrence_type == "weekly":
+        if not recurrence_data:
+            return "RRULE:FREQ=WEEKLY"
+        
+        try:
+            days = json.loads(recurrence_data) if isinstance(recurrence_data, str) else recurrence_data
+            if not isinstance(days, list) or len(days) == 0:
+                return "RRULE:FREQ=WEEKLY"
+            
+            # Convertir les jours en format iCalendar
+            byday = []
+            for day in days:
+                day_str = str(day).lower()
+                if day_str in day_mapping:
+                    byday.append(day_mapping[day_str])
+            
+            if byday:
+                return f"RRULE:FREQ=WEEKLY;BYDAY={','.join(byday)}"
+            else:
+                return "RRULE:FREQ=WEEKLY"
+        except Exception:
+            return "RRULE:FREQ=WEEKLY"
+    
+    elif recurrence_type == "monthly":
+        if not recurrence_data:
+            return "RRULE:FREQ=MONTHLY"
+        
+        try:
+            days = json.loads(recurrence_data) if isinstance(recurrence_data, str) else recurrence_data
+            if not isinstance(days, list) or len(days) == 0:
+                return "RRULE:FREQ=MONTHLY"
+            
+            # Filtrer et convertir en entiers (jours du mois)
+            monthdays = []
+            for day in days:
+                try:
+                    day_int = int(day)
+                    if 1 <= day_int <= 31:
+                        monthdays.append(str(day_int))
+                except (ValueError, TypeError):
+                    continue
+            
+            if monthdays:
+                return f"RRULE:FREQ=MONTHLY;BYMONTHDAY={','.join(monthdays)}"
+            else:
+                return "RRULE:FREQ=MONTHLY"
+        except Exception:
+            return "RRULE:FREQ=MONTHLY"
+    
+    return None
+
+
+# =============================================================================
 # Calendar Events (iCalendar format)
 # =============================================================================
 
@@ -197,6 +292,7 @@ def build_icalendar_event(
     description: str,
     start_time: datetime,
     end_time: datetime,
+    rrule: Optional[str] = None,
 ) -> str:
     """
     Construit un événement au format iCalendar (ICS).
@@ -226,31 +322,42 @@ def build_icalendar_event(
     newline_escape = "\\n"
     escaped_description = description.replace("\n", newline_escape)
     
-    return f"""BEGIN:VCALENDAR
-CALSCALE:GREGORIAN
-PRODID:-//Life Planner//Workout Sessions//FR
-VERSION:2.0
-BEGIN:VEVENT
-UID:{uid}
-CREATED:{format_datetime(now)}Z
-DTSTAMP:{format_datetime(now)}Z
-DTSTART;TZID=Europe/Paris:{format_datetime(start_time_paris)}
-DTEND;TZID=Europe/Paris:{format_datetime(end_time_paris)}
-LAST-MODIFIED:{format_datetime(now)}Z
-SEQUENCE:0
-SUMMARY:{title}
-DESCRIPTION:{escaped_description}
-CATEGORIES:Sport,Entraînement
-X-APPLE-CALENDAR-COLOR:#FF3B30
-X-APPLE-LOCAL-DEFAULT-ALARM:PT30M
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Reminder
-TRIGGER:-PT30M
-END:VALARM
-END:VEVENT
-END:VCALENDAR
-"""
+    # Construire le contenu de l'événement
+    event_lines = [
+        "BEGIN:VCALENDAR",
+        "CALSCALE:GREGORIAN",
+        "PRODID:-//Life Planner//Workout Sessions//FR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        f"UID:{uid}",
+        f"CREATED:{format_datetime(now)}Z",
+        f"DTSTAMP:{format_datetime(now)}Z",
+        f"DTSTART;TZID=Europe/Paris:{format_datetime(start_time_paris)}",
+        f"DTEND;TZID=Europe/Paris:{format_datetime(end_time_paris)}",
+        f"LAST-MODIFIED:{format_datetime(now)}Z",
+        "SEQUENCE:0",
+        f"SUMMARY:{title}",
+        f"DESCRIPTION:{escaped_description}",
+        "CATEGORIES:Sport,Entraînement",
+        "X-APPLE-CALENDAR-COLOR:#FF3B30",
+        "X-APPLE-LOCAL-DEFAULT-ALARM:PT30M",
+    ]
+    
+    # Ajouter la récurrence si fournie
+    if rrule:
+        event_lines.append(rrule)
+    
+    event_lines.extend([
+        "BEGIN:VALARM",
+        "ACTION:DISPLAY",
+        "DESCRIPTION:Reminder",
+        "TRIGGER:-PT30M",
+        "END:VALARM",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ])
+    
+    return "\n".join(event_lines) + "\n"
 
 
 async def create_caldav_event(
@@ -261,6 +368,7 @@ async def create_caldav_event(
     description: str,
     start_time: datetime,
     end_time: Optional[datetime] = None,
+    rrule: Optional[str] = None,
 ) -> str:
     """
     Crée un événement dans Apple Calendar via CalDAV.
@@ -308,6 +416,7 @@ async def update_caldav_event(
     description: str,
     start_time: datetime,
     end_time: Optional[datetime] = None,
+    rrule: Optional[str] = None,
 ) -> str:
     """
     Met à jour un événement existant dans Apple Calendar.
@@ -324,6 +433,7 @@ async def update_caldav_event(
         description=description,
         start_time=start_time,
         end_time=end_time,
+        rrule=rrule,
     )
     
     async with httpx.AsyncClient() as client:
@@ -437,6 +547,8 @@ async def sync_session_to_apple_calendar(
     scheduled_at: datetime,
     exercises: Optional[list[dict]] = None,
     existing_event_uid: Optional[str] = None,
+    recurrence_type: Optional[str] = None,
+    recurrence_data: Optional[str] = None,
 ) -> Optional[str]:
     """
     Synchronise une session avec Apple Calendar via CalDAV.
@@ -453,6 +565,9 @@ async def sync_session_to_apple_calendar(
             frontend_url,
         )
         
+        # Construire la récurrence si nécessaire
+        rrule = build_icalendar_rrule(recurrence_type, recurrence_data)
+        
         if existing_event_uid:
             return await update_caldav_event(
                 apple_id,
@@ -462,6 +577,7 @@ async def sync_session_to_apple_calendar(
                 session_name,
                 description,
                 scheduled_at,
+                rrule=rrule,
             )
         else:
             return await create_caldav_event(
@@ -471,6 +587,7 @@ async def sync_session_to_apple_calendar(
                 session_name,
                 description,
                 scheduled_at,
+                rrule=rrule,
             )
         
     except Exception as e:

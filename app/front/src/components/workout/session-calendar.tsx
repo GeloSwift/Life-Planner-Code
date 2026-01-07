@@ -98,7 +98,117 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     return days;
   }, [currentDate]);
 
-  // Mapper les séances par jour
+  // Fonction pour générer les dates récurrentes
+  const generateRecurringDates = (
+    startDate: Date,
+    recurrenceType: "daily" | "weekly" | "monthly" | null | undefined,
+    recurrenceData: (number | string)[] | null | undefined,
+    monthsAhead: number = 3
+  ): Date[] => {
+    if (!recurrenceType || !startDate) return [startDate];
+    
+    const dates: Date[] = [];
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + monthsAhead);
+    
+    // Mapping des jours de la semaine
+    const dayMapping: Record<string, number> = {
+      "monday": 1,
+      "tuesday": 2,
+      "wednesday": 3,
+      "thursday": 4,
+      "friday": 5,
+      "saturday": 6,
+      "sunday": 0,
+      "lundi": 1,
+      "mardi": 2,
+      "mercredi": 3,
+      "jeudi": 4,
+      "vendredi": 5,
+      "samedi": 6,
+      "dimanche": 0,
+    };
+    
+    if (recurrenceType === "daily") {
+      let current = new Date(startDate);
+      while (current <= endDate) {
+        dates.push(new Date(current));
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (recurrenceType === "weekly") {
+      if (!recurrenceData || recurrenceData.length === 0) {
+        // Par défaut, même jour de la semaine
+        let current = new Date(startDate);
+        while (current <= endDate) {
+          dates.push(new Date(current));
+          current.setDate(current.getDate() + 7);
+        }
+      } else {
+        // Jours spécifiques de la semaine
+        const targetDays = recurrenceData.map(day => {
+          const dayStr = String(day).toLowerCase();
+          return dayMapping[dayStr] ?? null;
+        }).filter((d): d is number => d !== null);
+        
+        if (targetDays.length > 0) {
+          let current = new Date(startDate);
+          while (current <= endDate) {
+            const currentDay = current.getDay();
+            if (targetDays.includes(currentDay)) {
+              dates.push(new Date(current));
+            }
+            current.setDate(current.getDate() + 1);
+          }
+        }
+      }
+    } else if (recurrenceType === "monthly") {
+      if (!recurrenceData || recurrenceData.length === 0) {
+        // Par défaut, même jour du mois
+        let current = new Date(startDate);
+        while (current <= endDate) {
+          dates.push(new Date(current));
+          current.setMonth(current.getMonth() + 1);
+        }
+      } else {
+        // Jours spécifiques du mois
+        const targetDays = recurrenceData
+          .map(day => {
+            const dayNum = typeof day === "number" ? day : parseInt(String(day), 10);
+            return isNaN(dayNum) ? null : dayNum;
+          })
+          .filter((d): d is number => d !== null && d >= 1 && d <= 31);
+        
+        if (targetDays.length > 0) {
+          let current = new Date(startDate);
+          const startDay = startDate.getDate();
+          
+          // Ajouter la date de départ si elle correspond
+          if (targetDays.includes(startDay)) {
+            dates.push(new Date(startDate));
+          }
+          
+          // Générer les dates pour les mois suivants
+          current.setMonth(current.getMonth() + 1);
+          while (current <= endDate) {
+            for (const day of targetDays) {
+              const testDate = new Date(current.getFullYear(), current.getMonth(), day);
+              if (testDate.getDate() === day && testDate <= endDate) {
+                dates.push(testDate);
+              }
+            }
+            current.setMonth(current.getMonth() + 1);
+          }
+        }
+      }
+    } else {
+      // Pas de récurrence, juste la date de départ
+      dates.push(startDate);
+    }
+    
+    return dates;
+  };
+
+  // Mapper les séances par jour (incluant les récurrences)
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
     
@@ -109,11 +219,22 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         ? new Date(session.started_at)
         : null;
       
-      if (sessionDate) {
-        const key = `${sessionDate.getFullYear()}-${sessionDate.getMonth()}-${sessionDate.getDate()}`;
+      if (!sessionDate) return;
+      
+      // Générer toutes les dates récurrentes
+      const recurringDates = generateRecurringDates(
+        sessionDate,
+        session.recurrence_type ?? null,
+        session.recurrence_data ?? null,
+        3 // 3 mois à l'avance
+      );
+      
+      // Ajouter chaque occurrence au mapping
+      recurringDates.forEach((date) => {
+        const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         const existing = map.get(key) || [];
         map.set(key, [...existing, session]);
-      }
+      });
     });
     
     return map;
@@ -532,16 +653,68 @@ export function generateICSContent(sessionsToExport: WorkoutSession[]): string {
     return date.toISOString().replace(/-|:|\.\d{3}/g, "").slice(0, -1) + "Z";
   };
   
+  const buildRRULE = (session: WorkoutSession): string => {
+    if (!session.recurrence_type) return "";
+    
+    const dayMapping: Record<string, string> = {
+      "monday": "MO",
+      "tuesday": "TU",
+      "wednesday": "WE",
+      "thursday": "TH",
+      "friday": "FR",
+      "saturday": "SA",
+      "sunday": "SU",
+      "lundi": "MO",
+      "mardi": "TU",
+      "mercredi": "WE",
+      "jeudi": "TH",
+      "vendredi": "FR",
+      "samedi": "SA",
+      "dimanche": "SU",
+    };
+    
+    if (session.recurrence_type === "daily") {
+      return "RRULE:FREQ=DAILY";
+    } else if (session.recurrence_type === "weekly") {
+      if (session.recurrence_data && session.recurrence_data.length > 0) {
+        const byday = session.recurrence_data
+          .map(day => dayMapping[String(day).toLowerCase()])
+          .filter((d): d is string => d !== undefined);
+        if (byday.length > 0) {
+          return `RRULE:FREQ=WEEKLY;BYDAY=${byday.join(",")}`;
+        }
+      }
+      return "RRULE:FREQ=WEEKLY";
+    } else if (session.recurrence_type === "monthly") {
+      if (session.recurrence_data && session.recurrence_data.length > 0) {
+        const monthdays = session.recurrence_data
+          .map(day => {
+            const dayNum = typeof day === "number" ? day : parseInt(String(day), 10);
+            return isNaN(dayNum) || dayNum < 1 || dayNum > 31 ? null : String(dayNum);
+          })
+          .filter((d): d is string => d !== null);
+        if (monthdays.length > 0) {
+          return `RRULE:FREQ=MONTHLY;BYMONTHDAY=${monthdays.join(",")}`;
+        }
+      }
+      return "RRULE:FREQ=MONTHLY";
+    }
+    return "";
+  };
+  
   const events = sessionsToExport.map((session) => {
     const startDate = session.scheduled_at ? new Date(session.scheduled_at) : new Date();
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+    const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 1h30
+    
+    const rrule = buildRRULE(session);
+    const rruleLine = rrule ? `${rrule}\n` : "";
     
     return `BEGIN:VEVENT
 UID:${session.id}@lifeplanner
 DTSTAMP:${formatDate(new Date())}
 DTSTART:${formatDate(startDate)}
 DTEND:${formatDate(endDate)}
-SUMMARY:🏋️ ${session.name}
+${rruleLine}SUMMARY:🏋️ ${session.name}
 DESCRIPTION:Séance de ${ACTIVITY_TYPE_LABELS[session.activity_type]}
 STATUS:${session.status === "terminee" ? "COMPLETED" : "CONFIRMED"}
 END:VEVENT`;

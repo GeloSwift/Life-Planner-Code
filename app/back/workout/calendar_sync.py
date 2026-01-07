@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import httpx
 from urllib.parse import urlencode
 import pytz
+import json
 
 from core.config import settings
 
@@ -122,6 +123,100 @@ async def refresh_access_token(refresh_token: str) -> dict:
 
 
 # =============================================================================
+# Recurrence Helpers
+# =============================================================================
+
+def build_google_calendar_recurrence(
+    recurrence_type: Optional[str],
+    recurrence_data: Optional[str],
+) -> Optional[list[str]]:
+    """
+    Construit la règle de récurrence pour Google Calendar.
+    
+    Args:
+        recurrence_type: "daily", "weekly", "monthly"
+        recurrence_data: JSON string avec les données (jours de la semaine pour weekly, jours du mois pour monthly)
+    
+    Returns:
+        Liste de strings RRULE pour Google Calendar, ou None si pas de récurrence
+    """
+    if not recurrence_type:
+        return None
+    
+    # Mapping des jours de la semaine (français -> iCalendar)
+    day_mapping = {
+        "monday": "MO",
+        "tuesday": "TU",
+        "wednesday": "WE",
+        "thursday": "TH",
+        "friday": "FR",
+        "saturday": "SA",
+        "sunday": "SU",
+        "lundi": "MO",
+        "mardi": "TU",
+        "mercredi": "WE",
+        "jeudi": "TH",
+        "vendredi": "FR",
+        "samedi": "SA",
+        "dimanche": "SU",
+    }
+    
+    if recurrence_type == "daily":
+        return ["RRULE:FREQ=DAILY"]
+    
+    elif recurrence_type == "weekly":
+        if not recurrence_data:
+            return ["RRULE:FREQ=WEEKLY"]
+        
+        try:
+            days = json.loads(recurrence_data) if isinstance(recurrence_data, str) else recurrence_data
+            if not isinstance(days, list) or len(days) == 0:
+                return ["RRULE:FREQ=WEEKLY"]
+            
+            # Convertir les jours en format iCalendar
+            byday = []
+            for day in days:
+                day_str = str(day).lower()
+                if day_str in day_mapping:
+                    byday.append(day_mapping[day_str])
+            
+            if byday:
+                return [f"RRULE:FREQ=WEEKLY;BYDAY={','.join(byday)}"]
+            else:
+                return ["RRULE:FREQ=WEEKLY"]
+        except Exception:
+            return ["RRULE:FREQ=WEEKLY"]
+    
+    elif recurrence_type == "monthly":
+        if not recurrence_data:
+            return ["RRULE:FREQ=MONTHLY"]
+        
+        try:
+            days = json.loads(recurrence_data) if isinstance(recurrence_data, str) else recurrence_data
+            if not isinstance(days, list) or len(days) == 0:
+                return ["RRULE:FREQ=MONTHLY"]
+            
+            # Filtrer et convertir en entiers (jours du mois)
+            monthdays = []
+            for day in days:
+                try:
+                    day_int = int(day)
+                    if 1 <= day_int <= 31:
+                        monthdays.append(str(day_int))
+                except (ValueError, TypeError):
+                    continue
+            
+            if monthdays:
+                return [f"RRULE:FREQ=MONTHLY;BYMONTHDAY={','.join(monthdays)}"]
+            else:
+                return ["RRULE:FREQ=MONTHLY"]
+        except Exception:
+            return ["RRULE:FREQ=MONTHLY"]
+    
+    return None
+
+
+# =============================================================================
 # Calendar Events
 # =============================================================================
 
@@ -132,6 +227,7 @@ async def create_calendar_event(
     start_time: datetime,
     end_time: Optional[datetime] = None,
     calendar_id: str = "primary",
+    recurrence: Optional[list[str]] = None,
 ) -> dict:
     """
     Crée un événement dans Google Calendar.
@@ -170,6 +266,10 @@ async def create_calendar_event(
         },
     }
     
+    # Ajouter la récurrence si fournie
+    if recurrence:
+        event["recurrence"] = recurrence
+    
     async with httpx.AsyncClient() as client:
         response = await client.post(
             f"https://www.googleapis.com/calendar/v3/calendars/{calendar_id}/events",
@@ -191,6 +291,7 @@ async def update_calendar_event(
     start_time: datetime,
     end_time: Optional[datetime] = None,
     calendar_id: str = "primary",
+    recurrence: Optional[list[str]] = None,
 ) -> dict:
     """
     Met à jour un événement dans Google Calendar.
@@ -223,6 +324,10 @@ async def update_calendar_event(
             "timeZone": "Europe/Paris",
         },
     }
+    
+    # Ajouter la récurrence si fournie
+    if recurrence:
+        event["recurrence"] = recurrence
     
     async with httpx.AsyncClient() as client:
         response = await client.put(
@@ -324,6 +429,8 @@ async def sync_session_to_calendar(
     scheduled_at: datetime,
     exercises: Optional[list[dict]] = None,
     existing_event_id: Optional[str] = None,
+    recurrence_type: Optional[str] = None,
+    recurrence_data: Optional[str] = None,
 ) -> Optional[str]:
     """
     Synchronise une session avec Google Calendar.
@@ -357,6 +464,9 @@ async def sync_session_to_calendar(
             frontend_url,
         )
         
+        # Construire la récurrence si nécessaire
+        recurrence = build_google_calendar_recurrence(recurrence_type, recurrence_data)
+        
         if existing_event_id:
             # Mise à jour
             result = await update_calendar_event(
@@ -365,6 +475,7 @@ async def sync_session_to_calendar(
                 session_name,
                 description,
                 scheduled_at,
+                recurrence=recurrence,
             )
         else:
             # Création
@@ -373,6 +484,7 @@ async def sync_session_to_calendar(
                 session_name,
                 description,
                 scheduled_at,
+                recurrence=recurrence,
             )
         
         return result.get("id")
