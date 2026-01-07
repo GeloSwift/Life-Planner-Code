@@ -89,6 +89,8 @@ app.add_middleware(
     allow_credentials=True,  # Permet l'envoi de cookies
     allow_methods=["*"],     # GET, POST, PUT, DELETE, etc.
     allow_headers=["*"],     # Authorization, Content-Type, etc.
+    expose_headers=["*"],    # Expose tous les headers pour le debugging
+    max_age=3600,           # Cache les preflight requests pendant 1h
 )
 
 

@@ -521,11 +521,12 @@ class SessionService:
                 )
             )
         
+        # Optimisation: charger seulement les relations nécessaires pour la liste
+        # Ne pas charger les sets et field_values pour réduire la consommation mémoire
         return query.options(
             joinedload(WorkoutSession.custom_activity_type),
             joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.custom_activity_type),
-            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.exercise).joinedload(Exercise.field_values).joinedload(ExerciseFieldValue.field),
-            joinedload(WorkoutSession.exercises).joinedload(WorkoutSessionExercise.sets),
+            # Ne pas charger sets et field_values pour la liste (seulement pour le détail)
         ).order_by(desc(WorkoutSession.created_at)).offset(skip).limit(limit).all()
     
     @staticmethod

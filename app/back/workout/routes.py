@@ -320,7 +320,7 @@ def get_sessions(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=200),  # Augmenté à 200 max pour le planning
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
