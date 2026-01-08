@@ -34,6 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import { MultiSelect } from "@/components/ui/multi-select";
@@ -122,6 +128,13 @@ export default function ExercisesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Mode sélection multiple
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<number>>(new Set());
+  const [contextMenuExercise, setContextMenuExercise] = useState<Exercise | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Charger les types d'activités
   const loadActivityTypes = useCallback(async () => {
@@ -288,6 +301,118 @@ export default function ExercisesPage() {
     router.push(`/workout/exercises/${exercise.id}/edit`);
   };
 
+  // Gestion de la sélection multiple
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedExerciseIds(new Set());
+  };
+
+  const toggleExerciseSelection = (exerciseId: number) => {
+    const newSelected = new Set(selectedExerciseIds);
+    if (newSelected.has(exerciseId)) {
+      newSelected.delete(exerciseId);
+    } else {
+      newSelected.add(exerciseId);
+    }
+    setSelectedExerciseIds(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedExerciseIds(new Set(exercises.map((e) => e.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedExerciseIds(new Set());
+  };
+
+  // Gestion du long press (mobile)
+  const handleTouchStart = (exercise: Exercise, e: React.TouchEvent) => {
+    if (selectionMode) return;
+    
+    const timer = setTimeout(() => {
+      setContextMenuExercise(exercise);
+      setContextMenuOpen(true);
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  // Actions du menu contextuel
+  const handleContextMenuSelect = () => {
+    if (contextMenuExercise) {
+      setSelectionMode(true);
+      setSelectedExerciseIds(new Set([contextMenuExercise.id]));
+      setContextMenuOpen(false);
+      setContextMenuExercise(null);
+    }
+  };
+
+  const handleContextMenuDuplicate = async () => {
+    if (contextMenuExercise) {
+      setContextMenuOpen(false);
+      const fakeEvent = { stopPropagation: () => {} } as React.MouseEvent;
+      await handleDuplicateClick(contextMenuExercise, fakeEvent);
+      setContextMenuExercise(null);
+    }
+  };
+
+  const handleContextMenuEdit = () => {
+    if (contextMenuExercise) {
+      setContextMenuOpen(false);
+      const fakeEvent = { stopPropagation: () => {} } as React.MouseEvent;
+      handleEditClick(contextMenuExercise, fakeEvent);
+      setContextMenuExercise(null);
+    }
+  };
+
+  const handleContextMenuDelete = () => {
+    if (contextMenuExercise) {
+      setContextMenuOpen(false);
+      setExerciseToDelete(contextMenuExercise);
+      setDeleteDialogOpen(true);
+      setContextMenuExercise(null);
+    }
+  };
+
+  // Suppression en batch
+  const handleBatchDelete = async () => {
+    if (selectedExerciseIds.size === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedExerciseIds).map((id) =>
+        workoutApi.exercises.delete(id).catch((err) => {
+          console.error(`Erreur lors de la suppression de l'exercice ${id}:`, err);
+          return null;
+        })
+      );
+      await Promise.all(deletePromises);
+      
+      const count = selectedExerciseIds.size;
+      success(`${count} exercice${count > 1 ? "s" : ""} supprimé${count > 1 ? "s" : ""}`);
+      setSelectionMode(false);
+      setSelectedExerciseIds(new Set());
+      await loadExercises();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Dupliquer un exercice
   const handleDuplicateClick = async (exercise: Exercise, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -351,17 +476,72 @@ export default function ExercisesPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Dumbbell className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
-                Exercices
+                {selectionMode ? (
+                  <>
+                    {selectedExerciseIds.size} exercice{selectedExerciseIds.size > 1 ? "s" : ""} sélectionné{selectedExerciseIds.size > 1 ? "s" : ""}
+                  </>
+                ) : (
+                  "Exercices"
+                )}
               </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {selectionMode ? "Sélectionnez les exercices à supprimer" : "Gérez vos exercices d'entraînement"}
+              </p>
             </div>
-            <Button 
-              onClick={() => router.push("/workout/exercises/new")}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Nouvel exercice</span>
-              <span className="sm:hidden">Nouveau</span>
-            </Button>
+            <div className="flex gap-2">
+              {selectionMode ? (
+                <>
+                  {/* Sur PC, afficher tous les boutons dans le header */}
+                  <div className="hidden sm:flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={selectedExerciseIds.size === exercises.length ? deselectAll : selectAll}
+                    >
+                      {selectedExerciseIds.size === exercises.length ? "Tout désélectionner" : "Tout sélectionner"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleBatchDelete}
+                      disabled={selectedExerciseIds.size === 0 || isDeleting}
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Supprimer ({selectedExerciseIds.size})
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={toggleSelectionMode}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Annuler
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={toggleSelectionMode}
+                    className="w-full sm:w-auto"
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Sélectionner</span>
+                    <span className="sm:hidden">Sélectionner</span>
+                  </Button>
+                  <Button 
+                    onClick={() => router.push("/workout/exercises/new")}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Nouvel exercice</span>
+                    <span className="sm:hidden">Nouveau</span>
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </section>
 
@@ -620,11 +800,48 @@ export default function ExercisesPage() {
                     return (
                       <Card
                         key={exercise.id}
-                        className="group cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1 relative p-0 overflow-hidden"
-                        onClick={() => router.push(`/workout/exercises/${exercise.id}`)}
+                        className={`group transition-all relative p-0 overflow-hidden ${
+                          selectionMode
+                            ? selectedExerciseIds.has(exercise.id)
+                              ? "ring-2 ring-primary"
+                              : ""
+                            : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
+                        }`}
+                        onClick={() => {
+                          if (selectionMode) {
+                            toggleExerciseSelection(exercise.id);
+                          } else {
+                            router.push(`/workout/exercises/${exercise.id}`);
+                          }
+                        }}
+                        onTouchStart={(e) => handleTouchStart(exercise, e)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchMove}
                       >
-                        {/* Actions rapides */}
-                        <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {/* Case à cocher en mode sélection */}
+                        {selectionMode && (
+                          <div className="absolute top-2 left-2 z-30">
+                            <div
+                              className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
+                                selectedExerciseIds.has(exercise.id)
+                                  ? "bg-primary border-primary"
+                                  : "bg-background border-primary/50"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExerciseSelection(exercise.id);
+                              }}
+                            >
+                              {selectedExerciseIds.has(exercise.id) && (
+                                <Check className="h-4 w-4 text-primary-foreground" />
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions rapides (masquées en mode sélection) */}
+                        {!selectionMode && (
+                          <div className="absolute top-2 right-2 z-10 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <Button
                             variant="secondary"
                             size="icon"
@@ -653,6 +870,7 @@ export default function ExercisesPage() {
                             <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>
                         </div>
+                        )}
 
                         {/* Image/GIF/Vidéo - Hauteur fixe pour aligner toutes les cartes */}
                         <div className="relative w-full bg-muted overflow-hidden aspect-video">
@@ -776,7 +994,86 @@ export default function ExercisesPage() {
         )}
       </main>
 
+      {/* Barre d'actions sticky en bas pour mobile (mode sélection) */}
+      {selectionMode && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-50 sm:hidden shadow-lg">
+          <div className="flex gap-2 max-w-6xl mx-auto">
+            <Button
+              variant="outline"
+              onClick={selectedExerciseIds.size === exercises.length ? deselectAll : selectAll}
+              className="flex-1"
+            >
+              {selectedExerciseIds.size === exercises.length ? "Tout" : "Tout"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBatchDelete}
+              disabled={selectedExerciseIds.size === 0 || isDeleting}
+              className="flex-1"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Supprimer ({selectedExerciseIds.size})
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={toggleSelectionMode}
+              className="flex-1"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Footer />
+
+      {/* Menu contextuel (mobile - long press) */}
+      <Sheet open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+        <SheetContent side="bottom" className="pb-8 px-6">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-lg">{contextMenuExercise?.name}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-center"
+              onClick={handleContextMenuSelect}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Sélectionner
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-center"
+              onClick={handleContextMenuDuplicate}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Dupliquer
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-center"
+              onClick={handleContextMenuEdit}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+            <Button
+              variant="destructive"
+              className="w-full justify-center"
+              onClick={handleContextMenuDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Dialog de confirmation de suppression */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

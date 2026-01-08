@@ -681,44 +681,55 @@ export default function SessionsPage() {
             <div className="flex gap-2">
               {selectionMode ? (
                 <>
+                  {/* Sur PC, afficher tous les boutons dans le header */}
+                  <div className="hidden sm:flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={selectedSessionIds.size === filteredSessions.length ? deselectAll : selectAll}
+                    >
+                      {selectedSessionIds.size === filteredSessions.length ? "Tout désélectionner" : "Tout sélectionner"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleBatchDelete}
+                      disabled={selectedSessionIds.size === 0 || isDeleting}
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 mr-2" />
+                      )}
+                      Supprimer ({selectedSessionIds.size})
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={toggleSelectionMode}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Annuler
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
                   <Button
                     variant="outline"
-                    onClick={selectedSessionIds.size === filteredSessions.length ? deselectAll : selectAll}
-                    className="w-full sm:w-auto"
-                  >
-                    {selectedSessionIds.size === filteredSessions.length ? "Tout désélectionner" : "Tout sélectionner"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleBatchDelete}
-                    disabled={selectedSessionIds.size === 0 || isDeleting}
-                    className="w-full sm:w-auto"
-                  >
-                    {isDeleting ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4 mr-2" />
-                    )}
-                    Supprimer ({selectedSessionIds.size})
-                  </Button>
-                  <Button
-                    variant="ghost"
                     onClick={toggleSelectionMode}
                     className="w-full sm:w-auto"
                   >
-                    <X className="h-4 w-4 mr-2" />
-                    Annuler
+                    <Check className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Sélectionner</span>
+                    <span className="sm:hidden">Sélectionner</span>
+                  </Button>
+                  <Button
+                    onClick={() => router.push("/workout/sessions/new")}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Nouvelle séance</span>
+                    <span className="sm:hidden">Nouveau</span>
                   </Button>
                 </>
-              ) : (
-                <Button
-                  onClick={() => router.push("/workout/sessions/new")}
-                  className="w-full sm:w-auto"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Nouvelle séance</span>
-                  <span className="sm:hidden">Nouveau</span>
-                </Button>
               )}
             </div>
           </div>
@@ -1031,15 +1042,14 @@ export default function SessionsPage() {
 
       {/* Menu contextuel (mobile - long press) */}
       <Sheet open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
-        <SheetContent side="bottom" className="pb-8">
-          <SheetHeader>
-            <SheetTitle>{contextMenuSession?.name}</SheetTitle>
-            <SheetDescription>Actions disponibles pour cette séance</SheetDescription>
+        <SheetContent side="bottom" className="pb-8 px-6">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="text-lg">{contextMenuSession?.name}</SheetTitle>
           </SheetHeader>
-          <div className="mt-6 space-y-2">
+          <div className="space-y-3">
             <Button
               variant="outline"
-              className="w-full justify-start"
+              className="w-full justify-center"
               onClick={handleContextMenuSelect}
             >
               <Check className="h-4 w-4 mr-2" />
@@ -1047,7 +1057,7 @@ export default function SessionsPage() {
             </Button>
             <Button
               variant="outline"
-              className="w-full justify-start"
+              className="w-full justify-center"
               onClick={handleContextMenuDuplicate}
             >
               <Copy className="h-4 w-4 mr-2" />
@@ -1056,7 +1066,7 @@ export default function SessionsPage() {
             {contextMenuSession?.status !== "terminee" && contextMenuSession?.status !== "annulee" && (
               <Button
                 variant="outline"
-                className="w-full justify-start"
+                className="w-full justify-center"
                 onClick={handleContextMenuEdit}
               >
                 <Edit className="h-4 w-4 mr-2" />
@@ -1065,7 +1075,7 @@ export default function SessionsPage() {
             )}
             <Button
               variant="destructive"
-              className="w-full justify-start"
+              className="w-full justify-center"
               onClick={handleContextMenuDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
