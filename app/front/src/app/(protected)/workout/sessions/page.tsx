@@ -715,17 +715,19 @@ export default function SessionsPage() {
                   <Button
                     variant="outline"
                     onClick={toggleSelectionMode}
-                    className="w-full sm:w-auto"
+                    className="flex-1 sm:w-auto"
+                    size="sm"
                   >
-                    <Check className="h-4 w-4 mr-2" />
+                    <Check className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Sélectionner</span>
-                    <span className="sm:hidden">Sélectionner</span>
+                    <span className="sm:hidden">Sélect.</span>
                   </Button>
                   <Button
                     onClick={() => router.push("/workout/sessions/new")}
-                    className="w-full sm:w-auto"
+                    className="flex-1 sm:w-auto"
+                    size="sm"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Nouvelle séance</span>
                     <span className="sm:hidden">Nouveau</span>
                   </Button>
