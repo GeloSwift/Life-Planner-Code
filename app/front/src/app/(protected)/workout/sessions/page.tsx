@@ -75,6 +75,8 @@ import {
   Medal,
   Volleyball,
   Dumbbell,
+  Check,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -140,6 +142,13 @@ export default function SessionsPage() {
   const [sessionToDelete, setSessionToDelete] = useState<WorkoutSession | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Mode sélection multiple
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<Set<number>>(new Set());
+  const [contextMenuSession, setContextMenuSession] = useState<WorkoutSession | null>(null);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
   
   // Filtres
   const [searchQuery, setSearchQuery] = useState("");
@@ -353,6 +362,118 @@ export default function SessionsPage() {
     router.push(`/workout/sessions/${session.id}/edit`);
   };
 
+  // Gestion de la sélection multiple
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedSessionIds(new Set());
+  };
+
+  const toggleSessionSelection = (sessionId: number) => {
+    const newSelected = new Set(selectedSessionIds);
+    if (newSelected.has(sessionId)) {
+      newSelected.delete(sessionId);
+    } else {
+      newSelected.add(sessionId);
+    }
+    setSelectedSessionIds(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedSessionIds(new Set(filteredSessions.map((s) => s.id)));
+  };
+
+  const deselectAll = () => {
+    setSelectedSessionIds(new Set());
+  };
+
+  // Gestion du long press (mobile)
+  const handleTouchStart = (session: WorkoutSession, e: React.TouchEvent) => {
+    if (selectionMode) return;
+    
+    const timer = setTimeout(() => {
+      setContextMenuSession(session);
+      setContextMenuOpen(true);
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleTouchMove = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  // Actions du menu contextuel
+  const handleContextMenuSelect = () => {
+    if (contextMenuSession) {
+      setSelectionMode(true);
+      setSelectedSessionIds(new Set([contextMenuSession.id]));
+      setContextMenuOpen(false);
+      setContextMenuSession(null);
+    }
+  };
+
+  const handleContextMenuDuplicate = async () => {
+    if (contextMenuSession) {
+      setContextMenuOpen(false);
+      const fakeEvent = { stopPropagation: () => {} } as MouseEvent;
+      await handleDuplicateClick(contextMenuSession, fakeEvent);
+      setContextMenuSession(null);
+    }
+  };
+
+  const handleContextMenuEdit = () => {
+    if (contextMenuSession) {
+      setContextMenuOpen(false);
+      const fakeEvent = { stopPropagation: () => {} } as MouseEvent;
+      handleEditClick(contextMenuSession, fakeEvent);
+      setContextMenuSession(null);
+    }
+  };
+
+  const handleContextMenuDelete = () => {
+    if (contextMenuSession) {
+      setContextMenuOpen(false);
+      setSessionToDelete(contextMenuSession);
+      setDeleteDialogOpen(true);
+      setContextMenuSession(null);
+    }
+  };
+
+  // Suppression en batch
+  const handleBatchDelete = async () => {
+    if (selectedSessionIds.size === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedSessionIds).map((id) =>
+        workoutApi.sessions.delete(id).catch((err) => {
+          console.error(`Erreur lors de la suppression de la séance ${id}:`, err);
+          return null;
+        })
+      );
+      await Promise.all(deletePromises);
+      
+      const count = selectedSessionIds.size;
+      success(`${count} séance${count > 1 ? "s" : ""} supprimée${count > 1 ? "s" : ""}`);
+      setSelectionMode(false);
+      setSelectedSessionIds(new Set());
+      await loadData();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleReplanClick = async (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
     
@@ -538,20 +659,61 @@ export default function SessionsPage() {
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
                 <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                Séances
+                {selectionMode ? (
+                  <>
+                    {selectedSessionIds.size} séance{selectedSessionIds.size > 1 ? "s" : ""} sélectionnée{selectedSessionIds.size > 1 ? "s" : ""}
+                  </>
+                ) : (
+                  "Séances"
+                )}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Gérez vos séances d&apos;entraînement
+                {selectionMode ? "Sélectionnez les séances à supprimer" : "Gérez vos séances d'entraînement"}
               </p>
             </div>
-            <Button
-              onClick={() => router.push("/workout/sessions/new")}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Nouvelle séance</span>
-              <span className="sm:hidden">Nouveau</span>
-            </Button>
+            <div className="flex gap-2">
+              {selectionMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={selectedSessionIds.size === filteredSessions.length ? deselectAll : selectAll}
+                    className="w-full sm:w-auto"
+                  >
+                    {selectedSessionIds.size === filteredSessions.length ? "Tout désélectionner" : "Tout sélectionner"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleBatchDelete}
+                    disabled={selectedSessionIds.size === 0 || isDeleting}
+                    className="w-full sm:w-auto"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Supprimer ({selectedSessionIds.size})
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={toggleSelectionMode}
+                    className="w-full sm:w-auto"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Annuler
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => router.push("/workout/sessions/new")}
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Nouvelle séance</span>
+                  <span className="sm:hidden">Nouveau</span>
+                </Button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -642,14 +804,49 @@ export default function SessionsPage() {
                 <Card
                   key={session.id}
                   className={`group transition-all relative p-0 overflow-hidden ${
-                    session.status === "annulee" || session.status === "terminee"
+                    selectionMode
+                      ? selectedSessionIds.has(session.id)
+                        ? "ring-2 ring-primary"
+                        : ""
+                      : session.status === "annulee" || session.status === "terminee"
                       ? "opacity-50 cursor-pointer hover:shadow-lg hover:-translate-y-1"
                       : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
                   }`}
-                  onClick={() => router.push(`/workout/sessions/${session.id}`)}
+                  onClick={() => {
+                    if (selectionMode) {
+                      toggleSessionSelection(session.id);
+                    } else {
+                      router.push(`/workout/sessions/${session.id}`);
+                    }
+                  }}
+                  onTouchStart={(e) => handleTouchStart(session, e)}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchMove={handleTouchMove}
                 >
-                  {/* Actions rapides */}
-                  <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  {/* Case à cocher en mode sélection */}
+                  {selectionMode && (
+                    <div className="absolute top-2 left-2 z-30">
+                      <div
+                        className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
+                          selectedSessionIds.has(session.id)
+                            ? "bg-primary border-primary"
+                            : "bg-background border-primary/50"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSessionSelection(session.id);
+                        }}
+                      >
+                        {selectedSessionIds.has(session.id) && (
+                          <Check className="h-4 w-4 text-primary-foreground" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions rapides (masquées en mode sélection) */}
+                  {!selectionMode && (
+                    <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     {/* Boutons pour séances actives (planifiée, en cours) */}
                     {session.status !== "annulee" && session.status !== "terminee" && (
                       <>
@@ -823,6 +1020,52 @@ export default function SessionsPage() {
       </main>
 
       <Footer />
+
+      {/* Menu contextuel (mobile - long press) */}
+      <Sheet open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+        <SheetContent side="bottom" className="pb-8">
+          <SheetHeader>
+            <SheetTitle>{contextMenuSession?.name}</SheetTitle>
+            <SheetDescription>Actions disponibles pour cette séance</SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleContextMenuSelect}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Sélectionner
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleContextMenuDuplicate}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Dupliquer
+            </Button>
+            {contextMenuSession?.status !== "terminee" && contextMenuSession?.status !== "annulee" && (
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={handleContextMenuEdit}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Modifier
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              className="w-full justify-start"
+              onClick={handleContextMenuDelete}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Dialog confirmation suppression */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
