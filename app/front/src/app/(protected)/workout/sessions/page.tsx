@@ -36,7 +36,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -394,7 +393,8 @@ export default function SessionsPage() {
   };
 
   // Gestion du long press (mobile)
-  const handleTouchStart = (session: WorkoutSession, e: React.TouchEvent) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleTouchStart = (session: WorkoutSession, _e: React.TouchEvent) => {
     if (selectionMode) return;
     
     const timer = setTimeout(() => {

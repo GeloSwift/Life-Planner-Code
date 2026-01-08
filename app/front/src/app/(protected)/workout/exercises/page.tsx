@@ -60,6 +60,7 @@ import {
   Edit,
   Trash2,
   Copy,
+  Check,
   Activity,
   Bike,
   Footprints,
@@ -326,7 +327,8 @@ export default function ExercisesPage() {
   };
 
   // Gestion du long press (mobile)
-  const handleTouchStart = (exercise: Exercise, e: React.TouchEvent) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleTouchStart = (exercise: Exercise, _e: React.TouchEvent) => {
     if (selectionMode) return;
     
     const timer = setTimeout(() => {
