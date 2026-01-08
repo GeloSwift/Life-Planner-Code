@@ -111,13 +111,13 @@ async function workoutFetch<T>(
   if (!response.ok && response.status === 401 && !isRefreshing) {
     try {
       await refreshTokenIfNeeded();
-      
+
       // Réessaie la requête avec le nouveau token
       const newToken = getStoredToken();
       if (newToken) {
         (headers as Record<string, string>)["Authorization"] = `Bearer ${newToken}`;
       }
-      
+
       response = await fetch(url, {
         ...options,
         headers,
@@ -168,7 +168,7 @@ export const exercisesApi = {
     if (params?.search) searchParams.set("search", params.search);
     if (params?.skip) searchParams.set("skip", String(params.skip));
     if (params?.limit) searchParams.set("limit", String(params.limit));
-    
+
     const query = searchParams.toString();
     return workoutFetch<Exercise[]>(`/workout/exercises${query ? `?${query}` : ""}`);
   },
@@ -212,7 +212,7 @@ export const templatesApi = {
     if (params?.activity_type) searchParams.set("activity_type", params.activity_type);
     if (params?.skip) searchParams.set("skip", String(params.skip));
     if (params?.limit) searchParams.set("limit", String(params.limit));
-    
+
     const query = searchParams.toString();
     return workoutFetch<WorkoutTemplate[]>(`/workout/templates${query ? `?${query}` : ""}`);
   },
@@ -276,7 +276,7 @@ export const sessionsApi = {
     if (params?.to_date) searchParams.set("to_date", params.to_date);
     if (params?.skip) searchParams.set("skip", String(params.skip));
     if (params?.limit) searchParams.set("limit", String(params.limit));
-    
+
     const query = searchParams.toString();
     return workoutFetch<WorkoutSession[]>(`/workout/sessions${query ? `?${query}` : ""}`);
   },
@@ -296,6 +296,12 @@ export const sessionsApi = {
     return workoutFetch<WorkoutSession>(`/workout/sessions/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  },
+
+  async excludeOccurrence(id: number, date: string): Promise<WorkoutSession> {
+    return workoutFetch<WorkoutSession>(`/workout/sessions/${id}/exclude?date=${date}`, {
+      method: "POST",
     });
   },
 
@@ -335,7 +341,7 @@ export const sessionsApi = {
   async createFromTemplate(templateId: number, scheduledAt?: string): Promise<WorkoutSession> {
     const body: { scheduled_at?: string } = {};
     if (scheduledAt) body.scheduled_at = scheduledAt;
-    
+
     return workoutFetch<WorkoutSession>(`/workout/sessions/from-template/${templateId}`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -410,7 +416,7 @@ export const weightApi = {
     if (params?.to_date) searchParams.set("to_date", params.to_date);
     if (params?.skip) searchParams.set("skip", String(params.skip));
     if (params?.limit) searchParams.set("limit", String(params.limit));
-    
+
     const query = searchParams.toString();
     return workoutFetch<WeightEntry[]>(`/workout/weight${query ? `?${query}` : ""}`);
   },
@@ -466,7 +472,7 @@ export const goalsApi = {
     if (params?.goal_type) searchParams.set("goal_type", params.goal_type);
     if (params?.skip) searchParams.set("skip", String(params.skip));
     if (params?.limit) searchParams.set("limit", String(params.limit));
-    
+
     const query = searchParams.toString();
     return workoutFetch<Goal[]>(`/workout/goals${query ? `?${query}` : ""}`);
   },

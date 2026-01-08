@@ -39,8 +39,10 @@ import {
   CheckCircle,
   XCircle,
   CalendarPlus,
+  Trash2,
   Download,
 } from "lucide-react";
+import { workoutApi } from "@/lib/workout-api";
 
 interface SessionCalendarProps {
   sessions: WorkoutSession[];
@@ -53,32 +55,34 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedDaySessions, setSelectedDaySessions] = useState<WorkoutSession[] | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showSessionsDialog, setShowSessionsDialog] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ session: WorkoutSession, date: Date } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calcul des jours du mois
   const monthDays = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    
+
     let firstDayOfWeek = firstDay.getDay() - 1;
     if (firstDayOfWeek < 0) firstDayOfWeek = 6;
-    
+
     const daysInMonth = lastDay.getDate();
     const daysArray: (number | null)[] = [];
-    
+
     for (let i = 0; i < firstDayOfWeek; i++) {
       daysArray.push(null);
     }
-    
+
     for (let i = 1; i <= daysInMonth; i++) {
       daysArray.push(i);
     }
-    
+
     return daysArray;
   }, [currentDate]);
 
@@ -88,7 +92,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     const dayOfWeek = startOfWeek.getDay();
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     startOfWeek.setDate(startOfWeek.getDate() + diff);
-    
+
     const days: Date[] = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(startOfWeek);
@@ -108,11 +112,11 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     if (!recurrenceType || !startDate) {
       return [startDate];
     }
-    
+
     const dates: Date[] = [];
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + monthsAhead);
-    
+
     // Mapping des jours de la semaine
     const dayMapping: Record<string, number> = {
       "monday": 1,
@@ -130,7 +134,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       "samedi": 6,
       "dimanche": 0,
     };
-    
+
     if (recurrenceType === "daily") {
       const current = new Date(startDate);
       while (current <= endDate) {
@@ -151,20 +155,20 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           const dayStr = String(day).toLowerCase();
           return dayMapping[dayStr] ?? null;
         }).filter((d): d is number => d !== null);
-        
+
         if (targetDays.length > 0) {
           // Commencer à partir de la date de départ et chercher tous les jours correspondants
           const current = new Date(startDate);
           const startDayOfWeek = startDate.getDay();
-          
+
           // Si le jour de départ correspond déjà, l'ajouter
           if (targetDays.includes(startDayOfWeek)) {
             dates.push(new Date(startDate));
           }
-          
+
           // Continuer à partir du jour suivant jusqu'à la fin
           current.setDate(current.getDate() + 1);
-          
+
           while (current <= endDate) {
             const currentDay = current.getDay();
             if (targetDays.includes(currentDay)) {
@@ -197,16 +201,16 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             return isNaN(dayNum) ? null : dayNum;
           })
           .filter((d): d is number => d !== null && d >= 1 && d <= 31);
-        
+
         if (targetDays.length > 0) {
           const current = new Date(startDate);
           const startDay = startDate.getDate();
-          
+
           // Ajouter la date de départ si elle correspond
           if (targetDays.includes(startDay)) {
             dates.push(new Date(startDate));
           }
-          
+
           // Générer les dates pour les mois suivants
           current.setMonth(current.getMonth() + 1);
           while (current <= endDate) {
@@ -224,23 +228,23 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       // Pas de récurrence, juste la date de départ
       dates.push(startDate);
     }
-    
+
     return dates;
   };
 
   // Mapper les séances par jour (incluant les récurrences)
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
-    
+
     sessions.forEach((session) => {
       const sessionDate = session.scheduled_at
         ? new Date(session.scheduled_at)
         : session.started_at
-        ? new Date(session.started_at)
-        : null;
-      
+          ? new Date(session.started_at)
+          : null;
+
       if (!sessionDate) return;
-      
+
       // Parser recurrence_data si c'est une string JSON (au cas où Pydantic ne l'a pas fait)
       let parsedRecurrenceData: (number | string)[] | null = null;
       if (session.recurrence_data) {
@@ -259,7 +263,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       const exceptionDates = new Set<string>(
         (session.recurrence_exceptions ?? []).map((d) => String(d))
       );
-      
+
       // Générer toutes les dates récurrentes (6 mois à l'avance pour être sûr)
       const recurringDates = generateRecurringDates(
         sessionDate,
@@ -267,7 +271,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         parsedRecurrenceData,
         6 // 6 mois à l'avance pour couvrir une large période
       );
-      
+
       // Ajouter chaque occurrence au mapping
       recurringDates.forEach((date) => {
         const y = date.getFullYear();
@@ -281,7 +285,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         map.set(key, [...existing, session]);
       });
     });
-    
+
     return map;
   }, [sessions]);
 
@@ -292,7 +296,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
   const goToPrev = () => {
     if (viewMode === "month") {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() - 7);
@@ -302,7 +306,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 
   const goToNext = () => {
     if (viewMode === "month") {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     } else {
       const newDate = new Date(currentDate);
       newDate.setDate(newDate.getDate() + 7);
@@ -319,12 +323,13 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     ? today.getFullYear() === currentDate.getFullYear() && today.getMonth() === currentDate.getMonth()
     : weekDays.some(d => d.toDateString() === today.toDateString());
 
-  const handleDayClick = (daySessions: WorkoutSession[]) => {
+  const handleDayClick = (daySessions: WorkoutSession[], date: Date) => {
     // Réinitialiser le hover pour éviter le tooltip après fermeture du dialog
     setHoveredDay(null);
-    
+    setSelectedDate(date);
+
     if (daySessions.length === 0) return;
-    
+
     if (daySessions.length === 1) {
       router.push(`/workout/sessions/${daySessions[0].id}`);
     } else {
@@ -337,7 +342,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
-    
+
     if (key) {
       hoverTimeoutRef.current = setTimeout(() => {
         setHoveredDay(key);
@@ -381,17 +386,31 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const weekDayLabelsFull = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
   // Composant pour afficher les détails d'une séance
-  const SessionCard = ({ session, compact = false }: { session: WorkoutSession; compact?: boolean }) => (
-    <Card 
-      className={`cursor-pointer hover:bg-accent/50 transition-colors ${
-        session.status === "annulee" ? "opacity-50" : ""
-      } ${compact ? "" : "mb-2 last:mb-0"}`}
+  const SessionCard = ({ session, compact = false, occurrenceDate }: { session: WorkoutSession; compact?: boolean, occurrenceDate?: Date }) => (
+    <Card
+      className={`relative group cursor-pointer hover:bg-accent/50 transition-colors ${session.status === "annulee" ? "opacity-50" : ""
+        } ${compact ? "" : "mb-2 last:mb-0"}`}
       onClick={() => router.push(`/workout/sessions/${session.id}`)}
     >
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (occurrenceDate) {
+              setDeleteConfirmation({ session, date: occurrenceDate });
+            }
+          }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
       <CardContent className={compact ? "p-2" : "p-3"}>
         <div className="flex items-start gap-2">
           {getStatusIcon(session.status)}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-6">
             <p className={`font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>
               {session.name}
             </p>
@@ -403,9 +422,9 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                 <Clock className="h-2.5 w-2.5" />
                 {formatTime(session.scheduled_at)}
               </p>
-          )}
+            )}
+          </div>
         </div>
-      </div>
       </CardContent>
     </Card>
   );
@@ -413,7 +432,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   // Tooltip pour le survol d'un jour (desktop uniquement)
   const DayTooltip = ({ day, month, year, isVisible }: { day: number; month: number; year: number; isVisible: boolean }) => {
     const daySessions = getSessionsForDay(year, month, day);
-    
+
     if (!isVisible || daySessions.length === 0) return null;
 
     return (
@@ -435,8 +454,8 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                   {formatTime(session.scheduled_at)}
                 </span>
               )}
-          </div>
-        ))}
+            </div>
+          ))}
           {daySessions.length > 3 && (
             <p className="text-xs text-muted-foreground">+{daySessions.length - 3} autres</p>
           )}
@@ -451,34 +470,34 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const DayCell = ({ day, month, year }: { day: number; month: number; year: number }) => {
     const daySessions = getSessionsForDay(year, month, day);
     const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
-          const hasSessions = daySessions.length > 0;
+    const hasSessions = daySessions.length > 0;
     const dayKey = `${year}-${month}-${day}`;
     const isHovered = hoveredDay === dayKey;
 
-          return (
-            <div
+    return (
+      <div
         className="relative"
         onMouseEnter={() => handleDayHover(dayKey)}
         onMouseLeave={() => handleDayHover(null)}
       >
         <div
-              className={`
+          className={`
             aspect-square flex flex-col items-center justify-center rounded-md text-xs sm:text-sm
                 transition-colors cursor-pointer hover:bg-accent
             ${isToday ? "bg-primary/10 font-bold text-primary ring-1 ring-primary/30" : ""}
                 ${hasSessions ? "font-medium" : "text-muted-foreground"}
               `}
-          onClick={() => handleDayClick(daySessions)}
-            >
-              <span>{day}</span>
-              {hasSessions && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {daySessions.slice(0, 3).map((session, i) => (
-                    <div
-                      key={i}
+          onClick={() => handleDayClick(daySessions, new Date(year, month, day))}
+        >
+          <span>{day}</span>
+          {hasSessions && (
+            <div className="flex gap-0.5 mt-0.5">
+              {daySessions.slice(0, 3).map((session, i) => (
+                <div
+                  key={i}
                   className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${getStatusColor(session.status)}`}
-                    />
-                  ))}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -492,7 +511,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     const futureSessions = sessions.filter(
       s => (s.status === "planifiee" || s.status === "en_cours") && s.scheduled_at
     );
-    
+
     if (type === "google") {
       // Pour Google, on ne peut qu'ouvrir une session à la fois
       // On affiche un message explicatif
@@ -521,7 +540,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="flex items-center gap-1">
           {!isCurrentPeriod && (
             <Button variant="ghost" size="sm" onClick={goToToday} className="text-xs h-7 px-2">
@@ -606,13 +625,12 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
               date.getDate()
             );
             const isToday = date.toDateString() === today.toDateString();
-            
+
             return (
               <div
                 key={date.toISOString()}
-                className={`rounded-lg border p-2 sm:p-3 ${
-                  isToday ? "border-primary/50 bg-primary/5" : ""
-                }`}
+                className={`rounded-lg border p-2 sm:p-3 ${isToday ? "border-primary/50 bg-primary/5" : ""
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
@@ -625,24 +643,24 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                     {isToday && (
                       <span className="text-[10px] bg-primary text-primary-foreground px-1 py-0.5 rounded">
                         Auj.
-                    </span>
-                  )}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                </div>
-                
+
                 {daySessions.length === 0 ? (
                   <p className="text-[10px] sm:text-xs text-muted-foreground italic">-</p>
                 ) : (
                   <div className="space-y-1">
                     {daySessions.map((session) => (
-                      <SessionCard key={session.id} session={session} compact />
+                      <SessionCard key={session.id} session={session} compact occurrenceDate={date} />
                     ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Dialog pour sélectionner parmi plusieurs séances */}
@@ -656,9 +674,88 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           </DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {selectedDaySessions?.map((session) => (
-              <SessionCard key={session.id} session={session} />
+              <SessionCard key={session.id} session={session} occurrenceDate={selectedDate || new Date()} />
             ))}
-        </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation de suppression */}
+      <Dialog
+        open={!!deleteConfirmation}
+        onOpenChange={(open) => !open && setDeleteConfirmation(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Supprimer la séance</DialogTitle>
+          </DialogHeader>
+
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground mb-4">
+              Voulez-vous supprimer cette séance ?
+              {deleteConfirmation?.session.recurrence_type && (
+                <span className="block mt-2 font-medium text-foreground">
+                  Cette séance est récurrente.
+                </span>
+              )}
+            </p>
+
+            <div className="flex flex-col gap-2">
+              {deleteConfirmation?.session.recurrence_type && (
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!deleteConfirmation) return;
+                    try {
+                      // Format YYYY-MM-DD manually to avoid timezone issues
+                      const y = deleteConfirmation.date.getFullYear();
+                      const m = String(deleteConfirmation.date.getMonth() + 1).padStart(2, "0");
+                      const d = String(deleteConfirmation.date.getDate()).padStart(2, "0");
+                      const dateStr = `${y}-${m}-${d}`;
+
+                      await workoutApi.sessions.excludeOccurrence(deleteConfirmation.session.id, dateStr);
+                      setDeleteConfirmation(null);
+                      router.refresh();
+                    } catch (error) {
+                      console.error("Erreur suppression occurrence:", error);
+                      alert("Erreur lors de la suppression de l'occurrence");
+                    }
+                  }}
+                >
+                  Supprimer uniquement cette occurrence
+                </Button>
+              )}
+
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!deleteConfirmation) return;
+                  if (confirm("Êtes-vous sûr de vouloir supprimer TOUTE la série ?")) {
+                    try {
+                      await workoutApi.sessions.delete(deleteConfirmation.session.id);
+                      setDeleteConfirmation(null);
+                      router.refresh();
+                    } catch (error) {
+                      console.error("Erreur suppression série:", error);
+                      alert("Erreur lors de la suppression de la séance");
+                    }
+                  }
+                }}
+              >
+                {deleteConfirmation?.session.recurrence_type
+                  ? "Supprimer toute la série"
+                  : "Supprimer la séance"
+                }
+              </Button>
+
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteConfirmation(null)}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
@@ -675,18 +772,18 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
 export function generateGoogleCalendarUrl(session: WorkoutSession): string {
   const startDate = session.scheduled_at ? new Date(session.scheduled_at) : new Date();
   const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-  
+
   const formatDate = (date: Date) => {
     return date.toISOString().replace(/-|:|\.\d{3}/g, "");
   };
-  
+
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: `🏋️ ${session.name}`,
     dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
     details: `Séance de ${ACTIVITY_TYPE_LABELS[session.activity_type]}\n\nStatut: ${SESSION_STATUS_LABELS[session.status]}`,
   });
-  
+
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
@@ -697,10 +794,10 @@ export function generateICSContent(sessionsToExport: WorkoutSession[]): string {
   const formatDate = (date: Date) => {
     return date.toISOString().replace(/-|:|\.\d{3}/g, "").slice(0, -1) + "Z";
   };
-  
+
   const buildRRULE = (session: WorkoutSession): string => {
     if (!session.recurrence_type) return "";
-    
+
     const dayMapping: Record<string, string> = {
       "monday": "MO",
       "tuesday": "TU",
@@ -717,7 +814,7 @@ export function generateICSContent(sessionsToExport: WorkoutSession[]): string {
       "samedi": "SA",
       "dimanche": "SU",
     };
-    
+
     if (session.recurrence_type === "daily") {
       return "RRULE:FREQ=DAILY";
     } else if (session.recurrence_type === "weekly") {
@@ -746,14 +843,14 @@ export function generateICSContent(sessionsToExport: WorkoutSession[]): string {
     }
     return "";
   };
-  
+
   const events = sessionsToExport.map((session) => {
     const startDate = session.scheduled_at ? new Date(session.scheduled_at) : new Date();
     const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 1h30
-    
+
     const rrule = buildRRULE(session);
     const rruleLine = rrule ? `${rrule}\n` : "";
-    
+
     return `BEGIN:VEVENT
 UID:${session.id}@lifeplanner
 DTSTAMP:${formatDate(new Date())}
@@ -764,7 +861,7 @@ DESCRIPTION:Séance de ${ACTIVITY_TYPE_LABELS[session.activity_type]}
 STATUS:${session.status === "terminee" ? "COMPLETED" : "CONFIRMED"}
 END:VEVENT`;
   }).join("\n");
-  
+
   return `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Life Planner//Workout Planner//FR
@@ -799,7 +896,7 @@ export function downloadAllSessionsICS(sessions: WorkoutSession[]): void {
     alert("Aucune séance planifiée à exporter");
     return;
   }
-  
+
   const content = generateICSContent(sessions);
   const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);

@@ -453,6 +453,89 @@ def update_session(
     return updated
 
 
+
+@router.post(
+    "/sessions/{session_id}/exclude",
+    response_model=WorkoutSessionResponse,
+    summary="Exclure une occurrence",
+)
+async def exclude_session_occurrence(
+    session_id: int,
+    date: str = Query(..., description="Date à exclure (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Exclut une date spécifique d'une séance récurrente."""
+    session = SessionService.exclude_occurrence(db, session_id, date, current_user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session non trouvée")
+    
+    # Synchronisation Calendriers
+    # 1. Google Calendar
+    if current_user.google_calendar_connected and current_user.google_calendar_refresh_token and session.google_calendar_event_id:
+        try:
+            from workout.calendar_sync import sync_session_to_calendar
+            
+            # Recalculer les données pour le sync (similaire à sync_single_session)
+            # Pour faire simple, on relance juste le sync
+            # Note: Idéalement code dupliqué à refactoriser dans un service
+            from workout.models import UserActivityType
+            
+            activity_names = [session.activity_type.value.capitalize()]
+            if session.custom_activity_type_id:
+                ct = db.query(UserActivityType).get(session.custom_activity_type_id)
+                if ct:
+                    activity_names = [ct.name]
+            
+            exercises_data = [] # On n'a pas besoin de les recalculer pour exclure une date
+            
+            await sync_session_to_calendar(
+                current_user.google_calendar_refresh_token,
+                session.id,
+                session.name,
+                activity_names,
+                session.scheduled_at,
+                exercises_data,
+                session.google_calendar_event_id,
+                session.recurrence_type,
+                session.recurrence_data,
+                session.recurrence_exceptions,
+            )
+        except Exception as e:
+            print(f"Google Calendar sync error: {e}")
+
+    # 2. Apple Calendar
+    if current_user.apple_calendar_connected and current_user.apple_calendar_apple_id and session.apple_calendar_event_uid:
+        try:
+            from workout.caldav_sync import sync_session_to_apple_calendar
+            from workout.models import UserActivityType
+            
+            activity_names = [session.activity_type.value.capitalize()]
+            if session.custom_activity_type_id:
+                ct = db.query(UserActivityType).get(session.custom_activity_type_id)
+                if ct:
+                    activity_names = [ct.name]
+            
+            await sync_session_to_apple_calendar(
+                current_user.apple_calendar_apple_id,
+                current_user.apple_calendar_app_password,
+                current_user.apple_calendar_url,
+                session.id,
+                session.name,
+                activity_names,
+                session.scheduled_at,
+                [], # exercises not needed for simple update
+                session.apple_calendar_event_uid,
+                session.recurrence_type,
+                session.recurrence_data,
+                session.recurrence_exceptions,
+            )
+        except Exception as e:
+            print(f"Apple Calendar sync error: {e}")
+
+    return session
+
+
 @router.delete(
     "/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,

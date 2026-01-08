@@ -888,6 +888,49 @@ class SessionService:
         return db_session
     
     @staticmethod
+    def exclude_occurrence(
+        db: Session,
+        session_id: int,
+        date_str: str,
+        user_id: int,
+    ) -> Optional[WorkoutSession]:
+        """
+        Exclut une date spécifique d'une séance récurrente.
+        
+        Args:
+            date_str: Date à exclure au format YYYY-MM-DD
+        """
+        session = SessionService.get_session(db, session_id, user_id)
+        if not session:
+            return None
+            
+        # Vérifier format de date
+        try:
+            datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            return None
+            
+        # Ajouter aux exceptions
+        current_exceptions = []
+        if session.recurrence_exceptions:
+            try:
+                current_exceptions = json.loads(session.recurrence_exceptions) if isinstance(session.recurrence_exceptions, str) else session.recurrence_exceptions
+                if not isinstance(current_exceptions, list):
+                    current_exceptions = []
+            except Exception:
+                current_exceptions = []
+        
+        # Éviter les doublons
+        if date_str not in current_exceptions:
+            current_exceptions.append(date_str)
+            session.recurrence_exceptions = json.dumps(current_exceptions)
+            
+            db.commit()
+            db.refresh(session)
+            
+        return session
+
+    @staticmethod
     def delete_session(db: Session, session_id: int, user_id: int) -> bool:
         """Supprime une session."""
         db_session = db.query(WorkoutSession).filter(
