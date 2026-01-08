@@ -33,6 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -932,6 +939,7 @@ export default function SessionsPage() {
                       <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
+                  )}
 
                   {/* Image avec logos des activités */}
                   <div className="relative w-full bg-muted overflow-hidden aspect-video">
