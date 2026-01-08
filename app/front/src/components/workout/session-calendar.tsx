@@ -41,6 +41,8 @@ import {
   CalendarPlus,
   Trash2,
   Download,
+  Edit,
+  Eye,
 } from "lucide-react";
 import { workoutApi } from "@/lib/workout-api";
 
@@ -59,6 +61,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const [showSessionsDialog, setShowSessionsDialog] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ session: WorkoutSession, date: Date } | null>(null);
+  const [actionMenuSession, setActionMenuSession] = useState<{ session: WorkoutSession, date: Date } | null>(null);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calcul des jours du mois
@@ -331,11 +334,17 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
     if (daySessions.length === 0) return;
 
     if (daySessions.length === 1) {
-      router.push(`/workout/sessions/${daySessions[0].id}`);
+      // Show action menu for single session
+      setActionMenuSession({ session: daySessions[0], date });
     } else {
       setSelectedDaySessions(daySessions);
       setShowSessionsDialog(true);
     }
+  };
+
+  const handleSessionAction = (session: WorkoutSession, date: Date) => {
+    setActionMenuSession({ session, date });
+    setShowSessionsDialog(false);
   };
 
   const handleDayHover = (key: string | null) => {
@@ -388,29 +397,20 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   // Composant pour afficher les détails d'une séance
   const SessionCard = ({ session, compact = false, occurrenceDate }: { session: WorkoutSession; compact?: boolean, occurrenceDate?: Date }) => (
     <Card
-      className={`relative group cursor-pointer hover:bg-accent/50 transition-colors ${session.status === "annulee" ? "opacity-50" : ""
+      className={`cursor-pointer hover:bg-accent/50 transition-colors ${session.status === "annulee" ? "opacity-50" : ""
         } ${compact ? "" : "mb-2 last:mb-0"}`}
-      onClick={() => router.push(`/workout/sessions/${session.id}`)}
+      onClick={() => {
+        if (occurrenceDate) {
+          handleSessionAction(session, occurrenceDate);
+        } else {
+          router.push(`/workout/sessions/${session.id}`);
+        }
+      }}
     >
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (occurrenceDate) {
-              setDeleteConfirmation({ session, date: occurrenceDate });
-            }
-          }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
       <CardContent className={compact ? "p-2" : "p-3"}>
         <div className="flex items-start gap-2">
           {getStatusIcon(session.status)}
-          <div className="flex-1 min-w-0 pr-6">
+          <div className="flex-1 min-w-0">
             <p className={`font-medium truncate ${compact ? "text-xs" : "text-sm"}`}>
               {session.name}
             </p>
@@ -674,8 +674,88 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
           </DialogHeader>
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {selectedDaySessions?.map((session) => (
-              <SessionCard key={session.id} session={session} occurrenceDate={selectedDate || new Date()} />
+              <Card
+                key={session.id}
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => handleSessionAction(session, selectedDate || new Date())}
+              >
+                <CardContent className="p-3">
+                  <div className="flex items-start gap-2">
+                    {getStatusIcon(session.status)}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{session.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {ACTIVITY_TYPE_LABELS[session.activity_type]}
+                      </p>
+                      {session.scheduled_at && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Clock className="h-2.5 w-2.5" />
+                          {formatTime(session.scheduled_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Menu d'action pour une séance */}
+      <Dialog
+        open={!!actionMenuSession}
+        onOpenChange={(open) => !open && setActionMenuSession(null)}
+      >
+        <DialogContent className="sm:max-w-[320px]">
+          <DialogHeader>
+            <DialogTitle className="text-base truncate">
+              {actionMenuSession?.session.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2 py-2">
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                if (actionMenuSession) {
+                  router.push(`/workout/sessions/${actionMenuSession.session.id}`);
+                  setActionMenuSession(null);
+                }
+              }}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Voir les détails
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                if (actionMenuSession) {
+                  router.push(`/workout/sessions/${actionMenuSession.session.id}/edit`);
+                  setActionMenuSession(null);
+                }
+              }}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start text-destructive hover:text-destructive"
+              onClick={() => {
+                if (actionMenuSession) {
+                  setDeleteConfirmation(actionMenuSession);
+                  setActionMenuSession(null);
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

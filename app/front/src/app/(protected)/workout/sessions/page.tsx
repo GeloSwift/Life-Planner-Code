@@ -148,19 +148,25 @@ export default function SessionsPage() {
   const [sessionToDelete, setSessionToDelete] = useState<WorkoutSession | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
+  // Mode suppression récurrente
+  const [recurringDeleteMode, setRecurringDeleteMode] = useState<"choose" | "occurrence" | "all">("choose");
+  const [selectedOccurrenceDate, setSelectedOccurrenceDate] = useState<string | null>(null);
+  const [occurrenceSearchMonth, setOccurrenceSearchMonth] = useState<number>(new Date().getMonth());
+  const [occurrenceSearchYear, setOccurrenceSearchYear] = useState<number>(new Date().getFullYear());
+
   // Mode sélection multiple
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedSessionIds, setSelectedSessionIds] = useState<Set<number>>(new Set());
   const [contextMenuSession, setContextMenuSession] = useState<WorkoutSession | null>(null);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
-  
+
   // Filtres
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<SessionStatus | "all">("all");
   const [activityFilter, setActivityFilter] = useState<number | "all">("all");
-  
+
   // Activités personnalisées
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
 
@@ -256,6 +262,10 @@ export default function SessionsPage() {
   const handleDeleteClick = (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
     setSessionToDelete(session);
+    setRecurringDeleteMode("choose");
+    setSelectedOccurrenceDate(null);
+    setOccurrenceSearchMonth(new Date().getMonth());
+    setOccurrenceSearchYear(new Date().getFullYear());
     setDeleteDialogOpen(true);
   };
 
@@ -267,6 +277,7 @@ export default function SessionsPage() {
       success(`Séance "${sessionToDelete.name}" supprimée`);
       setDeleteDialogOpen(false);
       setSessionToDelete(null);
+      setRecurringDeleteMode("choose");
       await loadData();
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
@@ -275,18 +286,119 @@ export default function SessionsPage() {
     }
   };
 
+  const handleDeleteOccurrence = async () => {
+    if (!sessionToDelete || !selectedOccurrenceDate) return;
+    setIsDeleting(true);
+    try {
+      await workoutApi.sessions.excludeOccurrence(sessionToDelete.id, selectedOccurrenceDate);
+      success(`Occurrence du ${new Date(selectedOccurrenceDate).toLocaleDateString("fr-FR")} supprimée`);
+      setDeleteDialogOpen(false);
+      setSessionToDelete(null);
+      setRecurringDeleteMode("choose");
+      setSelectedOccurrenceDate(null);
+      await loadData();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Générer les occurrences futures d'une séance récurrente
+  const generateOccurrences = (session: WorkoutSession, monthsAhead: number = 6): Date[] => {
+    if (!session.recurrence_type || !session.scheduled_at) return [];
+
+    const startDate = new Date(session.scheduled_at);
+    const dates: Date[] = [];
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + monthsAhead);
+
+    // Exceptions de récurrence
+    const exceptions = new Set(session.recurrence_exceptions ?? []);
+
+    const dayMapping: Record<string, number> = {
+      "monday": 1, "tuesday": 2, "wednesday": 3, "thursday": 4,
+      "friday": 5, "saturday": 6, "sunday": 0,
+      "lundi": 1, "mardi": 2, "mercredi": 3, "jeudi": 4,
+      "vendredi": 5, "samedi": 6, "dimanche": 0,
+    };
+
+    if (session.recurrence_type === "daily") {
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        const dateStr = current.toISOString().split("T")[0];
+        if (!exceptions.has(dateStr) && current >= new Date()) {
+          dates.push(new Date(current));
+        }
+        current.setDate(current.getDate() + 1);
+      }
+    } else if (session.recurrence_type === "weekly") {
+      const recurrenceData = session.recurrence_data ?? [];
+      if (recurrenceData.length === 0) {
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          const dateStr = current.toISOString().split("T")[0];
+          if (!exceptions.has(dateStr) && current >= new Date()) {
+            dates.push(new Date(current));
+          }
+          current.setDate(current.getDate() + 7);
+        }
+      } else {
+        const targetDays = recurrenceData.map(d => dayMapping[String(d).toLowerCase()]).filter(d => d !== undefined);
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          if (targetDays.includes(current.getDay())) {
+            const dateStr = current.toISOString().split("T")[0];
+            if (!exceptions.has(dateStr) && current >= new Date()) {
+              dates.push(new Date(current));
+            }
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      }
+    } else if (session.recurrence_type === "monthly") {
+      const recurrenceData = session.recurrence_data ?? [];
+      const targetDays = recurrenceData.length > 0 ? recurrenceData.map(d => Number(d)) : [startDate.getDate()];
+      const current = new Date(startDate);
+      while (current <= endDate) {
+        for (const day of targetDays) {
+          const testDate = new Date(current.getFullYear(), current.getMonth(), day);
+          if (testDate.getDate() === day && testDate <= endDate && testDate >= new Date()) {
+            const dateStr = testDate.toISOString().split("T")[0];
+            if (!exceptions.has(dateStr)) {
+              dates.push(testDate);
+            }
+          }
+        }
+        current.setMonth(current.getMonth() + 1);
+      }
+    }
+
+    return dates.sort((a, b) => a.getTime() - b.getTime());
+  };
+
+  // Filtrer les occurrences par mois/année
+  const getFilteredOccurrences = () => {
+    if (!sessionToDelete) return [];
+    const occurrences = generateOccurrences(sessionToDelete, 12);
+    return occurrences.filter(d =>
+      d.getMonth() === occurrenceSearchMonth &&
+      d.getFullYear() === occurrenceSearchYear
+    );
+  };
+
   const handleDuplicateClick = async (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
     try {
       const full = await workoutApi.sessions.get(session.id);
-      
+
       // Si la date originale est dans le passé, on la met à demain à la même heure
       // pour éviter que le système automatique change le statut à "annulée"
       let newScheduledAt = full.scheduled_at ?? undefined;
       if (full.scheduled_at) {
         const originalDate = new Date(full.scheduled_at);
         const now = new Date();
-        
+
         // Si la date est dans le passé, la mettre à demain à la même heure
         if (originalDate < now) {
           const tomorrow = new Date(now);
@@ -295,7 +407,7 @@ export default function SessionsPage() {
           newScheduledAt = tomorrow.toISOString();
         }
       }
-      
+
       const duplicated = await workoutApi.sessions.create({
         name: `${full.name} (copie)`,
         activity_type: full.activity_type,
@@ -330,15 +442,15 @@ export default function SessionsPage() {
           return exerciseData;
         }),
       });
-      
+
       // Le backend crée toujours les séances avec le statut "planifiee" par défaut.
       // Si on a mis à jour la date pour qu'elle soit dans le futur, le système automatique
       // ne changera pas le statut. On vérifie quand même pour être sûr.
       let finalSession = duplicated;
-      
+
       // Vérifier le statut après création
       finalSession = await workoutApi.sessions.get(duplicated.id);
-      
+
       // Si le statut n'est pas "planifiee", le forcer explicitement
       if (finalSession.status !== "planifiee") {
         await workoutApi.sessions.update(duplicated.id, {
@@ -346,7 +458,7 @@ export default function SessionsPage() {
         });
         finalSession = await workoutApi.sessions.get(duplicated.id);
       }
-      
+
       success(`Séance "${full.name}" dupliquée`);
       // Rediriger directement vers la page d'édition sans recharger la liste
       // Utiliser replace au lieu de push pour éviter d'ajouter une entrée dans l'historique
@@ -396,7 +508,7 @@ export default function SessionsPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTouchStart = (session: WorkoutSession, _e: React.TouchEvent) => {
     if (selectionMode) return;
-    
+
     const timer = setTimeout(() => {
       setContextMenuSession(session);
       setContextMenuOpen(true);
@@ -431,7 +543,7 @@ export default function SessionsPage() {
   const handleContextMenuDuplicate = async () => {
     if (contextMenuSession) {
       setContextMenuOpen(false);
-      const fakeEvent = { stopPropagation: () => {} } as MouseEvent;
+      const fakeEvent = { stopPropagation: () => { } } as MouseEvent;
       await handleDuplicateClick(contextMenuSession, fakeEvent);
       setContextMenuSession(null);
     }
@@ -440,7 +552,7 @@ export default function SessionsPage() {
   const handleContextMenuEdit = () => {
     if (contextMenuSession) {
       setContextMenuOpen(false);
-      const fakeEvent = { stopPropagation: () => {} } as MouseEvent;
+      const fakeEvent = { stopPropagation: () => { } } as MouseEvent;
       handleEditClick(contextMenuSession, fakeEvent);
       setContextMenuSession(null);
     }
@@ -458,7 +570,7 @@ export default function SessionsPage() {
   // Suppression en batch
   const handleBatchDelete = async () => {
     if (selectedSessionIds.size === 0) return;
-    
+
     setIsDeleting(true);
     try {
       const deletePromises = Array.from(selectedSessionIds).map((id) =>
@@ -468,7 +580,7 @@ export default function SessionsPage() {
         })
       );
       await Promise.all(deletePromises);
-      
+
       const count = selectedSessionIds.size;
       success(`${count} séance${count > 1 ? "s" : ""} supprimée${count > 1 ? "s" : ""}`);
       setSelectionMode(false);
@@ -483,18 +595,18 @@ export default function SessionsPage() {
 
   const handleReplanClick = async (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
-    
+
     try {
       // Récupérer la session complète avec ses exercices
       const full = await workoutApi.sessions.get(session.id);
-      
+
       const now = new Date();
       let nextDate: Date | null = null;
-      
+
       // Si la séance a une récurrence, calculer la prochaine date selon la récurrence
       if (session.recurrence_type && session.scheduled_at) {
         const scheduledTime = new Date(session.scheduled_at);
-        
+
         if (session.recurrence_type === "daily") {
           // Demain à la même heure
           nextDate = new Date(now);
@@ -823,15 +935,14 @@ export default function SessionsPage() {
               return (
                 <Card
                   key={session.id}
-                  className={`group transition-all relative p-0 overflow-hidden ${
-                    selectionMode
-                      ? selectedSessionIds.has(session.id)
-                        ? "ring-2 ring-primary"
-                        : ""
-                      : session.status === "annulee" || session.status === "terminee"
+                  className={`group transition-all relative p-0 overflow-hidden ${selectionMode
+                    ? selectedSessionIds.has(session.id)
+                      ? "ring-2 ring-primary"
+                      : ""
+                    : session.status === "annulee" || session.status === "terminee"
                       ? "opacity-50 cursor-pointer hover:shadow-lg hover:-translate-y-1"
                       : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
-                  }`}
+                    }`}
                   onClick={() => {
                     if (selectionMode) {
                       toggleSessionSelection(session.id);
@@ -847,11 +958,10 @@ export default function SessionsPage() {
                   {selectionMode && (
                     <div className="absolute top-2 left-2 z-30">
                       <div
-                        className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
-                          selectedSessionIds.has(session.id)
-                            ? "bg-primary border-primary"
-                            : "bg-background border-primary/50"
-                        }`}
+                        className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${selectedSessionIds.has(session.id)
+                          ? "bg-primary border-primary"
+                          : "bg-background border-primary/50"
+                          }`}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleSessionSelection(session.id);
@@ -867,67 +977,42 @@ export default function SessionsPage() {
                   {/* Actions rapides (masquées en mode sélection) */}
                   {!selectionMode && (
                     <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    {/* Boutons pour séances actives (planifiée, en cours) */}
-                    {session.status !== "annulee" && session.status !== "terminee" && (
-                      <>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={(e) => handleDuplicateClick(session, e)}
-                          title="Dupliquer"
-                        >
-                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={(e) => handleEditClick(session, e)}
-                          title="Modifier"
-                        >
-                          <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </>
-                    )}
-                    
-                    {/* Boutons pour séances annulées */}
-                    {session.status === "annulee" && (
-                      <>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={(e) => handleDuplicateClick(session, e)}
-                          title="Dupliquer"
-                        >
-                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={(e) => handleReplanClick(session, e)}
-                          title="Replanifier"
-                        >
-                          <RotateCcw className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </Button>
-                      </>
-                    )}
-                    
-                    {/* Boutons pour séances terminées */}
-                    {session.status === "terminee" && (
-                      <>
-                        <Button
-                          variant="secondary"
-                          size="icon"
-                          className="h-10 w-10 sm:h-8 sm:w-8"
-                          onClick={(e) => handleDuplicateClick(session, e)}
-                          title="Dupliquer"
-                        >
-                          <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
-                        </Button>
-                        {session.recurrence_type && (
+                      {/* Boutons pour séances actives (planifiée, en cours) */}
+                      {session.status !== "annulee" && session.status !== "terminee" && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            onClick={(e) => handleDuplicateClick(session, e)}
+                            title="Dupliquer"
+                          >
+                            <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            onClick={(e) => handleEditClick(session, e)}
+                            title="Modifier"
+                          >
+                            <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </Button>
+                        </>
+                      )}
+
+                      {/* Boutons pour séances annulées */}
+                      {session.status === "annulee" && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            onClick={(e) => handleDuplicateClick(session, e)}
+                            title="Dupliquer"
+                          >
+                            <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </Button>
                           <Button
                             variant="secondary"
                             size="icon"
@@ -937,21 +1022,46 @@ export default function SessionsPage() {
                           >
                             <RotateCcw className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Bouton supprimer (toujours disponible) */}
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="h-10 w-10 sm:h-8 sm:w-8"
-                      onClick={(e) => handleDeleteClick(session, e)}
-                      title="Supprimer"
-                    >
-                      <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
-                    </Button>
-                  </div>
+                        </>
+                      )}
+
+                      {/* Boutons pour séances terminées */}
+                      {session.status === "terminee" && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            onClick={(e) => handleDuplicateClick(session, e)}
+                            title="Dupliquer"
+                          >
+                            <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                          </Button>
+                          {session.recurrence_type && (
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-10 w-10 sm:h-8 sm:w-8"
+                              onClick={(e) => handleReplanClick(session, e)}
+                              title="Replanifier"
+                            >
+                              <RotateCcw className="h-5 w-5 sm:h-4 sm:w-4" />
+                            </Button>
+                          )}
+                        </>
+                      )}
+
+                      {/* Bouton supprimer (toujours disponible) */}
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-10 w-10 sm:h-8 sm:w-8"
+                        onClick={(e) => handleDeleteClick(session, e)}
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
                   )}
 
                   {/* Image avec logos des activités */}
@@ -1130,25 +1240,195 @@ export default function SessionsPage() {
       </Sheet>
 
       {/* Dialog confirmation suppression */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setRecurringDeleteMode("choose");
+          setSelectedOccurrenceDate(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
             <DialogTitle>Supprimer la séance</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir supprimer{" "}
-              <span className="font-medium">{sessionToDelete?.name}</span> ?
-              Cette action est irréversible.
+              {sessionToDelete?.name}
+              {sessionToDelete?.recurrence_type && (
+                <span className="block mt-1 text-xs">
+                  (Séance récurrente : {formatRecurrence(sessionToDelete.recurrence_type, sessionToDelete.recurrence_data)})
+                </span>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Annuler
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Supprimer
-            </Button>
-          </DialogFooter>
+
+          {/* Choix initial pour les séances récurrentes */}
+          {sessionToDelete?.recurrence_type && recurringDeleteMode === "choose" && (
+            <div className="flex flex-col gap-3 py-4">
+              <p className="text-sm text-muted-foreground">
+                Cette séance se répète. Que souhaitez-vous supprimer ?
+              </p>
+              <Button
+                variant="outline"
+                className="justify-start"
+                onClick={() => setRecurringDeleteMode("occurrence")}
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Une occurrence spécifique
+              </Button>
+              <Button
+                variant="destructive"
+                className="justify-start"
+                onClick={() => setRecurringDeleteMode("all")}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Toutes les occurrences (supprimer la série)
+              </Button>
+            </div>
+          )}
+
+          {/* Sélection d'une occurrence à supprimer */}
+          {sessionToDelete?.recurrence_type && recurringDeleteMode === "occurrence" && (
+            <div className="py-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRecurringDeleteMode("choose")}
+                >
+                  ← Retour
+                </Button>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Sélectionnez l'occurrence à supprimer :
+              </p>
+
+              {/* Navigation mois/année */}
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (occurrenceSearchMonth === 0) {
+                      setOccurrenceSearchMonth(11);
+                      setOccurrenceSearchYear(occurrenceSearchYear - 1);
+                    } else {
+                      setOccurrenceSearchMonth(occurrenceSearchMonth - 1);
+                    }
+                  }}
+                >
+                  ←
+                </Button>
+                <span className="text-sm font-medium capitalize">
+                  {new Date(occurrenceSearchYear, occurrenceSearchMonth).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (occurrenceSearchMonth === 11) {
+                      setOccurrenceSearchMonth(0);
+                      setOccurrenceSearchYear(occurrenceSearchYear + 1);
+                    } else {
+                      setOccurrenceSearchMonth(occurrenceSearchMonth + 1);
+                    }
+                  }}
+                >
+                  →
+                </Button>
+              </div>
+
+              {/* Liste des occurrences */}
+              <div className="max-h-48 overflow-y-auto border rounded-md">
+                {getFilteredOccurrences().length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Aucune occurrence ce mois-ci
+                  </p>
+                ) : (
+                  <div className="divide-y">
+                    {getFilteredOccurrences().map((date) => {
+                      const dateStr = date.toISOString().split("T")[0];
+                      return (
+                        <button
+                          key={dateStr}
+                          className={`w-full px-3 py-2 text-left text-sm hover:bg-accent flex items-center justify-between ${selectedOccurrenceDate === dateStr ? "bg-accent" : ""
+                            }`}
+                          onClick={() => setSelectedOccurrenceDate(dateStr)}
+                        >
+                          <span className="capitalize">
+                            {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+                          </span>
+                          {selectedOccurrenceDate === dateStr && (
+                            <CheckCircle className="h-4 w-4 text-primary" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteOccurrence}
+                  disabled={isDeleting || !selectedOccurrenceDate}
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Supprimer cette occurrence
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* Confirmation suppression de toute la série */}
+          {sessionToDelete?.recurrence_type && recurringDeleteMode === "all" && (
+            <div className="py-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setRecurringDeleteMode("choose")}
+                >
+                  ← Retour
+                </Button>
+              </div>
+
+              <p className="text-sm text-destructive font-medium">
+                ⚠️ Toutes les occurrences futures seront supprimées. Cette action est irréversible.
+              </p>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Supprimer toute la série
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* Séances non-récurrentes : simple confirmation */}
+          {!sessionToDelete?.recurrence_type && (
+            <>
+              <p className="text-sm text-muted-foreground py-2">
+                Cette action est irréversible.
+              </p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+                  {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Supprimer
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
