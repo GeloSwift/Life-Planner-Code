@@ -637,7 +637,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
                     {daySessions.map((session) => (
                       <SessionCard key={session.id} session={session} compact />
                     ))}
-                  </div>
+                </div>
               )}
             </div>
           );

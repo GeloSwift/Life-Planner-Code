@@ -461,7 +461,7 @@ export default function ExercisesPage() {
       <BackgroundDecorations />
       <Header variant="sticky" />
 
-      <main className="container mx-auto px-4 py-6 sm:py-8">
+      <main className={`container mx-auto px-4 py-6 sm:py-8 ${selectionMode ? "pb-24" : ""}`}>
         {/* Header */}
         <section className="mb-6">
           <Button
@@ -998,12 +998,13 @@ export default function ExercisesPage() {
 
       {/* Barre d'actions sticky en bas pour mobile (mode sélection) */}
       {selectionMode && (
-        <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-50 sm:hidden shadow-lg">
-          <div className="flex gap-2 max-w-6xl mx-auto">
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 z-50 sm:hidden shadow-lg">
+          <div className="flex gap-2 max-w-6xl mx-auto px-4">
             <Button
               variant="outline"
               onClick={selectedExerciseIds.size === exercises.length ? deselectAll : selectAll}
               className="flex-1"
+              size="sm"
             >
               {selectedExerciseIds.size === exercises.length ? "Tout" : "Tout"}
             </Button>
@@ -1012,6 +1013,7 @@ export default function ExercisesPage() {
               onClick={handleBatchDelete}
               disabled={selectedExerciseIds.size === 0 || isDeleting}
               className="flex-1"
+              size="sm"
             >
               {isDeleting ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1024,6 +1026,7 @@ export default function ExercisesPage() {
               variant="ghost"
               onClick={toggleSelectionMode}
               className="flex-1"
+              size="sm"
             >
               <X className="h-4 w-4 mr-2" />
               Annuler
@@ -1031,6 +1034,9 @@ export default function ExercisesPage() {
           </div>
         </div>
       )}
+
+      {/* Ajouter du padding en bas sur mobile si en mode sélection pour éviter que le contenu soit masqué */}
+      {selectionMode && <div className="h-20 sm:hidden" />}
 
       <Footer />
 
