@@ -47,7 +47,7 @@ export default function WorkoutPage() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Calendars sync
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [appleCalendarConnected, setAppleCalendarConnected] = useState(false);
@@ -92,10 +92,10 @@ export default function WorkoutPage() {
       if (appleCalendarConnected) {
         syncPromises.push(appleCalendarApi.syncAll());
       }
-      
+
       const results = await Promise.all(syncPromises);
       const totalSynced = results.reduce((sum, r) => sum + (r.synced || 0), 0);
-      
+
       if (totalSynced > 0) {
         success(`${totalSynced} séance(s) synchronisée(s)`);
       } else {
@@ -298,16 +298,16 @@ export default function WorkoutPage() {
                         <span className="hidden sm:inline ml-1">Calendrier</span>
                       </Button>
                     )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="text-xs sm:text-sm h-7 sm:h-9 px-2 sm:px-3"
                       onClick={() => router.push("/workout/sessions")}
-                  >
-                    Voir tout
+                    >
+                      Voir tout
                       <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
+                    </Button>
+                  </div>
                 </div>
                 <CardDescription className="text-xs sm:text-sm">Vos séances du mois</CardDescription>
               </CardHeader>
@@ -317,6 +317,10 @@ export default function WorkoutPage() {
                     ...(dashboard?.recent_sessions ?? []),
                     ...(dashboard?.upcoming_sessions ?? []),
                   ]}
+                  onSessionDeleted={async () => {
+                    setIsLoading(true);
+                    await loadDashboard();
+                  }}
                 />
               </CardContent>
             </Card>

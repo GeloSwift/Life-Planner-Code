@@ -48,11 +48,12 @@ import { workoutApi } from "@/lib/workout-api";
 
 interface SessionCalendarProps {
   sessions: WorkoutSession[];
+  onSessionDeleted?: () => Promise<void>;
 }
 
 type ViewMode = "month" | "week";
 
-export function SessionCalendar({ sessions }: SessionCalendarProps) {
+export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarProps) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -62,6 +63,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ session: WorkoutSession, date: Date } | null>(null);
   const [actionMenuSession, setActionMenuSession] = useState<{ session: WorkoutSession, date: Date } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Calcul des jours du mois
@@ -709,7 +711,7 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
       >
         <DialogContent className="sm:max-w-[320px]">
           <DialogHeader>
-            <DialogTitle className="text-base truncate">
+            <DialogTitle className="text-base truncate pr-8">
               {actionMenuSession?.session.name}
             </DialogTitle>
           </DialogHeader>
@@ -765,76 +767,66 @@ export function SessionCalendar({ sessions }: SessionCalendarProps) {
         open={!!deleteConfirmation}
         onOpenChange={(open) => !open && setDeleteConfirmation(null)}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[350px]">
           <DialogHeader>
-            <DialogTitle>Supprimer la séance</DialogTitle>
+            <DialogTitle className="truncate pr-8">Supprimer</DialogTitle>
           </DialogHeader>
 
-          <div className="py-2">
-            <p className="text-sm text-muted-foreground mb-4">
-              Voulez-vous supprimer cette séance ?
-              {deleteConfirmation?.session.recurrence_type && (
-                <span className="block mt-2 font-medium text-foreground">
-                  Cette séance est récurrente.
-                </span>
-              )}
-            </p>
-
-            <div className="flex flex-col gap-2">
-              {deleteConfirmation?.session.recurrence_type && (
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    if (!deleteConfirmation) return;
-                    try {
-                      // Format YYYY-MM-DD manually to avoid timezone issues
-                      const y = deleteConfirmation.date.getFullYear();
-                      const m = String(deleteConfirmation.date.getMonth() + 1).padStart(2, "0");
-                      const d = String(deleteConfirmation.date.getDate()).padStart(2, "0");
-                      const dateStr = `${y}-${m}-${d}`;
-
-                      await workoutApi.sessions.excludeOccurrence(deleteConfirmation.session.id, dateStr);
-                      setDeleteConfirmation(null);
-                      router.refresh();
-                    } catch (error) {
-                      console.error("Erreur suppression occurrence:", error);
-                      alert("Erreur lors de la suppression de l'occurrence");
-                    }
-                  }}
-                >
-                  Supprimer uniquement cette occurrence
-                </Button>
-              )}
-
+          <div className="flex flex-col gap-2">
+            {deleteConfirmation?.session.recurrence_type && (
               <Button
-                variant="destructive"
+                variant="outline"
+                disabled={isDeleting}
                 onClick={async () => {
                   if (!deleteConfirmation) return;
-                  if (confirm("Êtes-vous sûr de vouloir supprimer TOUTE la série ?")) {
-                    try {
-                      await workoutApi.sessions.delete(deleteConfirmation.session.id);
-                      setDeleteConfirmation(null);
-                      router.refresh();
-                    } catch (error) {
-                      console.error("Erreur suppression série:", error);
-                      alert("Erreur lors de la suppression de la séance");
-                    }
+                  setIsDeleting(true);
+                  try {
+                    const y = deleteConfirmation.date.getFullYear();
+                    const m = String(deleteConfirmation.date.getMonth() + 1).padStart(2, "0");
+                    const d = String(deleteConfirmation.date.getDate()).padStart(2, "0");
+                    const dateStr = `${y}-${m}-${d}`;
+
+                    await workoutApi.sessions.excludeOccurrence(deleteConfirmation.session.id, dateStr);
+                    setDeleteConfirmation(null);
+                    if (onSessionDeleted) await onSessionDeleted();
+                  } catch (error) {
+                    console.error("Erreur suppression occurrence:", error);
+                  } finally {
+                    setIsDeleting(false);
                   }
                 }}
               >
-                {deleteConfirmation?.session.recurrence_type
-                  ? "Supprimer toute la série"
-                  : "Supprimer la séance"
-                }
+                {isDeleting ? "Suppression..." : "Cette occurrence uniquement"}
               </Button>
+            )}
 
-              <Button
-                variant="ghost"
-                onClick={() => setDeleteConfirmation(null)}
-              >
-                Annuler
-              </Button>
-            </div>
+            <Button
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={async () => {
+                if (!deleteConfirmation) return;
+                setIsDeleting(true);
+                try {
+                  await workoutApi.sessions.delete(deleteConfirmation.session.id);
+                  setDeleteConfirmation(null);
+                  if (onSessionDeleted) await onSessionDeleted();
+                } catch (error) {
+                  console.error("Erreur suppression série:", error);
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+            >
+              {isDeleting ? "Suppression..." : (deleteConfirmation?.session.recurrence_type ? "Toute la série" : "Supprimer")}
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteConfirmation(null)}
+              disabled={isDeleting}
+            >
+              Annuler
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

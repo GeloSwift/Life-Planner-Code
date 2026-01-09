@@ -701,13 +701,13 @@ export default function SessionsPage() {
     if (type === "daily") return "Tous les jours";
     if (type === "weekly" && data && data.length > 0) {
       const dayNames: Record<string, string> = {
-        lundi: "Lundi",
-        mardi: "Mardi",
-        mercredi: "Mercredi",
-        jeudi: "Jeudi",
-        vendredi: "Vendredi",
-        samedi: "Samedi",
-        dimanche: "Dimanche",
+        lundi: "lundi",
+        mardi: "mardi",
+        mercredi: "mercredi",
+        jeudi: "jeudi",
+        vendredi: "vendredi",
+        samedi: "samedi",
+        dimanche: "dimanche",
       };
       const day = dayNames[String(data[0]).toLowerCase()] || String(data[0]);
       return `Tous les ${day}s`;
@@ -715,11 +715,20 @@ export default function SessionsPage() {
     if (type === "monthly" && data && data.length > 0) {
       const day = Number(data[0]);
       if (day >= 28) {
-        return "Le dernier jour du mois";
+        return "Dernier jour du mois";
       }
       return `Le ${day} de chaque mois`;
     }
     return "";
+  };
+
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const formatDate = (dateString: string | null) => {
@@ -1110,19 +1119,21 @@ export default function SessionsPage() {
                           ))}
                         </div>
                       )}
-                      {session.recurrence_type && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {formatRecurrence(session.recurrence_type, session.recurrence_data)}
-                        </div>
-                      )}
                     </CardDescription>
                   </CardHeader>
 
                   <CardContent className="pt-0 pb-4 space-y-2">
                     <div className="space-y-1 text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Date</span>
-                        <span className="text-xs">{formatDate(session.scheduled_at || session.created_at)}</span>
+                        <span className="text-muted-foreground">
+                          {session.recurrence_type ? "Programmé" : "Date"}
+                        </span>
+                        <span className="text-xs">
+                          {session.recurrence_type
+                            ? `${formatRecurrence(session.recurrence_type, session.recurrence_data)}, ${formatTime(session.scheduled_at)}`
+                            : formatDate(session.scheduled_at || session.created_at)
+                          }
+                        </span>
                       </div>
                       {session.duration_seconds && (
                         <div className="flex items-center justify-between">
@@ -1262,17 +1273,14 @@ export default function SessionsPage() {
 
           {/* Choix initial pour les séances récurrentes */}
           {sessionToDelete?.recurrence_type && recurringDeleteMode === "choose" && (
-            <div className="flex flex-col gap-3 py-4">
-              <p className="text-sm text-muted-foreground">
-                Cette séance se répète. Que souhaitez-vous supprimer ?
-              </p>
+            <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
                 className="justify-start"
                 onClick={() => setRecurringDeleteMode("occurrence")}
               >
                 <Calendar className="h-4 w-4 mr-2" />
-                Une occurrence spécifique
+                Une occurrence
               </Button>
               <Button
                 variant="destructive"
@@ -1280,14 +1288,14 @@ export default function SessionsPage() {
                 onClick={() => setRecurringDeleteMode("all")}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Toutes les occurrences (supprimer la série)
+                Toute la série
               </Button>
             </div>
           )}
 
           {/* Sélection d'une occurrence à supprimer */}
           {sessionToDelete?.recurrence_type && recurringDeleteMode === "occurrence" && (
-            <div className="py-4 space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -1297,10 +1305,6 @@ export default function SessionsPage() {
                   ← Retour
                 </Button>
               </div>
-
-              <p className="text-sm text-muted-foreground">
-                Sélectionnez l'occurrence à supprimer :
-              </p>
 
               {/* Navigation mois/année */}
               <div className="flex items-center justify-between gap-2">
@@ -1385,20 +1389,14 @@ export default function SessionsPage() {
 
           {/* Confirmation suppression de toute la série */}
           {sessionToDelete?.recurrence_type && recurringDeleteMode === "all" && (
-            <div className="py-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setRecurringDeleteMode("choose")}
-                >
-                  ← Retour
-                </Button>
-              </div>
-
-              <p className="text-sm text-destructive font-medium">
-                ⚠️ Toutes les occurrences futures seront supprimées. Cette action est irréversible.
-              </p>
+            <div className="space-y-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRecurringDeleteMode("choose")}
+              >
+                ← Retour
+              </Button>
 
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
@@ -1406,7 +1404,7 @@ export default function SessionsPage() {
                 </Button>
                 <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
                   {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Supprimer toute la série
+                  Confirmer
                 </Button>
               </DialogFooter>
             </div>
@@ -1414,20 +1412,15 @@ export default function SessionsPage() {
 
           {/* Séances non-récurrentes : simple confirmation */}
           {!sessionToDelete?.recurrence_type && (
-            <>
-              <p className="text-sm text-muted-foreground py-2">
-                Cette action est irréversible.
-              </p>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-                  Annuler
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
-                  {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Supprimer
-                </Button>
-              </DialogFooter>
-            </>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+                {isDeleting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Supprimer
+              </Button>
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>

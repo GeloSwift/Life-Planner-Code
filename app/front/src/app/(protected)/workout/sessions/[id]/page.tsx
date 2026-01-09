@@ -107,10 +107,10 @@ export default function SessionPage({ params }: PageProps) {
 
       // Ne pas changer l'exercice étendu si on veut le préserver
       if (!preserveExpanded) {
-      // Étendre le premier exercice non complété
+        // Étendre le premier exercice non complété
         const firstIncomplete = exercisesList.find((e) => !e.is_completed);
-      if (firstIncomplete) {
-        setExpandedExercise(firstIncomplete.id);
+        if (firstIncomplete) {
+          setExpandedExercise(firstIncomplete.id);
         }
       }
     } catch (err) {
@@ -210,7 +210,7 @@ export default function SessionPage({ params }: PageProps) {
           notes: sessionNotes || undefined,
         });
       }
-      
+
       // Terminer la séance (les notes ont déjà été sauvegardées via update)
       await workoutApi.sessions.complete(session.id);
       success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
@@ -270,7 +270,7 @@ export default function SessionPage({ params }: PageProps) {
   // Basculer l'état d'une série (compléter ou désélectionner)
   const handleToggleSet = async (exerciseId: number, setId: number, isCompleted: boolean) => {
     if (!session || !isActive) return;
-    
+
     if (isCompleted) {
       // Désélectionner
       await handleUncompleteSet(setId);
@@ -287,11 +287,11 @@ export default function SessionPage({ params }: PageProps) {
       await loadSession(true); // Préserver l'exercice étendu
       // Lancer le timer de repos automatiquement
       startRest();
-      
+
       // Vérifier si toutes les séries sont maintenant complétées après rechargement
       const updatedSession = await workoutApi.sessions.get(session.id);
       const updatedExercises = updatedSession.exercises || [];
-      const allCompleted = updatedExercises.length > 0 && 
+      const allCompleted = updatedExercises.length > 0 &&
         updatedExercises.every((ex) => {
           const totalSets = ex.sets?.length || 0;
           const completedSets = ex.sets?.filter((s) => s.is_completed).length || 0;
@@ -350,7 +350,7 @@ export default function SessionPage({ params }: PageProps) {
     weight: /poids|weight|charge|kg/i,
     muscles: /muscle|group/i,
     rest: /repos|rest|pause/i,
-    
+
     // Course à pied / Cardio
     distance: /distance|km|kilom[eè]tre/i,
     duration: /dur[eé]e|temps|time|duration/i,
@@ -358,19 +358,19 @@ export default function SessionPage({ params }: PageProps) {
     incline: /inclinaison|pente|incline|slope/i,
     calories: /calorie|kcal/i,
     heartRate: /fr[eé]quence.*cardiaque|bpm|heart.*rate|cardio/i,
-    
+
     // Volleyball / Sports collectifs
     passes: /passe|pass/i,
     hits: /coup|frappe|hit|smash|attaque/i,
     serves: /service|serve/i,
     blocks: /bloc|block/i,
     points: /point|score/i,
-    
+
     // Danse
     steps: /pas|step/i,
     choreography: /chor[eé]graphie|mouvement|figure/i,
     rhythm: /rythme|tempo|bpm/i,
-    
+
     // Général
     level: /niveau|level|difficult/i,
     intensity: /intensit[eé]|effort/i,
@@ -379,7 +379,7 @@ export default function SessionPage({ params }: PageProps) {
   // Fonction pour identifier le type de paramètre via regex
   const identifyParamType = (fieldName: string): string | null => {
     const normalizedName = fieldName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
+
     for (const [type, pattern] of Object.entries(PARAM_PATTERNS)) {
       if (pattern.test(normalizedName)) {
         return type;
@@ -391,9 +391,9 @@ export default function SessionPage({ params }: PageProps) {
   // Fonction pour obtenir les noms des activités de la séance
   const getSessionActivityNames = useCallback((): string => {
     if (!session) return "";
-    
+
     const names: string[] = [];
-    
+
     // 1) Activités depuis custom_activity_type_ids
     if (session.custom_activity_type_ids && session.custom_activity_type_ids.length > 0) {
       session.custom_activity_type_ids.forEach((id) => {
@@ -401,7 +401,7 @@ export default function SessionPage({ params }: PageProps) {
         if (activity) names.push(activity.name);
       });
     }
-    
+
     // 2) Activité principale custom_activity_type
     if (session.custom_activity_type && !names.includes(session.custom_activity_type.name)) {
       names.push(session.custom_activity_type.name);
@@ -411,12 +411,12 @@ export default function SessionPage({ params }: PageProps) {
         names.push(activity.name);
       }
     }
-    
+
     // 3) Fallback sur activity_type de base
     if (names.length === 0) {
       return ACTIVITY_TYPE_LABELS[session.activity_type];
     }
-    
+
     return names.join(", ");
   }, [session, activityTypes]);
 
@@ -435,23 +435,23 @@ export default function SessionPage({ params }: PageProps) {
 
   const extractExerciseDetails = (exercise: WorkoutSessionExercise): ExerciseDetails => {
     const details: ExerciseDetails = { other: [] };
-    
+
     // D'abord, récupérer depuis les champs de base de l'exercice de session
     if (exercise.target_sets) details.sets = exercise.target_sets;
     if (exercise.target_reps) details.reps = exercise.target_reps;
     if (exercise.target_weight) details.weight = exercise.target_weight;
     if (exercise.target_duration) details.duration = exercise.target_duration;
     if (exercise.target_distance) details.distance = exercise.target_distance;
-    
+
     // Ensuite, parcourir les paramètres personnalisés de l'exercice
     if (exercise.exercise?.field_values && exercise.exercise.field_values.length > 0) {
       exercise.exercise.field_values.forEach((fieldValue) => {
         const field = fieldValue.field;
         if (!field || !fieldValue.value) return;
-        
+
         const paramType = identifyParamType(field.name);
         let displayValue = fieldValue.value;
-        
+
         // Parser les valeurs selon le type
         if (field.field_type === "multi_select") {
           try {
@@ -465,7 +465,7 @@ export default function SessionPage({ params }: PageProps) {
         } else if (field.field_type === "checkbox") {
           displayValue = fieldValue.value === "true" ? "Oui" : "Non";
         }
-        
+
         // Assigner selon le type identifié
         switch (paramType) {
           case "series":
@@ -510,23 +510,23 @@ export default function SessionPage({ params }: PageProps) {
         }
       });
     }
-    
+
     return details;
   };
 
   // Fonction pour formater les muscles travaillés (affiché en dessous)
   const formatSecondaryDetails = (details: ExerciseDetails): string | null => {
     const parts: string[] = [];
-    
+
     if (details.muscles && details.muscles.length > 0) {
       parts.push(details.muscles.join(", "));
     }
-    
+
     // Ajouter les autres paramètres non catégorisés
     details.other.forEach((param) => {
       parts.push(`${param.name}: ${param.value}${param.unit ? ` ${param.unit}` : ""}`);
     });
-    
+
     return parts.length > 0 ? parts.join(" • ") : null;
   };
 
@@ -536,17 +536,17 @@ export default function SessionPage({ params }: PageProps) {
     details: ExerciseDetails
   ): string => {
     const parts: string[] = [];
-    
+
     // Afficher le poids si pertinent (musculation)
     if (details.weight !== undefined || set.weight) {
       parts.push(set.weight ? `${set.weight}kg` : "-");
     }
-    
+
     // Afficher les reps si pertinent
     if (details.reps !== undefined || set.reps) {
       parts.push(`${set.reps || "-"} reps`);
     }
-    
+
     // Afficher la durée si pertinent (cardio, danse)
     if (details.duration !== undefined || set.duration_seconds) {
       if (set.duration_seconds) {
@@ -561,22 +561,22 @@ export default function SessionPage({ params }: PageProps) {
         parts.push("-");
       }
     }
-    
+
     // Afficher la distance si pertinent (course à pied)
     if (details.distance !== undefined || set.distance) {
       parts.push(set.distance ? `${set.distance}km` : "-");
     }
-    
+
     // Afficher la vitesse si pertinent
     if (details.speed !== undefined) {
       parts.push(`${details.speed}km/h`);
     }
-    
+
     // Afficher l'inclinaison si pertinent
     if (details.incline !== undefined) {
       parts.push(`${details.incline}%`);
     }
-    
+
     // Si aucun détail spécifique, afficher un format par défaut
     if (parts.length === 0) {
       if (set.weight || set.reps) {
@@ -584,7 +584,7 @@ export default function SessionPage({ params }: PageProps) {
       }
       return "Série";
     }
-    
+
     return parts.join(" × ");
   };
 
@@ -599,7 +599,7 @@ export default function SessionPage({ params }: PageProps) {
 
   const getSetInputFields = (details: ExerciseDetails): SetInputField[] => {
     const fields: SetInputField[] = [];
-    
+
     // Pour la musculation : poids et reps
     if (details.weight !== undefined) {
       fields.push({
@@ -610,7 +610,7 @@ export default function SessionPage({ params }: PageProps) {
         defaultValue: details.weight,
       });
     }
-    
+
     if (details.reps !== undefined) {
       fields.push({
         key: "reps",
@@ -620,7 +620,7 @@ export default function SessionPage({ params }: PageProps) {
         defaultValue: details.reps,
       });
     }
-    
+
     // Pour le cardio : durée et distance
     if (details.duration !== undefined) {
       fields.push({
@@ -631,7 +631,7 @@ export default function SessionPage({ params }: PageProps) {
         defaultValue: details.duration,
       });
     }
-    
+
     if (details.distance !== undefined) {
       fields.push({
         key: "distance",
@@ -641,7 +641,7 @@ export default function SessionPage({ params }: PageProps) {
         defaultValue: details.distance,
       });
     }
-    
+
     // Si aucun champ spécifique, afficher poids et reps par défaut
     if (fields.length === 0) {
       fields.push(
@@ -649,7 +649,7 @@ export default function SessionPage({ params }: PageProps) {
         { key: "reps", label: "Reps", placeholder: "reps", type: "number" }
       );
     }
-    
+
     return fields;
   };
 
@@ -657,14 +657,14 @@ export default function SessionPage({ params }: PageProps) {
   const calculateProgress = (): { completed: number; total: number; percentage: number } => {
     let totalSets = 0;
     let completedSets = 0;
-    
+
     exercises.forEach((ex) => {
       totalSets += ex.sets?.length || 0;
       completedSets += ex.sets?.filter((s) => s.is_completed).length || 0;
     });
-    
+
     const percentage = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
-    
+
     return { completed: completedSets, total: totalSets, percentage };
   };
 
@@ -673,10 +673,10 @@ export default function SessionPage({ params }: PageProps) {
     if (!session) return;
     const exercise = exercises.find((e) => e.id === exerciseId);
     if (!exercise) return;
-    
+
     const incompleteSets = exercise.sets?.filter((s) => !s.is_completed) || [];
     if (incompleteSets.length === 0) return;
-    
+
     try {
       // Compléter toutes les séries une par une
       for (const set of incompleteSets) {
@@ -684,17 +684,17 @@ export default function SessionPage({ params }: PageProps) {
       }
       await loadSession(true); // Préserver l'exercice étendu
       startRest();
-      
+
       // Vérifier si toutes les séries de tous les exercices sont complétées
       const updatedSession = await workoutApi.sessions.get(session.id);
       const updatedExercises = updatedSession.exercises || [];
-      const allCompleted = updatedExercises.length > 0 && 
+      const allCompleted = updatedExercises.length > 0 &&
         updatedExercises.every((ex) => {
           const totalSets = ex.sets?.length || 0;
           const completedSets = ex.sets?.filter((s) => s.is_completed).length || 0;
           return totalSets > 0 && completedSets === totalSets;
         });
-      
+
       if (allCompleted && session.status === "en_cours") {
         // Auto-valider immédiatement
         info("Toutes les séries sont complétées ! Séance terminée.");
@@ -734,20 +734,96 @@ export default function SessionPage({ params }: PageProps) {
   const isActive = session.status === "en_cours";
   const isPlanned = session.status === "planifiee";
   const isCancelled = session.status === "annulee";
-  
-  // Vérifier si on peut lancer la séance (même jour que planifié)
+
+  // Vérifier si on peut lancer la séance (même jour que planifié ou jour de récurrence)
   const canStartSession = (): boolean => {
     if (!session.scheduled_at) return true; // Si pas de date planifiée, on peut toujours lancer
-    
+
     const now = new Date();
     const scheduled = new Date(session.scheduled_at);
-    
-    // Même jour (année, mois, jour)
+
+    // Pour les séances récurrentes, vérifier si aujourd'hui correspond au pattern
+    if (session.recurrence_type) {
+      const dayMapping: Record<string, number> = {
+        "lundi": 1, "mardi": 2, "mercredi": 3, "jeudi": 4,
+        "vendredi": 5, "samedi": 6, "dimanche": 0,
+        "monday": 1, "tuesday": 2, "wednesday": 3, "thursday": 4,
+        "friday": 5, "saturday": 6, "sunday": 0,
+      };
+
+      if (session.recurrence_type === "daily") {
+        return true; // Tous les jours
+      }
+
+      if (session.recurrence_type === "weekly" && session.recurrence_data) {
+        const targetDays = session.recurrence_data
+          .map(d => dayMapping[String(d).toLowerCase()])
+          .filter(d => d !== undefined);
+        return targetDays.includes(now.getDay());
+      }
+
+      if (session.recurrence_type === "monthly" && session.recurrence_data) {
+        const targetDays = session.recurrence_data.map(d => Number(d));
+        return targetDays.includes(now.getDate());
+      }
+
+      return false;
+    }
+
+    // Même jour (année, mois, jour) pour séances non-récurrentes
     return now.getFullYear() === scheduled.getFullYear() &&
-           now.getMonth() === scheduled.getMonth() &&
-           now.getDate() === scheduled.getDate();
+      now.getMonth() === scheduled.getMonth() &&
+      now.getDate() === scheduled.getDate();
   };
-  
+
+  // Formater le texte de récurrence
+  const formatRecurrenceText = (): string => {
+    if (!session.scheduled_at) return "";
+    const scheduled = new Date(session.scheduled_at);
+    const startDate = scheduled.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+    });
+    const time = scheduled.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    if (!session.recurrence_type) {
+      return scheduled.toLocaleDateString("fr-FR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+    }
+
+    const dayNames: Record<string, string> = {
+      "lundi": "lundis",
+      "mardi": "mardis",
+      "mercredi": "mercredis",
+      "jeudi": "jeudis",
+      "vendredi": "vendredis",
+      "samedi": "samedis",
+      "dimanche": "dimanches",
+    };
+
+    if (session.recurrence_type === "daily") {
+      return `tous les jours à ${time}, à partir du ${startDate}`;
+    }
+
+    if (session.recurrence_type === "weekly" && session.recurrence_data && session.recurrence_data.length > 0) {
+      const day = dayNames[String(session.recurrence_data[0]).toLowerCase()] || session.recurrence_data[0];
+      return `tous les ${day} à ${time}, à partir du ${startDate}`;
+    }
+
+    if (session.recurrence_type === "monthly" && session.recurrence_data && session.recurrence_data.length > 0) {
+      const dayNum = Number(session.recurrence_data[0]);
+      return `le ${dayNum} de chaque mois à ${time}, à partir du ${startDate}`;
+    }
+
+    return startDate;
+  };
+
   const isSessionStartable = canStartSession();
 
   return (
@@ -778,7 +854,7 @@ export default function SessionPage({ params }: PageProps) {
                 <div className="mt-4 border border-destructive bg-destructive/10 rounded-lg p-3">
                   <p className="text-sm text-destructive font-medium">
                     Cette séance a été annulée car vous ne l&apos;avez pas lancée à temps !
-              </p>
+                  </p>
                 </div>
               )}
             </div>
@@ -828,34 +904,29 @@ export default function SessionPage({ params }: PageProps) {
               <Dumbbell className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
               {isSessionStartable ? (
                 <>
-              <p className="text-muted-foreground mb-4">
+                  <p className="text-muted-foreground mb-4">
                     Cette séance est planifiée pour aujourd&apos;hui. Lancez-la pour commencer !
-              </p>
-              <Button onClick={handleStartSession} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4 mr-2" />
-                )}
-                Lancer la séance
-              </Button>
+                  </p>
+                  <Button onClick={handleStartSession} disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="h-4 w-4 mr-2" />
+                    )}
+                    Lancer la séance
+                  </Button>
                 </>
               ) : (
                 <>
                   <p className="text-muted-foreground mb-2">
-                    Cette séance est planifiée pour le{" "}
-                    <strong>
-                      {session.scheduled_at
-                        ? new Date(session.scheduled_at).toLocaleDateString("fr-FR", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                          })
-                        : "-"}
-                    </strong>
+                    Cette séance est planifiée pour{" "}
+                    <strong>{formatRecurrenceText()}</strong>
                   </p>
                   <p className="text-sm text-muted-foreground/70 mb-4">
-                    Vous ne pouvez lancer cette séance que le jour prévu.
+                    {session.recurrence_type
+                      ? "Vous pouvez lancer cette séance uniquement les jours prévus par la récurrence."
+                      : "Vous ne pouvez lancer cette séance que le jour prévu."
+                    }
                   </p>
                   <Button disabled variant="secondary">
                     <Play className="h-4 w-4 mr-2" />
@@ -900,7 +971,7 @@ export default function SessionPage({ params }: PageProps) {
               const totalSets = exercise.sets?.length || exercise.target_sets;
               const allExerciseSetsCompleted = totalSets > 0 && completedSets === totalSets;
               const exerciseProgress = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
-              
+
               // Extraire les détails dynamiques de l'exercice
               const details = extractExerciseDetails(exercise);
               const secondaryDetails = formatSecondaryDetails(details);
@@ -923,13 +994,12 @@ export default function SessionPage({ params }: PageProps) {
                             }
                           }}
                           disabled={allExerciseSetsCompleted || !isActive}
-                          className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0 ${
-                            allExerciseSetsCompleted || exercise.is_completed
+                          className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0 ${allExerciseSetsCompleted || exercise.is_completed
                               ? "bg-green-500 border-green-500 text-white"
                               : isActive
                                 ? "border-primary text-primary hover:bg-primary/10 cursor-pointer"
                                 : "border-muted-foreground/30 text-muted-foreground"
-                          }`}
+                            }`}
                           title="Valider toutes les séries"
                         >
                           {allExerciseSetsCompleted || exercise.is_completed ? (
@@ -938,7 +1008,7 @@ export default function SessionPage({ params }: PageProps) {
                             <span className="text-xs">{exerciseProgress}%</span>
                           )}
                         </button>
-                        <div 
+                        <div
                           className="flex-1 cursor-pointer min-w-0"
                           onClick={() =>
                             setExpandedExercise(isExpanded ? null : exercise.id)
@@ -951,7 +1021,7 @@ export default function SessionPage({ params }: PageProps) {
                           {secondaryDetails && (
                             <p className="text-xs text-primary/70 mt-0.5">
                               {secondaryDetails}
-                          </p>
+                            </p>
                           )}
                         </div>
                       </div>
@@ -961,11 +1031,11 @@ export default function SessionPage({ params }: PageProps) {
                         }
                         className="p-1"
                       >
-                      {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                      )}
+                        {isExpanded ? (
+                          <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        )}
                       </button>
                     </div>
                   </CardHeader>
@@ -982,21 +1052,19 @@ export default function SessionPage({ params }: PageProps) {
                                 handleToggleSet(exercise.id, set.id, set.is_completed);
                               }
                             }}
-                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
-                              set.is_completed
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${set.is_completed
                                 ? "bg-muted/30 border-muted cursor-pointer"
                                 : isActive
                                   ? "bg-muted/50 cursor-pointer hover:border-primary"
-                                : "bg-muted/50"
-                            }`}
+                                  : "bg-muted/50"
+                              }`}
                           >
                             {/* Cercle style radio button */}
                             <div
-                              className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                                set.is_completed
+                              className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${set.is_completed
                                   ? "bg-primary border-primary"
                                   : "border-primary"
-                              }`}
+                                }`}
                             >
                               {set.is_completed && (
                                 <div className="h-2 w-2 rounded-full bg-white" />
@@ -1005,12 +1073,12 @@ export default function SessionPage({ params }: PageProps) {
                             {/* Détails de la série construits dynamiquement */}
                             <span className={`text-sm flex-1 ${set.is_completed ? "line-through text-muted-foreground" : ""}`}>
                               {formatSetDetails(set, details)}
-                              </span>
-                              {set.is_warmup && (
+                            </span>
+                            {set.is_warmup && (
                               <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded shrink-0">
-                                  Échauffement
-                                </span>
-                              )}
+                                Échauffement
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1019,28 +1087,28 @@ export default function SessionPage({ params }: PageProps) {
                       {isActive && !exercise.is_completed && (
                         <div className="flex flex-wrap gap-2 mb-4">
                           {inputFields.map((field) => (
-                          <Input
+                            <Input
                               key={field.key}
                               type={field.type}
                               placeholder={field.placeholder}
-                            className="w-20"
-                            value={
-                              newSetData.exerciseId === exercise.id
+                              className="w-20"
+                              value={
+                                newSetData.exerciseId === exercise.id
                                   ? newSetData.values[field.key] || ""
-                                : ""
-                            }
-                            onChange={(e) =>
-                              setNewSetData({
-                                exerciseId: exercise.id,
+                                  : ""
+                              }
+                              onChange={(e) =>
+                                setNewSetData({
+                                  exerciseId: exercise.id,
                                   values: {
                                     ...(newSetData.exerciseId === exercise.id
                                       ? newSetData.values
                                       : {}),
                                     [field.key]: e.target.value,
                                   },
-                              })
-                            }
-                          />
+                                })
+                              }
+                            />
                           ))}
                           <Button
                             size="sm"
@@ -1140,28 +1208,28 @@ export default function SessionPage({ params }: PageProps) {
               </span>
             </div>
             <div className="flex gap-2">
-          <Button
-            variant="outline"
+              <Button
+                variant="outline"
                 size="sm"
-            onClick={startRest}
-            disabled={isResting}
-          >
+                onClick={startRest}
+                disabled={isResting}
+              >
                 <RotateCcw className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Repos ({restDuration}s)</span>
-          </Button>
-              <Button 
+              </Button>
+              <Button
                 size="sm"
-                onClick={handleCompleteSession} 
+                onClick={handleCompleteSession}
                 disabled={isSubmitting}
                 className={allSetsCompleted ? "bg-green-500 hover:bg-green-600" : ""}
               >
-            {isSubmitting ? (
+                {isSubmitting ? (
                   <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-            ) : (
+                ) : (
                   <Square className="h-4 w-4 sm:mr-2" />
-            )}
+                )}
                 <span className="hidden sm:inline">Terminer</span>
-          </Button>
+              </Button>
             </div>
           </div>
         </div>
