@@ -190,62 +190,86 @@ export default function WorkoutPage() {
 
         {/* Stats de la semaine */}
         <section className="mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Cette semaine</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-primary rounded-full"></span>
+            Cette semaine
+          </h2>
           <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-            <Card>
+            {/* Séances cette semaine */}
+            <Card className="group hover:shadow-lg transition-all duration-300 border-primary/10 hover:border-primary/30">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-full bg-red-500/10 p-2 sm:p-3 flex-shrink-0">
+                <div className="rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/5 p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <Dumbbell className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Séances</p>
-                  <p className="text-xl sm:text-2xl font-bold">
+                  <p className="text-xl sm:text-2xl font-bold tabular-nums">
                     {stats?.sessions_this_week ?? 0}
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* Streak (jours consécutifs) */}
+            <Card className="group hover:shadow-lg transition-all duration-300 border-orange-500/10 hover:border-orange-500/30">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-full bg-orange-500/10 p-2 sm:p-3 flex-shrink-0">
+                <div className="rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-500/5 p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <Flame className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">Série</p>
-                  <p className="text-xl sm:text-2xl font-bold">
-                    {stats?.current_streak ?? 0} j
+                  <p className="text-xs text-muted-foreground">Streak</p>
+                  <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                    {stats?.current_streak ?? 0}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">j</span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* Durée moyenne */}
+            <Card className="group hover:shadow-lg transition-all duration-300 border-blue-500/10 hover:border-blue-500/30">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-full bg-blue-500/10 p-2 sm:p-3 flex-shrink-0">
+                <div className="rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-500/5 p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Durée moy.</p>
-                  <p className="text-xl sm:text-2xl font-bold">
-                    {stats?.average_session_duration ?? 0} min
+                  <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                    {stats?.average_session_duration ?? 0}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">min</span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            {/* Stat dynamique selon l'activité favorite */}
+            <Card className="group hover:shadow-lg transition-all duration-300 border-green-500/10 hover:border-green-500/30">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-full bg-green-500/10 p-2 sm:p-3 flex-shrink-0">
+                <div className="rounded-xl bg-gradient-to-br from-green-500/20 to-green-500/5 p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
                   <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">Total kg</p>
-                  <p className="text-xl sm:text-2xl font-bold">
-                    {stats?.total_weight_lifted
-                      ? (stats.total_weight_lifted / 1000).toFixed(1) + "k"
-                      : 0}
-                  </p>
+                  {/* Affiche les kg seulement si l'activité favorite est musculation/crossfit/hiit */}
+                  {stats?.favorite_activity && ["musculation", "crossfit", "hiit"].includes(stats.favorite_activity) ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">Poids total</p>
+                      <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                        {stats?.total_weight_lifted
+                          ? stats.total_weight_lifted >= 1000
+                            ? (stats.total_weight_lifted / 1000).toFixed(1) + "k"
+                            : stats.total_weight_lifted
+                          : 0}
+                        <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground">Séries</p>
+                      <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                        {stats?.total_sets_completed ?? 0}
+                      </p>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
