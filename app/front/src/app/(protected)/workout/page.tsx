@@ -410,14 +410,17 @@ export default function WorkoutPage() {
 
         {/* Liens rapides */}
         <section className="mt-6 sm:mt-8">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Explorer</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+            <span className="inline-block w-1 h-5 bg-primary rounded-full"></span>
+            Explorer
+          </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card
-              className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-red-500/10 hover:border-red-500/30"
               onClick={() => router.push("/workout/exercises")}
             >
               <CardHeader>
-                <div className="mb-2 w-fit rounded-lg p-2 bg-red-500/10">
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-red-500/20 to-red-500/5 group-hover:scale-110 transition-transform duration-300">
                   <Dumbbell className="h-6 w-6 text-red-500" />
                 </div>
                 <CardTitle className="text-lg">Exercices</CardTitle>
@@ -428,11 +431,11 @@ export default function WorkoutPage() {
             </Card>
 
             <Card
-              className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-purple-500/10 hover:border-purple-500/30"
               onClick={() => router.push("/workout/sessions")}
             >
               <CardHeader>
-                <div className="mb-2 w-fit rounded-lg p-2 bg-purple-500/10">
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-purple-500/20 to-purple-500/5 group-hover:scale-110 transition-transform duration-300">
                   <Calendar className="h-6 w-6 text-purple-500" />
                 </div>
                 <CardTitle className="text-lg">Séances</CardTitle>
@@ -443,11 +446,11 @@ export default function WorkoutPage() {
             </Card>
 
             <Card
-              className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-blue-500/10 hover:border-blue-500/30"
               onClick={() => router.push("/workout/history")}
             >
               <CardHeader>
-                <div className="mb-2 w-fit rounded-lg p-2 bg-blue-500/10">
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-blue-500/20 to-blue-500/5 group-hover:scale-110 transition-transform duration-300">
                   <TrendingUp className="h-6 w-6 text-blue-500" />
                 </div>
                 <CardTitle className="text-lg">Historique</CardTitle>

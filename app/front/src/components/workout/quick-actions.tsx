@@ -12,7 +12,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -42,7 +41,7 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
   const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showNewWeight, setShowNewWeight] = useState(false);
-  
+
   // Formulaire pesée
   const [weight, setWeight] = useState("");
   const [weightDate, setWeightDate] = useState(new Date().toISOString().split("T")[0]);
@@ -85,107 +84,106 @@ export function QuickActions({ onActionComplete }: QuickActionsProps) {
   };
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">
-          Actions rapides
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {/* Nouvelle séance */}
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push("/workout/sessions/new")}
-          >
-            <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Nouvelle séance</span>
-            <span className="sm:hidden">Séance</span>
-          </Button>
+    <div>
+      <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+        <span className="inline-block w-1 h-5 bg-primary rounded-full"></span>
+        Actions rapides
+      </h2>
+      <div className="flex flex-wrap gap-2">
+        {/* Nouvelle séance */}
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.push("/workout/sessions/new")}
+        >
+          <Calendar className="h-4 w-4" />
+          <span className="hidden sm:inline">Nouvelle séance</span>
+          <span className="sm:hidden">Séance</span>
+        </Button>
 
-          {/* Nouvel exercice */}
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push("/workout/exercises/new")}
-          >
-            <Dumbbell className="h-4 w-4" />
-            <span className="hidden sm:inline">Nouvel exercice</span>
-            <span className="sm:hidden">Exercice</span>
-          </Button>
+        {/* Nouvel exercice */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => router.push("/workout/exercises/new")}
+        >
+          <Dumbbell className="h-4 w-4" />
+          <span className="hidden sm:inline">Nouvel exercice</span>
+          <span className="sm:hidden">Exercice</span>
+        </Button>
 
-          {/* Nouvelle pesée */}
-          <Dialog open={showNewWeight} onOpenChange={(open) => {
-            setShowNewWeight(open);
-            if (!open) resetWeightForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Scale className="h-4 w-4" />
-                <span className="hidden sm:inline">Pesée</span>
-                <span className="sm:hidden">Poids</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nouvelle pesée</DialogTitle>
-                <DialogDescription>
-                  Enregistrez votre poids
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
+        {/* Nouvelle pesée */}
+        <Dialog open={showNewWeight} onOpenChange={(open) => {
+          setShowNewWeight(open);
+          if (!open) resetWeightForm();
+        }}>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <Scale className="h-4 w-4" />
+              <span className="hidden sm:inline">Pesée</span>
+              <span className="sm:hidden">Poids</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nouvelle pesée</DialogTitle>
+              <DialogDescription>
+                Enregistrez votre poids
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="quick-weight">Poids (kg)</Label>
+                <Input
+                  id="quick-weight"
+                  type="number"
+                  step="0.1"
+                  placeholder="Ex: 75.5"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="quick-weight">Poids (kg)</Label>
+                  <Label htmlFor="quick-date">Date</Label>
                   <Input
-                    id="quick-weight"
-                    type="number"
-                    step="0.1"
-                    placeholder="Ex: 75.5"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
+                    id="quick-date"
+                    type="date"
+                    value={weightDate}
+                    onChange={(e) => setWeightDate(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="quick-date">Date</Label>
-                    <Input
-                      id="quick-date"
-                      type="date"
-                      value={weightDate}
-                      onChange={(e) => setWeightDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quick-time">Heure</Label>
-                    <Input
-                      id="quick-time"
-                      type="time"
-                      value={weightTime}
-                      onChange={(e) => setWeightTime(e.target.value)}
-                    />
-                  </div>
-                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quick-notes">Notes (optionnel)</Label>
+                  <Label htmlFor="quick-time">Heure</Label>
                   <Input
-                    id="quick-notes"
-                    placeholder="Ex: Après le sport, à jeun..."
-                    value={weightNotes}
-                    onChange={(e) => setWeightNotes(e.target.value)}
+                    id="quick-time"
+                    type="time"
+                    value={weightTime}
+                    onChange={(e) => setWeightTime(e.target.value)}
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button onClick={handleAddWeight} disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Enregistrer
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardContent>
-    </Card>
+              <div className="space-y-2">
+                <Label htmlFor="quick-notes">Notes (optionnel)</Label>
+                <Input
+                  id="quick-notes"
+                  placeholder="Ex: Après le sport, à jeun..."
+                  value={weightNotes}
+                  onChange={(e) => setWeightNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleAddWeight} disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
   );
 }
