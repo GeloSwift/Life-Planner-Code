@@ -365,13 +365,23 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColorBg = (status: string) => {
     switch (status) {
       case "terminee": return "bg-green-500";
       case "en_cours": return "bg-blue-500";
       case "planifiee": return "bg-orange-500";
-      case "annulee": return "bg-red-500";
+      case "annulee": return "bg-red-500/50";
       default: return "bg-gray-500";
+    }
+  };
+
+  const getStatusColorRing = (status: string) => {
+    switch (status) {
+      case "terminee": return "ring-green-500/50 bg-green-500/10";
+      case "en_cours": return "ring-blue-500/50 bg-blue-500/10";
+      case "planifiee": return "ring-orange-500/50 bg-orange-500/10";
+      case "annulee": return "ring-red-500/30 bg-red-500/5";
+      default: return "ring-gray-500/50 bg-gray-500/10";
     }
   };
 
@@ -432,13 +442,25 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
   );
 
   // Tooltip pour le survol d'un jour (desktop uniquement)
-  const DayTooltip = ({ day, month, year, isVisible }: { day: number; month: number; year: number; isVisible: boolean }) => {
+  const DayTooltip = ({ day, month, year, isVisible, dayIndex }: { day: number; month: number; year: number; isVisible: boolean; dayIndex?: number }) => {
     const daySessions = getSessionsForDay(year, month, day);
 
     if (!isVisible || daySessions.length === 0) return null;
 
+    // Calcul de la position horizontale pour éviter le débordement
+    // dayIndex 0-6 pour les jours de la semaine (lundi-dimanche)
+    const isLeftEdge = dayIndex !== undefined && dayIndex <= 1;
+    const isRightEdge = dayIndex !== undefined && dayIndex >= 5;
+
+    let horizontalClass = "left-1/2 -translate-x-1/2"; // Centre par défaut
+    if (isLeftEdge) {
+      horizontalClass = "left-0"; // Aligner à gauche
+    } else if (isRightEdge) {
+      horizontalClass = "right-0"; // Aligner à droite
+    }
+
     return (
-      <div className="hidden sm:block absolute z-100 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-popover border rounded-lg shadow-xl p-2.5 pointer-events-none">
+      <div className={`hidden sm:block absolute z-50 bottom-full ${horizontalClass} mb-2 w-56 bg-popover border rounded-lg shadow-xl p-2.5 pointer-events-none`}>
         <div className="text-xs font-medium text-muted-foreground mb-1.5 capitalize">
           {new Date(year, month, day).toLocaleDateString("fr-FR", {
             weekday: "short",
@@ -463,18 +485,29 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
           )}
         </div>
         {/* Flèche du tooltip */}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-popover" />
+        <div className={`absolute top-full ${isLeftEdge ? "left-4" : isRightEdge ? "right-4" : "left-1/2 -translate-x-1/2"} border-8 border-transparent border-t-popover`} />
       </div>
     );
   };
 
   // Composant jour
-  const DayCell = ({ day, month, year }: { day: number; month: number; year: number }) => {
+  const DayCell = ({ day, month, year, dayIndex }: { day: number; month: number; year: number; dayIndex: number }) => {
     const daySessions = getSessionsForDay(year, month, day);
     const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
     const hasSessions = daySessions.length > 0;
     const dayKey = `${year}-${month}-${day}`;
     const isHovered = hoveredDay === dayKey;
+
+    // Déterminer la couleur dominante du jour (priorité: en_cours > planifiée > terminée > annulée)
+    const getDominantStatus = () => {
+      if (daySessions.some(s => s.status === "en_cours")) return "en_cours";
+      if (daySessions.some(s => s.status === "planifiee")) return "planifiee";
+      if (daySessions.some(s => s.status === "terminee")) return "terminee";
+      if (daySessions.some(s => s.status === "annulee")) return "annulee";
+      return null;
+    };
+
+    const dominantStatus = getDominantStatus();
 
     return (
       <div
@@ -486,7 +519,8 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
           className={`
             aspect-square flex flex-col items-center justify-center rounded-md text-xs sm:text-sm
                 transition-colors cursor-pointer hover:bg-accent
-            ${isToday ? "bg-primary/10 font-bold text-primary ring-1 ring-primary/30" : ""}
+            ${isToday ? "ring-2 ring-primary font-bold text-primary" : ""}
+            ${hasSessions && dominantStatus ? `ring-1 ${getStatusColorRing(dominantStatus)}` : ""}
                 ${hasSessions ? "font-medium" : "text-muted-foreground"}
               `}
           onClick={() => handleDayClick(daySessions, new Date(year, month, day))}
@@ -497,13 +531,17 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               {daySessions.slice(0, 3).map((session, i) => (
                 <div
                   key={i}
-                  className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${getStatusColor(session.status)}`}
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${getStatusColorBg(session.status)}`}
+                  title={session.name}
                 />
               ))}
+              {daySessions.length > 3 && (
+                <span className="text-[8px] text-muted-foreground">+{daySessions.length - 3}</span>
+              )}
             </div>
           )}
         </div>
-        <DayTooltip day={day} month={month} year={year} isVisible={isHovered} />
+        <DayTooltip day={day} month={month} year={year} isVisible={isHovered} dayIndex={dayIndex} />
       </div>
     );
   };
@@ -611,6 +649,7 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
                 day={day}
                 month={currentDate.getMonth()}
                 year={currentDate.getFullYear()}
+                dayIndex={index % 7}
               />
             );
           })}
