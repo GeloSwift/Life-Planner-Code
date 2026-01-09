@@ -385,6 +385,56 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     }
   };
 
+  // Génère un style de dégradé pour les jours avec plusieurs statuts différents
+  const getMultiStatusStyle = (sessions: WorkoutSession[]): { className: string; style?: React.CSSProperties } => {
+    if (sessions.length === 0) return { className: "" };
+
+    // Récupère les statuts uniques
+    const uniqueStatuses = [...new Set(sessions.map(s => s.status))];
+
+    if (uniqueStatuses.length === 1) {
+      // Un seul statut : retourne la classe ring classique
+      return { className: `ring-1 ${getStatusColorRing(uniqueStatuses[0])}` };
+    }
+
+    // Plusieurs statuts : créer un dégradé
+    const statusColors: Record<string, string> = {
+      "terminee": "rgba(34, 197, 94, 0.3)",     // green-500
+      "en_cours": "rgba(59, 130, 246, 0.3)",    // blue-500
+      "planifiee": "rgba(249, 115, 22, 0.3)",   // orange-500
+      "annulee": "rgba(239, 68, 68, 0.15)",     // red-500
+    };
+
+    const statusRingColors: Record<string, string> = {
+      "terminee": "rgba(34, 197, 94, 0.5)",
+      "en_cours": "rgba(59, 130, 246, 0.5)",
+      "planifiee": "rgba(249, 115, 22, 0.5)",
+      "annulee": "rgba(239, 68, 68, 0.3)",
+    };
+
+    // Trier par priorité : en_cours > planifiee > terminee > annulee
+    const priority = ["en_cours", "planifiee", "terminee", "annulee"];
+    const sortedStatuses = uniqueStatuses.sort((a, b) =>
+      priority.indexOf(a) - priority.indexOf(b)
+    );
+
+    // Créer le dégradé
+    const gradientColors = sortedStatuses.map(s => statusColors[s] || "rgba(107, 114, 128, 0.3)");
+    const angle = sortedStatuses.length === 2 ? "135deg" : "135deg";
+    const gradient = `linear-gradient(${angle}, ${gradientColors.join(", ")})`;
+
+    // Utiliser la couleur du premier statut (priorité) pour le ring
+    const ringColor = statusRingColors[sortedStatuses[0]] || "rgba(107, 114, 128, 0.5)";
+
+    return {
+      className: "ring-1",
+      style: {
+        background: gradient,
+        boxShadow: `0 0 0 1px ${ringColor}`,
+      }
+    };
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "terminee": return <CheckCircle className="h-3 w-3 text-green-500" />;
@@ -498,16 +548,8 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     const dayKey = `${year}-${month}-${day}`;
     const isHovered = hoveredDay === dayKey;
 
-    // Déterminer la couleur dominante du jour (priorité: en_cours > planifiée > terminée > annulée)
-    const getDominantStatus = () => {
-      if (daySessions.some(s => s.status === "en_cours")) return "en_cours";
-      if (daySessions.some(s => s.status === "planifiee")) return "planifiee";
-      if (daySessions.some(s => s.status === "terminee")) return "terminee";
-      if (daySessions.some(s => s.status === "annulee")) return "annulee";
-      return null;
-    };
-
-    const dominantStatus = getDominantStatus();
+    // Obtenir le style (dégradé si plusieurs statuts différents)
+    const multiStatusStyle = hasSessions ? getMultiStatusStyle(daySessions) : { className: "" };
 
     return (
       <div
@@ -520,9 +562,10 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
             aspect-square flex flex-col items-center justify-center rounded-md text-xs sm:text-sm
                 transition-colors cursor-pointer hover:bg-accent
             ${isToday ? "ring-2 ring-primary font-bold text-primary" : ""}
-            ${hasSessions && dominantStatus ? `ring-1 ${getStatusColorRing(dominantStatus)}` : ""}
+            ${hasSessions && !isToday ? multiStatusStyle.className : ""}
                 ${hasSessions ? "font-medium" : "text-muted-foreground"}
               `}
+          style={hasSessions && !isToday ? multiStatusStyle.style : undefined}
           onClick={() => handleDayClick(daySessions, new Date(year, month, day))}
         >
           <span>{day}</span>
