@@ -1081,13 +1081,37 @@ def create_user_activity_type(
     current_user: User = Depends(get_current_user),
 ):
     """Crée un nouveau type d'activité personnalisé."""
-    return ActivityTypeService.create_activity_type(
+    # Créer le type d'activité
+    new_activity_type = ActivityTypeService.create_activity_type(
         db,
         name=activity_type.name,
         user_id=current_user.id,
         icon=activity_type.icon,
         color=activity_type.color,
     )
+    
+    # Envoyer une notification email à l'admin
+    try:
+        from core.email import get_email_service
+        email_service = get_email_service()
+        if email_service:
+            email_service.send_admin_notification_email(
+                subject="Nouveau type d'activité créé",
+                message=f"Un utilisateur a créé un nouveau type d'activité. Pensez à vérifier si des mises à jour sont nécessaires dans le code (stats dynamiques, icônes, etc.).",
+                context={
+                    "Nom": activity_type.name,
+                    "Icône": activity_type.icon or "Aucune",
+                    "Couleur": activity_type.color or "Aucune",
+                    "Créé par": current_user.email,
+                    "ID utilisateur": str(current_user.id),
+                    "Documentation": "Voir docs/ACTIVITY_TYPES_DYNAMIC.md",
+                }
+            )
+    except Exception as e:
+        # Ne pas bloquer la création si l'email échoue
+        print(f"[WARNING] Failed to send admin notification email: {e}")
+    
+    return new_activity_type
 
 
 @router.put(

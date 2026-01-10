@@ -300,6 +300,100 @@ class EmailService:
         response = self.client.emails.send(email)
         return response
 
+    def send_admin_notification_email(
+        self,
+        subject: str,
+        message: str,
+        context: Optional[dict] = None,
+    ) -> dict:
+        """
+        Envoie un email de notification à l'administrateur.
+        
+        Args:
+            subject: Sujet de l'email
+            message: Message de notification
+            context: Contexte additionnel (optionnel)
+            
+        Returns:
+            Réponse de MailerSend
+            
+        Raises:
+            Exception: Si l'envoi échoue
+        """
+        # Email admin (le même que l'expéditeur)
+        admin_email = settings.MAILERSEND_FROM_EMAIL
+        
+        # Formatage du contexte
+        context_html = ""
+        if context:
+            context_html = "<ul>"
+            for key, value in context.items():
+                context_html += f"<li><strong>{key}:</strong> {value}</li>"
+            context_html += "</ul>"
+        
+        # Template HTML
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>{subject}</title>
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">🔔 Life Planner - Notification</h1>
+            </div>
+            
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #333; margin-top: 0;">{subject}</h2>
+                
+                <p style="color: #666; font-size: 16px;">
+                    {message}
+                </p>
+                
+                {f'<div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-top: 20px;">{context_html}</div>' if context_html else ''}
+                
+                <p style="color: #999; font-size: 14px; margin-top: 30px;">
+                    Cet email a été envoyé automatiquement par Life Planner.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px; color: #999; font-size: 12px;">
+                <p>© {settings.MAILERSEND_FROM_NAME}</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Version texte
+        context_text = ""
+        if context:
+            for key, value in context.items():
+                context_text += f"- {key}: {value}\n"
+        
+        text_content = f"""
+        {subject}
+        
+        {message}
+        
+        {context_text}
+        
+        Cet email a été envoyé automatiquement par Life Planner.
+        """
+        
+        # Configure l'email
+        email_builder = EmailBuilder()
+        email_builder.from_email(email=self.from_email, name=self.from_name)
+        email_builder.to(email=admin_email, name="Admin Life Planner")
+        email_builder.subject(f"[Life Planner] {subject}")
+        email_builder.html(html_content)
+        email_builder.text(text_content)
+        
+        email = email_builder.build()
+        response = self.client.emails.send(email)
+        return response
+
 
 # Instance globale du service email
 _email_service: Optional[EmailService] = None
