@@ -1462,6 +1462,63 @@ class ActivityTypeService:
         return True
     
     @staticmethod
+    def toggle_favorite(
+        db: Session,
+        activity_type_id: int,
+        user_id: int,
+    ) -> Optional[UserActivityType]:
+        """
+        Marque/démarque un type d'activité comme favori.
+        Un seul type peut être favori par utilisateur.
+        
+        Returns:
+            Le type d'activité mis à jour, ou None si non trouvé.
+        """
+        # Vérifier que l'utilisateur a accès à ce type d'activité
+        activity_type = db.query(UserActivityType).filter(
+            UserActivityType.id == activity_type_id,
+            or_(
+                UserActivityType.is_default.is_(True),
+                UserActivityType.user_id == user_id,
+            ),
+        ).first()
+        
+        if not activity_type:
+            return None
+        
+        # Si on veut mettre en favori, d'abord enlever le favori des autres
+        if not activity_type.is_favorite:
+            # Retirer le statut favori de tous les types de l'utilisateur
+            db.query(UserActivityType).filter(
+                or_(
+                    UserActivityType.is_default.is_(True),
+                    UserActivityType.user_id == user_id,
+                ),
+                UserActivityType.is_favorite.is_(True),
+            ).update({"is_favorite": False}, synchronize_session=False)
+        
+        # Toggle le statut favori
+        activity_type.is_favorite = not activity_type.is_favorite
+        
+        db.commit()
+        db.refresh(activity_type)
+        return activity_type
+    
+    @staticmethod
+    def get_favorite_activity(
+        db: Session,
+        user_id: int,
+    ) -> Optional[UserActivityType]:
+        """Récupère le type d'activité favori de l'utilisateur."""
+        return db.query(UserActivityType).filter(
+            or_(
+                UserActivityType.is_default.is_(True),
+                UserActivityType.user_id == user_id,
+            ),
+            UserActivityType.is_favorite.is_(True),
+        ).first()
+    
+    @staticmethod
     def add_field(
         db: Session,
         activity_type_id: int,

@@ -141,7 +141,7 @@ class UserActivityTypeCreate(UserActivityTypeBase):
 class UserActivityTypeUpdate(BaseModel):
     """Schema pour mettre à jour un type d'activité."""
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    icon: Optional[str] = Field(None, max_length=10)
+    icon: Optional[str] = Field(None, max_length=50)
     color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
 
 
@@ -149,6 +149,7 @@ class UserActivityTypeResponse(UserActivityTypeBase):
     """Schema de réponse pour un type d'activité."""
     id: int
     is_default: bool
+    is_favorite: bool = False
     user_id: Optional[int] = None
     custom_fields: list[CustomFieldDefinitionResponse] = []
     created_at: datetime

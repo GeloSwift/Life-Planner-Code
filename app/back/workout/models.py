@@ -752,6 +752,11 @@ class UserActivityType(Base):
     
     # Activité par défaut ou personnalisée
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Activité favorite (influence la 4ème stat du dashboard)
+    # Un seul type peut être favori par utilisateur
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    
     user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,

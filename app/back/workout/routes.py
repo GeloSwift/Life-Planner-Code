@@ -1162,6 +1162,51 @@ def delete_user_activity_type(
         )
 
 
+@router.post(
+    "/activity-types/{activity_type_id}/favorite",
+    response_model=UserActivityTypeResponse,
+    summary="Marquer/démarquer comme favori",
+)
+def toggle_activity_type_favorite(
+    activity_type_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Toggle le statut favori d'un type d'activité.
+    Un seul type peut être favori à la fois.
+    Le type favori influence la 4ème stat du dashboard.
+    """
+    activity_type = ActivityTypeService.toggle_favorite(
+        db, activity_type_id, current_user.id
+    )
+    if not activity_type:
+        raise HTTPException(
+            status_code=404,
+            detail="Type d'activité non trouvé"
+        )
+    return activity_type
+
+
+@router.get(
+    "/activity-types/favorite",
+    response_model=UserActivityTypeResponse,
+    summary="Récupérer le type d'activité favori",
+)
+def get_favorite_activity_type(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Récupère le type d'activité favori de l'utilisateur."""
+    favorite = ActivityTypeService.get_favorite_activity(db, current_user.id)
+    if not favorite:
+        raise HTTPException(
+            status_code=404,
+            detail="Aucun type d'activité n'est marqué comme favori"
+        )
+    return favorite
+
+
 # =============================================================================
 # CUSTOM FIELD ROUTES (Champs personnalisés)
 # =============================================================================
