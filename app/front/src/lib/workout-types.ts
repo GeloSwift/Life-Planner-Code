@@ -160,6 +160,7 @@ export interface UserActivityType {
   icon: string | null;
   color: string | null;
   is_default: boolean;
+  is_favorite: boolean;
   user_id: number | null;
   created_at: string;
   custom_fields: CustomFieldDefinition[];

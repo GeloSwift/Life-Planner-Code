@@ -560,6 +560,20 @@ export const activityTypesApi = {
     });
   },
 
+  async toggleFavorite(id: number): Promise<UserActivityType> {
+    return workoutFetch<UserActivityType>(`/workout/activity-types/${id}/favorite`, {
+      method: "POST",
+    });
+  },
+
+  async getFavorite(): Promise<UserActivityType | null> {
+    try {
+      return await workoutFetch<UserActivityType>("/workout/activity-types/favorite");
+    } catch {
+      return null;
+    }
+  },
+
   async addField(activityTypeId: number, data: CustomFieldDefinitionCreate): Promise<CustomFieldDefinition> {
     return workoutFetch<CustomFieldDefinition>(`/workout/activity-types/${activityTypeId}/fields`, {
       method: "POST",

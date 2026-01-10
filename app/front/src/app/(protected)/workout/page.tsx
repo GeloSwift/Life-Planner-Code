@@ -39,6 +39,7 @@ import {
   ArrowRight,
   CalendarSync,
   Link2,
+  Activity,
 } from "lucide-react";
 
 export default function WorkoutPage() {
@@ -456,6 +457,21 @@ export default function WorkoutPage() {
                 <CardTitle className="text-lg">Historique</CardTitle>
                 <CardDescription>
                   Consultez vos séances passées
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-orange-500/10 hover:border-orange-500/30"
+              onClick={() => router.push("/workout/activity-types")}
+            >
+              <CardHeader>
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-orange-500/20 to-orange-500/5 group-hover:scale-110 transition-transform duration-300">
+                  <Activity className="h-6 w-6 text-orange-500" />
+                </div>
+                <CardTitle className="text-lg">Types d&apos;activités</CardTitle>
+                <CardDescription>
+                  Gérez vos activités sportives favorites
                 </CardDescription>
               </CardHeader>
             </Card>
