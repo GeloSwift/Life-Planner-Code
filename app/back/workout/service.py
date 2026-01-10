@@ -1318,18 +1318,29 @@ class StatsService:
             WorkoutSession.started_at >= month_start,
         ).scalar() or 0
         
-        # Activité favorite
-        favorite_activity_result = db.query(
-            WorkoutSession.activity_type,
-            func.count(WorkoutSession.id).label('count')
-        ).filter(
-            WorkoutSession.user_id == user_id,
-            WorkoutSession.status == SessionStatus.TERMINEE,
-        ).group_by(WorkoutSession.activity_type).order_by(
-            desc('count')
+        # Activité favorite (basée sur le flag is_favorite de user_activity_types)
+        favorite_activity_type = db.query(UserActivityType).filter(
+            or_(
+                UserActivityType.is_default.is_(True),
+                UserActivityType.user_id == user_id,
+            ),
+            UserActivityType.is_favorite.is_(True),
         ).first()
         
-        favorite_activity = favorite_activity_result[0] if favorite_activity_result else None
+        # Si pas de favori marqué, prendre l'activité la plus utilisée
+        if not favorite_activity_type:
+            favorite_activity_result = db.query(
+                WorkoutSession.activity_type,
+                func.count(WorkoutSession.id).label('count')
+            ).filter(
+                WorkoutSession.user_id == user_id,
+                WorkoutSession.status == SessionStatus.TERMINEE,
+            ).group_by(WorkoutSession.activity_type).order_by(
+                desc('count')
+            ).first()
+            favorite_activity = favorite_activity_result[0].value if favorite_activity_result else None
+        else:
+            favorite_activity = favorite_activity_type.name.lower()
         
         # Calcul des streaks (simplifié)
         # TODO: Implémenter le calcul réel des streaks

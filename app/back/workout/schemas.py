@@ -685,7 +685,7 @@ class WorkoutStatsResponse(BaseModel):
     sessions_this_month: int
     current_streak: int  # jours consécutifs
     longest_streak: int
-    favorite_activity: Optional[ActivityTypeEnum] = None
+    favorite_activity: Optional[str] = None  # Nom du sport favori
     favorite_muscle_group: Optional[MuscleGroupEnum] = None
 
 

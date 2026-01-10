@@ -549,7 +549,7 @@ export interface WorkoutStats {
   sessions_this_month: number;
   current_streak: number;
   longest_streak: number;
-  favorite_activity: ActivityType | null;
+  favorite_activity: string | null; // Nom du sport favori en lowercase
   average_session_duration: number;
   total_sets_completed: number;
   total_reps_completed: number;

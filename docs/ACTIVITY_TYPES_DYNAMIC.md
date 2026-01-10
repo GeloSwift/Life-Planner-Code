@@ -1,8 +1,8 @@
-# 🏃 Types d'Activités - Éléments Dynamiques à Mettre à Jour
+# 🏃 Sports - Éléments Dynamiques à Mettre à Jour
 
-Ce document liste tous les éléments du code qui dépendent des types d'activités personnalisés.
+Ce document liste tous les éléments du code qui dépendent des types de sports.
 
-**Quand un nouveau type d'activité est ajouté à la table `user_activity_types`, il faut potentiellement mettre à jour ces fichiers.**
+**Quand un nouveau sport est ajouté à la table `user_activity_types`, il faut potentiellement mettre à jour ces fichiers.**
 
 ---
 
@@ -11,140 +11,101 @@ Ce document liste tous les éléments du code qui dépendent des types d'activit
 **Fichier** : `app/front/src/app/(protected)/workout/page.tsx`
 
 **Logique actuelle** :
-- Si `favorite_activity` est `musculation`, `crossfit`, ou `hiit` → Affiche **Poids total (kg)**
-- Sinon → Affiche **Séries complétées**
+- Si `favorite_activity` contient `musculation`, `crossfit`, `hiit`, `fitness` → Affiche **Poids total (kg)** avec icône 🏋️
+- Si `favorite_activity` contient `course`, `running`, `jogging`, `marathon`, `trail` → Affiche **Séances course** avec icône 👣
+- Sinon → Affiche **Séries complétées** avec icône 📈
 
 **À modifier si nouveau type** :
 ```typescript
-// Ligne ~240-270
-{stats?.favorite_activity && ["musculation", "crossfit", "hiit"].includes(stats.favorite_activity) ? (
-  // Affiche les kg
-) : (
-  // Affiche les séries
-)}
+// Ligne ~250-320
+const isWeightSport = ["musculation", "crossfit", "hiit", "fitness"].some(s => 
+  favActivity.includes(s)
+);
+const isRunSport = ["course", "running", "jogging", "marathon", "trail"].some(s => 
+  favActivity.includes(s)
+);
 ```
 
-**Stats possibles par type d'activité** :
-| Type d'activité | Stat recommandée |
-|-----------------|------------------|
-| Musculation, CrossFit, HIIT | Poids total (kg) |
-| Course à pied, Cyclisme | Distance (km) |
-| Natation | Longueurs / Distance |
-| Danse, Yoga | Durée totale |
-| Volleyball, Basketball, Football, Tennis | Matchs / Séances |
-| Autre | Séries ou durée |
+**Stats possibles par type de sport** :
+| Sport | Stat recommandée | Icône | Couleur |
+|-------|-----------------|-------|---------|
+| Musculation, CrossFit, HIIT, Fitness | Poids total (kg) | Dumbbell | purple |
+| Course, Running, Jogging, Marathon, Trail | Séances course | Footprints | cyan |
+| Natation | Longueurs / Distance | Waves | blue |
+| Danse, Yoga | Durée totale | Timer | pink |
+| Volleyball, Basketball, Football, Tennis | Matchs / Séances | Activity | orange |
+| Autre | Séries | TrendingUp | green |
 
 ---
 
-## 📋 Session Detail - Champs d'exercice dynamiques
+## ⭐ Système de favoris
 
-**Fichier** : `app/front/src/app/(protected)/workout/sessions/[id]/page.tsx`
+**Backend** : `app/back/workout/service.py` (méthode `get_stats`)
 
-**Éléments dynamiques** :
-1. **Icône d'activité** - Basée sur le type d'activité
-2. **Champs de saisie des séries** - Varient selon le type :
-   - Musculation : poids, reps, temps de repos
-   - Course : distance, durée, allure
-   - Autres : adapté aux champs personnalisés
+Le favori est déterminé par :
+1. **En priorité** : Le sport avec `is_favorite = true` dans `user_activity_types`
+2. **Fallback** : L'activité la plus utilisée dans les sessions terminées
 
-**Fonctions à vérifier** :
-- `extractExerciseDetails()` - Extrait les détails selon le type
-- `getSetInputFields()` - Définit les champs de saisie
-- `formatSecondaryDetails()` - Formate l'affichage
+**Endpoints** :
+- `POST /workout/activity-types/{id}/favorite` - Toggle le statut favori
+- `GET /workout/activity-types/favorite` - Récupère le sport favori
 
 ---
 
-## 🏋️ Exercise Detail - Affichage des paramètres
+## 📋 Page Sports
 
-**Fichier** : `app/front/src/app/(protected)/workout/exercises/[id]/page.tsx`
+**Fichier** : `app/front/src/app/(protected)/workout/activity-types/page.tsx`
 
-**Éléments dynamiques** :
-1. **Icône d'activité** - Correspond au type d'activité de l'exercice
-2. **Champs personnalisés** - Affichés dynamiquement selon les `CustomFieldDefinition` liées au type d'activité
-3. **Labels et unités** - Adaptés au contexte (kg pour muscu, km pour course, etc.)
+Cette page permet de :
+- Lister tous les sports (par défaut + personnalisés)
+- Créer/Modifier/Supprimer des sports personnalisés
+- Marquer un sport comme favori (étoile ⭐)
 
----
-
-## 🔧 Fichiers de configuration des types
-
-### Types TypeScript
-
-**Fichier** : `app/front/src/lib/workout-types.ts`
-
-```typescript
-// Ligne ~11-25
-export type ActivityType =
-  | "musculation"
-  | "course"
-  | "cyclisme"
-  | "natation"
-  | "volleyball"
-  | "boxe"
-  | "basketball"
-  | "football"
-  | "tennis"
-  | "yoga"
-  | "crossfit"
-  | "hiit"
-  | "danse"
-  | "autre";
-
-// Ligne ~65-80
-export const ACTIVITY_TYPE_LABELS: Record<ActivityType, string> = {
-  musculation: "Musculation",
-  course: "Course à pied",
-  // ... etc
-};
-```
-
-### Icônes par type (Lucide)
-
-**Fichier** : `app/front/src/components/workout/activity-icon.tsx` (si existe)
-
-| Type | Icône Lucide |
-|------|--------------|
-| Musculation | `Dumbbell` |
-| Course à pied | `Footprints` |
-| Danse | `Music` |
-| Volleyball | `Volleyball` |
-| Cyclisme | `Bike` |
-| Natation | `Waves` |
-| Yoga | `PersonStanding` |
-| CrossFit | `Flame` |
-| HIIT | `Timer` |
+**Icônes disponibles** :
+| Icône | Nom | Sports suggérés |
+|-------|-----|-----------------|
+| 🏋️ | Dumbbell | Musculation, Fitness |
+| 👣 | Footprints | Course, Running |
+| 🚴 | Bike | Cyclisme, VTT |
+| 🌊 | Waves | Natation |
+| 🎵 | Music | Danse |
+| 🔥 | Flame | CrossFit |
+| ⏱️ | Timer | HIIT |
+| ❤️ | Heart | Cardio |
+| ⛰️ | Mountain | Randonnée, Trail |
+| 🧘 | PersonStanding | Yoga, Pilates |
+| 🏅 | Medal | Compétition |
+| ⚔️ | Swords | Boxe, MMA |
+| 🎯 | Target | Tir, Fléchettes |
+| ⚡ | Zap | Intensif |
+| 🏆 | Trophy | Compétition |
+| 🏐 | Volleyball | Volleyball |
+| 📊 | Activity | Autre |
 
 ---
 
 ## 📝 Checklist de mise à jour
 
-Quand un nouveau type d'activité est ajouté :
+Quand un nouveau sport est ajouté et que vous voulez une stat personnalisée :
 
-- [ ] **Backend** : Ajouter dans la table `user_activity_types`
-- [ ] **Types TS** : Mettre à jour `ActivityType` dans `workout-types.ts`
-- [ ] **Labels** : Ajouter le label français dans `ACTIVITY_TYPE_LABELS`
-- [ ] **Icône** : Associer une icône Lucide au nouveau type
-- [ ] **Dashboard Stats** : Décider quelle stat afficher (kg, km, séries, etc.)
-- [ ] **Champs personnalisés** : Créer les `CustomFieldDefinition` appropriés dans le backend
-- [ ] **Session Detail** : Vérifier que les champs de saisie sont adaptés
-- [ ] **Exercise Detail** : Vérifier l'affichage des paramètres
+- [ ] **Dashboard Stats** : Ajouter le pattern de nom dans la liste correspondante
+  - `isWeightSport` pour afficher les kg
+  - `isRunSport` pour afficher les séances course
+  - Ou créer un nouveau cas (ex: `isSwimSport` pour la distance en m)
+- [ ] **Frontend** : Ajouter l'icône et la couleur correspondantes
+- [ ] **Backend** : Vérifier que les champs personnalisés sont bien créés
 
 ---
 
-## 🔔 Alerte automatique (TODO)
+## 🔔 Notification automatique par email
 
-Pour être alerté automatiquement quand un nouveau type est ajouté :
+**Implémenté** : Quand un utilisateur crée un nouveau sport, un email est envoyé à l'admin.
 
-1. **Option 1** : Trigger PostgreSQL + Webhook
-   - Créer un trigger sur `INSERT` dans `user_activity_types`
-   - Appeler un webhook qui envoie un email
-
-2. **Option 2** : Cron job de vérification
-   - Script qui vérifie périodiquement le nombre de types
-   - Alerte si le count change
-
-3. **Option 3** : Validation CI/CD
-   - Test automatisé qui vérifie que tous les types de la BD sont définis dans le frontend
+**Fichiers concernés** :
+- `app/back/core/email.py` - méthode `send_admin_notification_email`
+- `app/back/workout/routes.py` - endpoint `create_user_activity_type`
+- Variable d'environnement : `ADMIN_EMAIL`
 
 ---
 
-*Dernière mise à jour : Janvier 2026*
+*Dernière mise à jour : 10 Janvier 2026*

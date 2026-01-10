@@ -40,6 +40,7 @@ import {
   CalendarSync,
   Link2,
   Activity,
+  Footprints,
 } from "lucide-react";
 
 export default function WorkoutPage() {
@@ -244,36 +245,77 @@ export default function WorkoutPage() {
             </Card>
 
             {/* Stat dynamique selon l'activité favorite */}
-            <Card className="group hover:shadow-lg transition-all duration-300 border-green-500/10 hover:border-green-500/30">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="rounded-xl bg-gradient-to-br from-green-500/20 to-green-500/5 p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  {/* Affiche les kg seulement si l'activité favorite est musculation/crossfit/hiit */}
-                  {stats?.favorite_activity && ["musculation", "crossfit", "hiit"].includes(stats.favorite_activity) ? (
-                    <>
-                      <p className="text-xs text-muted-foreground">Poids total</p>
-                      <p className="text-xl sm:text-2xl font-bold tabular-nums">
-                        {stats?.total_weight_lifted
-                          ? stats.total_weight_lifted >= 1000
-                            ? (stats.total_weight_lifted / 1000).toFixed(1) + "k"
-                            : stats.total_weight_lifted
-                          : 0}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-xs text-muted-foreground">Séries</p>
-                      <p className="text-xl sm:text-2xl font-bold tabular-nums">
-                        {stats?.total_sets_completed ?? 0}
-                      </p>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {(() => {
+              const favActivity = stats?.favorite_activity?.toLowerCase() || "";
+
+              // Sports de musculation/force = Poids total
+              const isWeightSport = ["musculation", "crossfit", "hiit", "fitness"].some(s =>
+                favActivity.includes(s)
+              );
+
+              // Sports de course/cardio = Distance (future feature)
+              const isRunSport = ["course", "running", "jogging", "marathon", "trail"].some(s =>
+                favActivity.includes(s)
+              );
+
+              // Choisir la couleur et l'icône en fonction du sport
+              let borderColor = "border-green-500/10 hover:border-green-500/30";
+              let bgColor = "from-green-500/20 to-green-500/5";
+              let iconColor = "text-green-500";
+              let Icon = TrendingUp;
+
+              if (isWeightSport) {
+                borderColor = "border-purple-500/10 hover:border-purple-500/30";
+                bgColor = "from-purple-500/20 to-purple-500/5";
+                iconColor = "text-purple-500";
+                Icon = Dumbbell;
+              } else if (isRunSport) {
+                borderColor = "border-cyan-500/10 hover:border-cyan-500/30";
+                bgColor = "from-cyan-500/20 to-cyan-500/5";
+                iconColor = "text-cyan-500";
+                Icon = Footprints;
+              }
+
+              return (
+                <Card className={`group hover:shadow-lg transition-all duration-300 ${borderColor}`}>
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <div className={`rounded-xl bg-gradient-to-br ${bgColor} p-2.5 sm:p-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${iconColor}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      {isWeightSport ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">Poids total</p>
+                          <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                            {stats?.total_weight_lifted
+                              ? stats.total_weight_lifted >= 1000
+                                ? (stats.total_weight_lifted / 1000).toFixed(1) + "k"
+                                : stats.total_weight_lifted
+                              : 0}
+                            <span className="text-sm font-normal text-muted-foreground ml-1">kg</span>
+                          </p>
+                        </>
+                      ) : isRunSport ? (
+                        <>
+                          <p className="text-xs text-muted-foreground">Séances course</p>
+                          <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                            {stats?.sessions_this_week ?? 0}
+                            <span className="text-sm font-normal text-muted-foreground ml-1">cette sem.</span>
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-muted-foreground">Séries</p>
+                          <p className="text-xl sm:text-2xl font-bold tabular-nums">
+                            {stats?.total_sets_completed ?? 0}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
           </div>
         </section>
 
@@ -415,22 +457,24 @@ export default function WorkoutPage() {
             <span className="inline-block w-1 h-5 bg-primary rounded-full"></span>
             Explorer
           </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Sports */}
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-red-500/10 hover:border-red-500/30"
-              onClick={() => router.push("/workout/exercises")}
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-orange-500/10 hover:border-orange-500/30"
+              onClick={() => router.push("/workout/activity-types")}
             >
               <CardHeader>
-                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-red-500/20 to-red-500/5 group-hover:scale-110 transition-transform duration-300">
-                  <Dumbbell className="h-6 w-6 text-red-500" />
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-orange-500/20 to-orange-500/5 group-hover:scale-110 transition-transform duration-300">
+                  <Activity className="h-6 w-6 text-orange-500" />
                 </div>
-                <CardTitle className="text-lg">Exercices</CardTitle>
+                <CardTitle className="text-lg">Sports</CardTitle>
                 <CardDescription>
-                  Parcourez la liste des exercices par muscle
+                  Gérez vos activités sportives
                 </CardDescription>
               </CardHeader>
             </Card>
 
+            {/* Séances */}
             <Card
               className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-purple-500/10 hover:border-purple-500/30"
               onClick={() => router.push("/workout/sessions")}
@@ -441,11 +485,28 @@ export default function WorkoutPage() {
                 </div>
                 <CardTitle className="text-lg">Séances</CardTitle>
                 <CardDescription>
-                  Consultez et gérez vos séances d&apos;entraînement
+                  Consultez et gérez vos séances
                 </CardDescription>
               </CardHeader>
             </Card>
 
+            {/* Exercices */}
+            <Card
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-red-500/10 hover:border-red-500/30"
+              onClick={() => router.push("/workout/exercises")}
+            >
+              <CardHeader>
+                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-red-500/20 to-red-500/5 group-hover:scale-110 transition-transform duration-300">
+                  <Dumbbell className="h-6 w-6 text-red-500" />
+                </div>
+                <CardTitle className="text-lg">Exercices</CardTitle>
+                <CardDescription>
+                  Parcourez vos exercices
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            {/* Historique */}
             <Card
               className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-blue-500/10 hover:border-blue-500/30"
               onClick={() => router.push("/workout/history")}
@@ -457,21 +518,6 @@ export default function WorkoutPage() {
                 <CardTitle className="text-lg">Historique</CardTitle>
                 <CardDescription>
                   Consultez vos séances passées
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-orange-500/10 hover:border-orange-500/30"
-              onClick={() => router.push("/workout/activity-types")}
-            >
-              <CardHeader>
-                <div className="mb-2 w-fit rounded-xl p-2.5 bg-gradient-to-br from-orange-500/20 to-orange-500/5 group-hover:scale-110 transition-transform duration-300">
-                  <Activity className="h-6 w-6 text-orange-500" />
-                </div>
-                <CardTitle className="text-lg">Types d&apos;activités</CardTitle>
-                <CardDescription>
-                  Gérez vos activités sportives favorites
                 </CardDescription>
               </CardHeader>
             </Card>
