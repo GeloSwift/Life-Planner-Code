@@ -320,8 +320,8 @@ class EmailService:
         Raises:
             Exception: Si l'envoi échoue
         """
-        # Email admin (le même que l'expéditeur)
-        admin_email = settings.MAILERSEND_FROM_EMAIL
+        # Email admin (use ADMIN_EMAIL if set, otherwise fall back to FROM_EMAIL)
+        admin_email = settings.ADMIN_EMAIL or settings.MAILERSEND_FROM_EMAIL
         
         # Formatage du contexte
         context_html = ""

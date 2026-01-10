@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     MAILERSEND_FROM_EMAIL: str = "noreply@lifeplanner.app"
     MAILERSEND_FROM_NAME: str = "Life Planner"
     
+    # Admin email for notifications (defaults to MAILERSEND_FROM_EMAIL if not set)
+    ADMIN_EMAIL: str | None = None
+    
     @property
     def database_url_sync(self) -> str:
         """
