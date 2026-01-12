@@ -1466,11 +1466,17 @@ class ActivityTypeService:
         activity_type_id: int,
         user_id: int,
     ) -> bool:
-        """Supprime un type d'activité personnalisé."""
+        """
+        Supprime un type d'activité.
+        
+        Permet de supprimer tous les types (par défaut ou personnalisés).
+        """
         activity_type = db.query(UserActivityType).filter(
             UserActivityType.id == activity_type_id,
-            UserActivityType.user_id == user_id,  # Seulement ses propres activités
-            ~UserActivityType.is_default,  # Pas les activités par défaut
+            or_(
+                UserActivityType.is_default.is_(True),  # Types par défaut supprimables
+                UserActivityType.user_id == user_id,    # Ou ses propres types personnalisés
+            ),
         ).first()
         
         if not activity_type:

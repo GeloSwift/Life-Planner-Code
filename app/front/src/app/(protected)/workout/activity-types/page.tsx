@@ -330,9 +330,6 @@ export default function SportsPage() {
                                                     <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" fill="currentColor" />
                                                 )}
                                             </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                {type.is_default ? "Par défaut" : "Personnalisé"}
-                                            </p>
                                         </div>
 
                                         {/* Actions */}
@@ -356,16 +353,14 @@ export default function SportsPage() {
                                             >
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            {!type.is_default && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive"
-                                                    onClick={(e) => handleDeleteClick(type, e)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            )}
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                                onClick={(e) => handleDeleteClick(type, e)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -431,8 +426,8 @@ export default function SportsPage() {
                                         key={color}
                                         type="button"
                                         className={`h-7 w-7 rounded-full transition-all ${formData.color === color
-                                                ? "ring-2 ring-offset-2 ring-primary scale-110"
-                                                : "hover:scale-105"
+                                            ? "ring-2 ring-offset-2 ring-primary scale-110"
+                                            : "hover:scale-105"
                                             }`}
                                         style={{ backgroundColor: color }}
                                         onClick={() => setFormData(prev => ({ ...prev, color }))}
