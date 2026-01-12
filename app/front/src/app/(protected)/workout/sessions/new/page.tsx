@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -135,7 +135,7 @@ const PARAM_PATTERNS = {
 // Fonction pour identifier le type de paramètre via regex
 function identifyParamType(fieldName: string): string | null {
   const normalizedName = fieldName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  
+
   for (const [type, pattern] of Object.entries(PARAM_PATTERNS)) {
     if (pattern.test(normalizedName)) {
       return type;
@@ -156,19 +156,19 @@ interface ExerciseParams {
 
 function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
   const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
-  
+
   if (!exercise.field_values) return params;
-  
+
   exercise.field_values.forEach((fieldValue) => {
     const field = fieldValue.field;
     if (!field) return;
-    
+
     // Utiliser la valeur override si disponible, sinon la valeur par défaut de l'exercice
     const value = overrideValues?.[field.id] ?? fieldValue.value;
     if (!value) return;
-    
+
     const paramType = identifyParamType(field.name);
-    
+
     switch (paramType) {
       case "series":
         params.sets = parseInt(value) || 3;
@@ -190,7 +190,7 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
         break;
     }
   });
-  
+
   return params;
 }
 
@@ -221,7 +221,7 @@ function renderCustomField(
           </SelectContent>
         </Select>
       );
-    
+
     case "multi_select":
       let selectedValues: string[] = [];
       try {
@@ -250,7 +250,7 @@ function renderCustomField(
           placeholder={field.placeholder || "Sélectionner..."}
         />
       );
-    
+
     case "checkbox":
       return (
         <div className="flex items-center gap-2">
@@ -263,7 +263,7 @@ function renderCustomField(
           <Label className="text-sm">Oui</Label>
         </div>
       );
-    
+
     case "number":
       return (
         <div className="flex gap-2 items-center">
@@ -277,7 +277,7 @@ function renderCustomField(
           {field.unit && <span className="text-xs text-muted-foreground">{field.unit}</span>}
         </div>
       );
-    
+
     case "duration":
       return (
         <div className="flex gap-2 items-center">
@@ -291,7 +291,7 @@ function renderCustomField(
           <span className="text-xs text-muted-foreground">secondes</span>
         </div>
       );
-    
+
     case "date":
       return (
         <Input
@@ -301,7 +301,7 @@ function renderCustomField(
           className="h-8 text-sm"
         />
       );
-    
+
     default: // text
       return (
         <Input
@@ -368,7 +368,7 @@ function SortableExerciseItem({
             {activity.name}
           </p>
         )}
-        
+
         {/* Champs personnalisés utilisés */}
         {availableFields.length > 0 && (
           <div className="space-y-2 mt-3">
@@ -399,7 +399,7 @@ function SortableExerciseItem({
                   </Button>
                 </div>
               ))}
-            
+
             {/* Bouton pour ajouter un champ */}
             {unusedFields.length > 0 && (
               <Select
@@ -438,14 +438,21 @@ function SortableExerciseItem({
 
 export default function NewSessionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Lire la date depuis l'URL si présente
+  const dateFromUrl = searchParams.get("date");
+  const defaultDate = dateFromUrl && /^\d{4}-\d{2}-\d{2}$/.test(dateFromUrl)
+    ? dateFromUrl
+    : new Date().toISOString().split("T")[0];
 
   // Formulaire
   const [name, setName] = useState("");
   const [selectedActivityIds, setSelectedActivityIds] = useState<number[]>([]);
   const [activityType, setActivityType] = useState<ActivityType>("musculation");
-  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split("T")[0]);
+  const [scheduledDate, setScheduledDate] = useState(defaultDate);
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [notes, setNotes] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
@@ -459,7 +466,7 @@ export default function NewSessionPage() {
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [loadingExercises, setLoadingExercises] = useState(false);
-  
+
   // Drag & Drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -508,7 +515,7 @@ export default function NewSessionPage() {
       // Filtrer par activités personnalisées sélectionnées côté client
       let filtered = data;
       if (selectedActivityIds.length > 0) {
-        filtered = data.filter(ex => 
+        filtered = data.filter(ex =>
           ex.custom_activity_type_id && selectedActivityIds.includes(ex.custom_activity_type_id)
         );
       }
@@ -681,7 +688,7 @@ export default function NewSessionPage() {
             googleCalendarApi.getStatus().catch(() => ({ connected: false })),
             appleCalendarApi.getStatus().catch(() => ({ connected: false })),
           ]);
-          
+
           const syncPromises = [];
           if (googleStatus.connected) {
             syncPromises.push(googleCalendarApi.syncSession(createdSession.id));
@@ -714,7 +721,7 @@ export default function NewSessionPage() {
     try {
       // "Lancer maintenant" : la date de la séance est maintenant
       const now = new Date();
-      
+
       // Calculer recurrence_data automatiquement selon le type
       let recurrenceData: (number | string)[] | undefined = undefined;
       if (recurrenceType) {
@@ -973,10 +980,10 @@ export default function NewSessionPage() {
                   items={selectedExercises.map((item) => item.exercise.id)}
                   strategy={verticalListSortingStrategy}
                 >
-              <div className="space-y-3">
-                {selectedExercises.map((item, index) => (
+                  <div className="space-y-3">
+                    {selectedExercises.map((item, index) => (
                       <SortableExerciseItem
-                    key={item.exercise.id}
+                        key={item.exercise.id}
                         item={item}
                         onUpdateField={(fieldId, value) =>
                           handleUpdateFieldValue(index, fieldId, value)
@@ -985,8 +992,8 @@ export default function NewSessionPage() {
                         onRemoveField={(fieldId) => handleRemoveField(index, fieldId)}
                         onRemoveExercise={() => handleRemoveExercise(index)}
                       />
-                ))}
-              </div>
+                    ))}
+                  </div>
                 </SortableContext>
               </DndContext>
             )}
@@ -1071,7 +1078,7 @@ export default function NewSessionPage() {
                   // Filtrer les exercices déjà ajoutés
                   const addedExerciseIds = new Set(selectedExercises.map(e => e.exercise.id));
                   const filteredExercises = availableExercises.filter(ex => !addedExerciseIds.has(ex.id));
-                  
+
                   if (filteredExercises.length === 0) {
                     return (
                       <div className="text-center py-8 text-muted-foreground">
@@ -1079,20 +1086,20 @@ export default function NewSessionPage() {
                       </div>
                     );
                   }
-                  
+
                   return filteredExercises.map((exercise) => (
-                  <button
-                    key={exercise.id}
-                    className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
-                    onClick={() => handleAddExercise(exercise)}
-                  >
-                    <h4 className="font-medium">{exercise.name}</h4>
+                    <button
+                      key={exercise.id}
+                      className="w-full text-left p-3 rounded-lg border hover:bg-accent transition-colors"
+                      onClick={() => handleAddExercise(exercise)}
+                    >
+                      <h4 className="font-medium">{exercise.name}</h4>
                       {exercise.custom_activity_type && (
-                    <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {exercise.custom_activity_type.name}
-                    </p>
+                        </p>
                       )}
-                  </button>
+                    </button>
                   ));
                 })()
               )}

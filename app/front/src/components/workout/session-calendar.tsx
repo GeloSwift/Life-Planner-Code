@@ -333,7 +333,12 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     setHoveredDay(null);
     setSelectedDate(date);
 
-    if (daySessions.length === 0) return;
+    if (daySessions.length === 0) {
+      // Pas de séance ce jour-là, rediriger vers création avec date pré-remplie
+      const dateStr = date.toISOString().split("T")[0];
+      router.push(`/workout/sessions/new?date=${dateStr}`);
+      return;
+    }
 
     if (daySessions.length === 1) {
       // Show action menu for single session
@@ -783,6 +788,19 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               </Card>
             ))}
           </div>
+          {/* Bouton pour créer une nouvelle séance ce jour-là */}
+          <Button
+            variant="outline"
+            className="w-full mt-2"
+            onClick={() => {
+              setShowSessionsDialog(false);
+              const dateStr = selectedDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+              router.push(`/workout/sessions/new?date=${dateStr}`);
+            }}
+          >
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            Créer une nouvelle séance
+          </Button>
         </DialogContent>
       </Dialog>
 
@@ -839,6 +857,23 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Supprimer
+            </Button>
+
+            {/* Séparateur + créer nouvelle séance */}
+            <div className="border-t my-1" />
+            <Button
+              variant="ghost"
+              className="justify-start text-primary"
+              onClick={() => {
+                if (actionMenuSession) {
+                  const dateStr = actionMenuSession.date.toISOString().split("T")[0];
+                  router.push(`/workout/sessions/new?date=${dateStr}`);
+                  setActionMenuSession(null);
+                }
+              }}
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Nouvelle séance ce jour
             </Button>
           </div>
         </DialogContent>
