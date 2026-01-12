@@ -1431,11 +1431,19 @@ class ActivityTypeService:
         icon: Optional[str] = None,
         color: Optional[str] = None,
     ) -> Optional[UserActivityType]:
-        """Met à jour un type d'activité (seulement les personnalisés)."""
+        """
+        Met à jour un type d'activité.
+        
+        Permet de modifier tous les types d'activités (par défaut ou personnalisés).
+        Note: Les types par défaut sont partagés, les modifications s'appliquent pour tous.
+        """
+        # Récupérer le type d'activité (par défaut ou appartenant à l'utilisateur)
         activity_type = db.query(UserActivityType).filter(
             UserActivityType.id == activity_type_id,
-            UserActivityType.user_id == user_id,  # Seulement ses propres activités
-            ~UserActivityType.is_default,  # Pas les activités par défaut
+            or_(
+                UserActivityType.is_default.is_(True),  # Types par défaut modifiables
+                UserActivityType.user_id == user_id,    # Ou ses propres types personnalisés
+            ),
         ).first()
         
         if not activity_type:
