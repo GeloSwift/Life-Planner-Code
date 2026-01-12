@@ -53,6 +53,14 @@ interface SessionCalendarProps {
 
 type ViewMode = "month" | "week";
 
+// Formate une date en YYYY-MM-DD en local (sans décalage de timezone)
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarProps) {
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -335,7 +343,7 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
 
     if (daySessions.length === 0) {
       // Pas de séance ce jour-là, rediriger vers création avec date pré-remplie
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       router.push(`/workout/sessions/new?date=${dateStr}`);
       return;
     }
@@ -794,7 +802,7 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
             className="w-full mt-2"
             onClick={() => {
               setShowSessionsDialog(false);
-              const dateStr = selectedDate?.toISOString().split("T")[0] || new Date().toISOString().split("T")[0];
+              const dateStr = selectedDate ? formatLocalDate(selectedDate) : formatLocalDate(new Date());
               router.push(`/workout/sessions/new?date=${dateStr}`);
             }}
           >
@@ -866,7 +874,7 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               className="justify-start text-primary"
               onClick={() => {
                 if (actionMenuSession) {
-                  const dateStr = actionMenuSession.date.toISOString().split("T")[0];
+                  const dateStr = formatLocalDate(actionMenuSession.date);
                   router.push(`/workout/sessions/new?date=${dateStr}`);
                   setActionMenuSession(null);
                 }
