@@ -209,8 +209,9 @@ export default function HistoryPage() {
         });
     }, [historyItems, selectedMonth]);
 
-    // Grouper les items par mois
-    const itemsByMonth = useMemo(() => {
+    // Note: itemsByMonth est gardé pour référence future si on veut grouper par mois
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _itemsByMonth = useMemo(() => {
         const grouped: Record<string, HistoryItem[]> = {};
         filteredItems.forEach((item) => {
             const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
@@ -221,13 +222,6 @@ export default function HistoryPage() {
         });
         return grouped;
     }, [filteredItems]);
-
-    // Garder filteredSessions pour compatibilité avec l'affichage existant
-    const filteredSessions = useMemo(() => {
-        return historyItems
-            .filter(item => item.session) // Seulement les sessions (pas les occurrences pures)
-            .map(item => item.session!);
-    }, [historyItems]);
 
     // Garder sortedSessions pour compatibilité avec l'affichage existant
     const sortedSessions = useMemo(() => {

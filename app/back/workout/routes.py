@@ -1104,7 +1104,7 @@ def create_user_activity_type(
         if email_service:
             email_service.send_admin_notification_email(
                 subject="Nouveau type d'activité créé",
-                message=f"Un utilisateur a créé un nouveau type d'activité. Pensez à vérifier si des mises à jour sont nécessaires dans le code (stats dynamiques, icônes, etc.).",
+                message="Un utilisateur a créé un nouveau type d'activité. Pensez à vérifier si des mises à jour sont nécessaires dans le code (stats dynamiques, icônes, etc.).",
                 context={
                     "Nom": activity_type.name,
                     "Icône": activity_type.icon or "Aucune",

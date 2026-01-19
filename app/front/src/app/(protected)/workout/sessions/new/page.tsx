@@ -10,7 +10,7 @@
  * - Ajouter des exercices
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -437,7 +437,7 @@ function SortableExerciseItem({
   );
 }
 
-export default function NewSessionPage() {
+function NewSessionPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
@@ -1181,5 +1181,23 @@ export default function NewSessionPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Wrapper avec Suspense pour useSearchParams
+export default function NewSessionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen">
+        <Header variant="sticky" />
+        <main className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </main>
+      </div>
+    }>
+      <NewSessionPageContent />
+    </Suspense>
   );
 }

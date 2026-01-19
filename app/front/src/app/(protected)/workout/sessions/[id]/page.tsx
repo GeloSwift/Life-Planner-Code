@@ -13,7 +13,7 @@
  * qui permet de tracker chaque occurrence individuellement.
  */
 
-import { useEffect, useState, useCallback, use } from "react";
+import { Suspense, useEffect, useState, useCallback, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -48,7 +48,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function SessionPage({ params }: PageProps) {
+function SessionPageContent({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -167,7 +167,7 @@ export default function SessionPage({ params }: PageProps) {
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
-  }, [session?.started_at, session?.status, occurrence?.started_at, occurrence?.status]);
+  }, [session?.started_at, session?.status, occurrence]);
 
   // Timer de repos
   useEffect(() => {
@@ -1284,5 +1284,18 @@ export default function SessionPage({ params }: PageProps) {
         </div>
       )}
     </div>
+  );
+}
+
+// Wrapper avec Suspense pour useSearchParams
+export default function SessionPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <SessionPageContent params={params} />
+    </Suspense>
   );
 }
