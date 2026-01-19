@@ -449,6 +449,173 @@ class WorkoutSession(Base):
         return f"<WorkoutSession(id={self.id}, name={self.name}, status={self.status})>"
 
 
+class WorkoutSessionOccurrence(Base):
+    """
+    Occurrence individuelle d'une séance récurrente.
+    
+    Quand une séance récurrente est "lancée" pour une date donnée,
+    on crée une occurrence qui track l'état de cette date spécifique.
+    Cela permet de terminer/annuler une occurrence sans affecter les autres.
+    
+    Pour les séances non-récurrentes, on peut aussi créer une occurrence
+    unique pour uniformiser le traitement.
+    
+    Attributs:
+        session_id: La séance parente (template récurrent)
+        occurrence_date: La date de cette occurrence (YYYY-MM-DD)
+        status: Statut de cette occurrence spécifique
+        started_at: Date/heure de début effectif
+        ended_at: Date/heure de fin
+        duration_seconds: Durée totale en secondes
+        notes: Notes spécifiques à cette occurrence
+        rating: Note de cette occurrence (1-5)
+    """
+    
+    __tablename__ = "workout_session_occurrences"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("workout_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    # Date de l'occurrence (format YYYY-MM-DD, sans heure)
+    occurrence_date: Mapped[str] = mapped_column(String(10), nullable=False)
+    
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default="planifiee",
+        nullable=False,
+    )
+    
+    # Timing de cette occurrence
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Feedback de cette occurrence
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
+    perceived_difficulty: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-10 RPE
+    calories_burned: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    session = relationship("WorkoutSession", backref="occurrences")
+    exercise_sets = relationship(
+        "WorkoutOccurrenceExercise",
+        back_populates="occurrence",
+        cascade="all, delete-orphan",
+    )
+    
+    __table_args__ = (
+        Index('ix_session_occurrences_session_date', 'session_id', 'occurrence_date'),
+        Index('ix_session_occurrences_status', 'status'),
+    )
+    
+    def __repr__(self) -> str:
+        return f"<WorkoutSessionOccurrence(id={self.id}, session_id={self.session_id}, date={self.occurrence_date})>"
+
+
+class WorkoutOccurrenceExercise(Base):
+    """
+    Exercice dans une occurrence de séance.
+    
+    Track les séries effectuées pour un exercice dans une occurrence spécifique.
+    Hérite des cibles de WorkoutSessionExercise mais track la progression réelle.
+    """
+    
+    __tablename__ = "workout_occurrence_exercises"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    occurrence_id: Mapped[int] = mapped_column(
+        ForeignKey("workout_session_occurrences.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    session_exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("workout_session_exercises.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    occurrence = relationship("WorkoutSessionOccurrence", back_populates="exercise_sets")
+    session_exercise = relationship("WorkoutSessionExercise")
+    sets = relationship(
+        "WorkoutOccurrenceSet",
+        back_populates="occurrence_exercise",
+        cascade="all, delete-orphan",
+        order_by="WorkoutOccurrenceSet.set_number",
+    )
+    
+    def __repr__(self) -> str:
+        return f"<WorkoutOccurrenceExercise(occurrence_id={self.occurrence_id}, session_exercise_id={self.session_exercise_id})>"
+
+
+class WorkoutOccurrenceSet(Base):
+    """
+    Série individuelle dans une occurrence.
+    
+    Track les performances réelles pour chaque série de chaque exercice
+    dans une occurrence spécifique.
+    """
+    
+    __tablename__ = "workout_occurrence_sets"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    
+    occurrence_exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("workout_occurrence_exercises.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    
+    set_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    
+    # Performances réelles
+    actual_reps: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    actual_weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    actual_duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    actual_distance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    rest_taken: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # Repos pris en secondes
+    
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    
+    # Relations
+    occurrence_exercise = relationship("WorkoutOccurrenceExercise", back_populates="sets")
+    
+    def __repr__(self) -> str:
+        return f"<WorkoutOccurrenceSet(id={self.id}, set_number={self.set_number})>"
+
 class WorkoutSessionExercise(Base):
     """
     Exercice dans une session d'entraînement.

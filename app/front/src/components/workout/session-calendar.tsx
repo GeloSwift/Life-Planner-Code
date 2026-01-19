@@ -43,6 +43,7 @@ import {
   Download,
   Edit,
   Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { workoutApi } from "@/lib/workout-api";
 
@@ -68,9 +69,11 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
   const [selectedDaySessions, setSelectedDaySessions] = useState<WorkoutSession[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showSessionsDialog, setShowSessionsDialog] = useState(false);
+  const [showEmptyDayDialog, setShowEmptyDayDialog] = useState(false);
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ session: WorkoutSession, date: Date } | null>(null);
   const [actionMenuSession, setActionMenuSession] = useState<{ session: WorkoutSession, date: Date } | null>(null);
+  const [cameFromSessionsList, setCameFromSessionsList] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -342,14 +345,14 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     setSelectedDate(date);
 
     if (daySessions.length === 0) {
-      // Pas de séance ce jour-là, rediriger vers création avec date pré-remplie
-      const dateStr = formatLocalDate(date);
-      router.push(`/workout/sessions/new?date=${dateStr}`);
+      // Pas de séance ce jour-là, afficher dialog de confirmation
+      setShowEmptyDayDialog(true);
       return;
     }
 
     if (daySessions.length === 1) {
-      // Show action menu for single session
+      // Show action menu for single session (direct from calendar)
+      setCameFromSessionsList(false);
       setActionMenuSession({ session: daySessions[0], date });
     } else {
       setSelectedDaySessions(daySessions);
@@ -358,6 +361,7 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
   };
 
   const handleSessionAction = (session: WorkoutSession, date: Date) => {
+    setCameFromSessionsList(true);
     setActionMenuSession({ session, date });
     setShowSessionsDialog(false);
   };
@@ -830,7 +834,9 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               className="justify-start"
               onClick={() => {
                 if (actionMenuSession) {
-                  router.push(`/workout/sessions/${actionMenuSession.session.id}`);
+                  // Passer la date d'occurrence pour les séances récurrentes
+                  const dateStr = formatLocalDate(actionMenuSession.date);
+                  router.push(`/workout/sessions/${actionMenuSession.session.id}?date=${dateStr}`);
                   setActionMenuSession(null);
                 }
               }}
@@ -867,22 +873,39 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               Supprimer
             </Button>
 
-            {/* Séparateur + créer nouvelle séance */}
+            {/* Séparateur + actions secondaires */}
             <div className="border-t my-1" />
-            <Button
-              variant="ghost"
-              className="justify-start text-primary"
-              onClick={() => {
-                if (actionMenuSession) {
-                  const dateStr = formatLocalDate(actionMenuSession.date);
-                  router.push(`/workout/sessions/new?date=${dateStr}`);
+
+            {/* Bouton retour si on vient de la liste des séances */}
+            {cameFromSessionsList ? (
+              <Button
+                variant="ghost"
+                className="justify-start"
+                onClick={() => {
                   setActionMenuSession(null);
-                }
-              }}
-            >
-              <CalendarPlus className="h-4 w-4 mr-2" />
-              Nouvelle séance ce jour
-            </Button>
+                  setShowSessionsDialog(true);
+                }}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour à la liste
+              </Button>
+            ) : (
+              /* Nouveau séance seulement si on vient directement du calendrier */
+              <Button
+                variant="ghost"
+                className="justify-start text-primary"
+                onClick={() => {
+                  if (actionMenuSession) {
+                    const dateStr = formatLocalDate(actionMenuSession.date);
+                    router.push(`/workout/sessions/new?date=${dateStr}`);
+                    setActionMenuSession(null);
+                  }
+                }}
+              >
+                <CalendarPlus className="h-4 w-4 mr-2" />
+                Nouvelle séance ce jour
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -949,6 +972,53 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               variant="ghost"
               onClick={() => setDeleteConfirmation(null)}
               disabled={isDeleting}
+            >
+              Annuler
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog pour jour vide - confirmation création */}
+      <Dialog open={showEmptyDayDialog} onOpenChange={setShowEmptyDayDialog}>
+        <DialogContent className="sm:max-w-[320px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <CalendarPlus className="h-4 w-4 text-primary" />
+              Créer une séance
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="text-center py-2">
+            <p className="text-sm text-muted-foreground mb-2">
+              Aucune séance prévue le
+            </p>
+            <p className="text-lg font-semibold">
+              {selectedDate?.toLocaleDateString("fr-FR", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-2">
+            <Button
+              onClick={() => {
+                if (selectedDate) {
+                  const dateStr = formatLocalDate(selectedDate);
+                  router.push(`/workout/sessions/new?date=${dateStr}`);
+                }
+                setShowEmptyDayDialog(false);
+              }}
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              Planifier une séance
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setShowEmptyDayDialog(false)}
             >
               Annuler
             </Button>

@@ -61,6 +61,12 @@ from workout.schemas import (
     UserActivityTypeResponse,
     CustomFieldDefinitionCreate,
     CustomFieldDefinitionResponse,
+    # Session Occurrences
+    SessionOccurrenceCreate,
+    SessionOccurrenceUpdate,
+    SessionOccurrenceResponse,
+    SessionOccurrenceListResponse,
+    OccurrenceSetCreate,
     # Enums
     ActivityTypeEnum,
     MuscleGroupEnum,
@@ -75,6 +81,7 @@ from workout.service import (
     GoalService,
     StatsService,
     ActivityTypeService,
+    SessionOccurrenceService,
 )
 
 
@@ -1295,3 +1302,191 @@ def get_goal_types():
         {"value": g.value, "label": g.name.replace("_", " ").title()}
         for g in GoalType
     ]
+
+
+# =============================================================================
+# SESSION OCCURRENCE ROUTES
+# =============================================================================
+
+@router.post(
+    "/occurrences",
+    response_model=SessionOccurrenceResponse,
+    summary="Créer ou récupérer une occurrence",
+)
+def create_or_get_occurrence(
+    occurrence_data: SessionOccurrenceCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Crée une occurrence pour une séance à une date donnée.
+    
+    Si une occurrence existe déjà, la retourne.
+    Utiliser quand on "lance" une séance récurrente pour une date spécifique.
+    """
+    occurrence = SessionOccurrenceService.get_or_create_occurrence(
+        db,
+        occurrence_data.session_id,
+        occurrence_data.occurrence_date,
+        current_user.id,
+    )
+    
+    if not occurrence:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    return occurrence
+
+
+@router.get(
+    "/occurrences/{occurrence_id}",
+    response_model=SessionOccurrenceResponse,
+    summary="Récupérer une occurrence",
+)
+def get_occurrence(
+    occurrence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Récupère une occurrence par son ID."""
+    occurrence = SessionOccurrenceService.get_occurrence(db, occurrence_id, current_user.id)
+    
+    if not occurrence:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    
+    return occurrence
+
+
+@router.post(
+    "/occurrences/{occurrence_id}/start",
+    response_model=SessionOccurrenceResponse,
+    summary="Démarrer une occurrence",
+)
+def start_occurrence(
+    occurrence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Démarre une occurrence (passe en 'en_cours')."""
+    occurrence = SessionOccurrenceService.start_occurrence(db, occurrence_id, current_user.id)
+    
+    if not occurrence:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    
+    return occurrence
+
+
+@router.post(
+    "/occurrences/{occurrence_id}/complete",
+    response_model=SessionOccurrenceResponse,
+    summary="Terminer une occurrence",
+)
+def complete_occurrence(
+    occurrence_id: int,
+    update_data: SessionOccurrenceUpdate = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Termine une occurrence (passe en 'terminee')."""
+    rating = update_data.rating if update_data else None
+    notes = update_data.notes if update_data else None
+    perceived_difficulty = update_data.perceived_difficulty if update_data else None
+    
+    occurrence = SessionOccurrenceService.complete_occurrence(
+        db, occurrence_id, current_user.id,
+        rating=rating,
+        notes=notes,
+        perceived_difficulty=perceived_difficulty,
+    )
+    
+    if not occurrence:
+        raise HTTPException(status_code=404, detail="Occurrence not found")
+    
+    return occurrence
+
+
+@router.put(
+    "/occurrence-sets/{set_id}",
+    summary="Mettre à jour une série d'occurrence",
+)
+def update_occurrence_set(
+    set_id: int,
+    set_data: OccurrenceSetCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour une série dans une occurrence."""
+    result = SessionOccurrenceService.update_occurrence_set(
+        db, set_id, current_user.id,
+        actual_reps=set_data.actual_reps,
+        actual_weight=set_data.actual_weight,
+        actual_duration=set_data.actual_duration,
+        actual_distance=set_data.actual_distance,
+        is_completed=set_data.is_completed,
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Set not found")
+    
+    return {"status": "ok"}
+
+
+@router.get(
+    "/occurrences/history/list",
+    response_model=list[SessionOccurrenceListResponse],
+    summary="Liste des occurrences terminées (historique)",
+)
+def get_occurrence_history(
+    month: Optional[int] = Query(None, ge=1, le=12),
+    year: Optional[int] = Query(None, ge=2020, le=2100),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Liste les occurrences terminées pour l'historique.
+    
+    Contrairement à la liste des sessions, ici chaque occurrence
+    d'une séance récurrente apparaît séparément.
+    """
+    occurrences = SessionOccurrenceService.list_completed_occurrences(
+        db, current_user.id,
+        month=month,
+        year=year,
+        limit=limit,
+    )
+    
+    # Enrichir avec les infos de la session parente
+    result = []
+    for occ in occurrences:
+        item = SessionOccurrenceListResponse(
+            id=occ.id,
+            session_id=occ.session_id,
+            occurrence_date=occ.occurrence_date,
+            status=occ.status,
+            started_at=occ.started_at,
+            ended_at=occ.ended_at,
+            duration_seconds=occ.duration_seconds,
+            rating=occ.rating,
+            notes=occ.notes,
+            session_name=occ.session.name if occ.session else None,
+            activity_type=occ.session.activity_type.value if occ.session else None,
+        )
+        result.append(item)
+    
+    return result
+
+
+@router.get(
+    "/occurrences/stats/{year}/{month}",
+    summary="Statistiques d'occurrences par mois",
+)
+def get_occurrence_stats(
+    year: int,
+    month: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Compte les occurrences par statut pour un mois donné."""
+    return SessionOccurrenceService.count_occurrences_by_month(
+        db, current_user.id, year, month
+    )

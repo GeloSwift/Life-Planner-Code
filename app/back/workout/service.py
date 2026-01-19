@@ -33,6 +33,9 @@ from workout.models import (
     UserActivityType,
     CustomFieldDefinition,
     ExerciseFieldValue,
+    WorkoutSessionOccurrence,
+    WorkoutOccurrenceExercise,
+    WorkoutOccurrenceSet,
 )
 from workout.schemas import (
     ExerciseCreate,
@@ -1655,3 +1658,251 @@ class ActivityTypeService:
         db.delete(field)
         db.commit()
         return True
+
+
+# =============================================================================
+# SESSION OCCURRENCE SERVICE
+# =============================================================================
+
+class SessionOccurrenceService:
+    """Service pour gérer les occurrences de séances récurrentes."""
+    
+    @staticmethod
+    def get_or_create_occurrence(
+        db: Session,
+        session_id: int,
+        occurrence_date: str,
+        user_id: int,
+    ) -> Optional[WorkoutSessionOccurrence]:
+        """
+        Récupère ou crée une occurrence pour une date donnée.
+        
+        Si une occurrence existe déjà pour cette session/date, la retourne.
+        Sinon, en crée une nouvelle avec statut 'planifiee'.
+        """
+        # Vérifier que la session appartient à l'utilisateur
+        session = db.query(WorkoutSession).filter(
+            WorkoutSession.id == session_id,
+            WorkoutSession.user_id == user_id,
+        ).first()
+        
+        if not session:
+            return None
+        
+        # Chercher une occurrence existante
+        occurrence = db.query(WorkoutSessionOccurrence).filter(
+            WorkoutSessionOccurrence.session_id == session_id,
+            WorkoutSessionOccurrence.occurrence_date == occurrence_date,
+        ).first()
+        
+        if occurrence:
+            return occurrence
+        
+        # Créer une nouvelle occurrence
+        occurrence = WorkoutSessionOccurrence(
+            session_id=session_id,
+            occurrence_date=occurrence_date,
+            status="planifiee",
+        )
+        db.add(occurrence)
+        db.flush()
+        
+        # Créer les entrées pour chaque exercice de la session
+        session_exercises = db.query(WorkoutSessionExercise).filter(
+            WorkoutSessionExercise.session_id == session_id,
+        ).all()
+        
+        for se in session_exercises:
+            occ_exercise = WorkoutOccurrenceExercise(
+                occurrence_id=occurrence.id,
+                session_exercise_id=se.id,
+                is_completed=False,
+            )
+            db.add(occ_exercise)
+            db.flush()
+            
+            # Créer les séries vides
+            for i in range(se.target_sets):
+                occ_set = WorkoutOccurrenceSet(
+                    occurrence_exercise_id=occ_exercise.id,
+                    set_number=i + 1,
+                    is_completed=False,
+                )
+                db.add(occ_set)
+        
+        db.commit()
+        db.refresh(occurrence)
+        return occurrence
+    
+    @staticmethod
+    def get_occurrence(
+        db: Session,
+        occurrence_id: int,
+        user_id: int,
+    ) -> Optional[WorkoutSessionOccurrence]:
+        """Récupère une occurrence par son ID."""
+        occurrence = db.query(WorkoutSessionOccurrence).options(
+            joinedload(WorkoutSessionOccurrence.session),
+            joinedload(WorkoutSessionOccurrence.exercise_sets)
+            .joinedload(WorkoutOccurrenceExercise.sets),
+            joinedload(WorkoutSessionOccurrence.exercise_sets)
+            .joinedload(WorkoutOccurrenceExercise.session_exercise)
+            .joinedload(WorkoutSessionExercise.exercise),
+        ).filter(
+            WorkoutSessionOccurrence.id == occurrence_id,
+        ).first()
+        
+        if not occurrence or occurrence.session.user_id != user_id:
+            return None
+        
+        return occurrence
+    
+    @staticmethod
+    def start_occurrence(
+        db: Session,
+        occurrence_id: int,
+        user_id: int,
+    ) -> Optional[WorkoutSessionOccurrence]:
+        """Démarre une occurrence (passe en 'en_cours')."""
+        occurrence = SessionOccurrenceService.get_occurrence(db, occurrence_id, user_id)
+        
+        if not occurrence:
+            return None
+        
+        occurrence.status = "en_cours"
+        occurrence.started_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(occurrence)
+        return occurrence
+    
+    @staticmethod
+    def complete_occurrence(
+        db: Session,
+        occurrence_id: int,
+        user_id: int,
+        rating: Optional[int] = None,
+        notes: Optional[str] = None,
+        perceived_difficulty: Optional[int] = None,
+    ) -> Optional[WorkoutSessionOccurrence]:
+        """Termine une occurrence (passe en 'terminee')."""
+        occurrence = SessionOccurrenceService.get_occurrence(db, occurrence_id, user_id)
+        
+        if not occurrence:
+            return None
+        
+        occurrence.status = "terminee"
+        occurrence.ended_at = datetime.now(timezone.utc)
+        
+        if occurrence.started_at:
+            occurrence.duration_seconds = int(
+                (occurrence.ended_at - occurrence.started_at).total_seconds()
+            )
+        
+        if rating is not None:
+            occurrence.rating = rating
+        if notes is not None:
+            occurrence.notes = notes
+        if perceived_difficulty is not None:
+            occurrence.perceived_difficulty = perceived_difficulty
+        
+        db.commit()
+        db.refresh(occurrence)
+        return occurrence
+    
+    @staticmethod
+    def update_occurrence_set(
+        db: Session,
+        occurrence_set_id: int,
+        user_id: int,
+        actual_reps: Optional[int] = None,
+        actual_weight: Optional[float] = None,
+        actual_duration: Optional[int] = None,
+        actual_distance: Optional[float] = None,
+        is_completed: Optional[bool] = None,
+    ) -> Optional[WorkoutOccurrenceSet]:
+        """Met à jour une série dans une occurrence."""
+        # Récupérer le set avec vérification du user_id
+        occ_set = db.query(WorkoutOccurrenceSet).join(
+            WorkoutOccurrenceExercise
+        ).join(
+            WorkoutSessionOccurrence
+        ).join(
+            WorkoutSession
+        ).filter(
+            WorkoutOccurrenceSet.id == occurrence_set_id,
+            WorkoutSession.user_id == user_id,
+        ).first()
+        
+        if not occ_set:
+            return None
+        
+        if actual_reps is not None:
+            occ_set.actual_reps = actual_reps
+        if actual_weight is not None:
+            occ_set.actual_weight = actual_weight
+        if actual_duration is not None:
+            occ_set.actual_duration = actual_duration
+        if actual_distance is not None:
+            occ_set.actual_distance = actual_distance
+        if is_completed is not None:
+            occ_set.is_completed = is_completed
+        
+        db.commit()
+        db.refresh(occ_set)
+        return occ_set
+    
+    @staticmethod
+    def list_completed_occurrences(
+        db: Session,
+        user_id: int,
+        month: Optional[int] = None,
+        year: Optional[int] = None,
+        limit: int = 50,
+    ) -> list[WorkoutSessionOccurrence]:
+        """
+        Liste les occurrences terminées pour l'historique.
+        
+        Retourne les occurrences triées par date décroissante.
+        """
+        query = db.query(WorkoutSessionOccurrence).join(
+            WorkoutSession
+        ).options(
+            joinedload(WorkoutSessionOccurrence.session),
+        ).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSessionOccurrence.status == "terminee",
+        )
+        
+        if month and year:
+            # Filtrer par mois (occurrence_date est au format YYYY-MM-DD)
+            month_str = f"{year:04d}-{month:02d}"
+            query = query.filter(
+                WorkoutSessionOccurrence.occurrence_date.like(f"{month_str}%")
+            )
+        
+        return query.order_by(
+            desc(WorkoutSessionOccurrence.occurrence_date)
+        ).limit(limit).all()
+    
+    @staticmethod
+    def count_occurrences_by_month(
+        db: Session,
+        user_id: int,
+        year: int,
+        month: int,
+    ) -> dict:
+        """Compte les occurrences par statut pour un mois donné."""
+        month_str = f"{year:04d}-{month:02d}"
+        
+        occurrences = db.query(WorkoutSessionOccurrence).join(
+            WorkoutSession
+        ).filter(
+            WorkoutSession.user_id == user_id,
+            WorkoutSessionOccurrence.occurrence_date.like(f"{month_str}%"),
+        ).all()
+        
+        return {
+            "total": len(occurrences),
+            "completed": sum(1 for o in occurrences if o.status == "terminee"),
+            "planned": sum(1 for o in occurrences if o.status == "planifiee"),
+        }

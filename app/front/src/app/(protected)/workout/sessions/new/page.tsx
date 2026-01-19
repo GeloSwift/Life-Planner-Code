@@ -17,6 +17,7 @@ import { Footer } from "@/components/layout/footer";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -459,6 +460,7 @@ export default function NewSessionPage() {
 
   // Activités personnalisées
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Exercices
   const [selectedExercises, setSelectedExercises] = useState<SelectedExercise[]>([]);
@@ -482,6 +484,8 @@ export default function NewSessionPage() {
       setActivityTypes(data);
     } catch (err) {
       console.error("Erreur lors du chargement des activités", err);
+    } finally {
+      setIsInitialLoading(false);
     }
   }, []);
 
@@ -795,239 +799,299 @@ export default function NewSessionPage() {
             Nouvelle séance
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Planifiez votre entraînement
+            {dateFromUrl
+              ? `Séance prévue le ${new Date(dateFromUrl).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}`
+              : "Planifiez votre entraînement"
+            }
           </p>
         </section>
 
-        {/* Informations générales */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informations</CardTitle>
-            <CardDescription>
-              Définissez les détails de la séance
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Nom */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Nom de la séance *</Label>
-              <Input
-                id="name"
-                placeholder="Ex: Push Day, Leg Day, Cardio..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+        {/* Skeleton Loading State */}
+        {isInitialLoading ? (
+          <div className="space-y-6">
+            {/* Card skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-4 w-48 mt-1" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Input skeletons */}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-10 w-24 rounded-full" />
+                    <Skeleton className="h-10 w-24 rounded-full" />
+                    <Skeleton className="h-10 w-24 rounded-full" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Types d'activités (multi-select) */}
-            <div className="space-y-2">
-              <Label>Types d&apos;activités</Label>
-              <MultiSelect
-                options={activityTypes.map(activity => ({
-                  label: activity.name,
-                  value: activity.id.toString(),
-                }))}
-                selected={selectedActivityIds.map(id => id.toString())}
-                onChange={(selected) => {
-                  setSelectedActivityIds(selected.map(s => parseInt(s)));
-                }}
-                placeholder="Sélectionner une ou plusieurs activités"
-                renderOption={(option) => {
-                  const activity = activityTypes.find(a => a.id.toString() === option.value);
-                  return (
-                    <div className="flex items-center gap-2">
-                      {activity && (
-                        <ActivityIcon iconName={getActivityIcon(activity)} className="h-4 w-4" />
-                      )}
-                      <span>{option.label}</span>
-                    </div>
-                  );
-                }}
-                renderBadge={(option) => {
-                  const activity = activityTypes.find(a => a.id.toString() === option.value);
-                  return (
-                    <div className="flex items-center gap-1">
-                      {activity && (
-                        <ActivityIcon iconName={getActivityIcon(activity)} className="h-3 w-3" />
-                      )}
-                      <span>{option.label}</span>
-                    </div>
-                  );
-                }}
-              />
-            </div>
+            {/* Second card skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-4 w-56 mt-1" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full rounded-lg" />
+              </CardContent>
+            </Card>
 
-            {/* Date et heure */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="time">Heure</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                />
-              </div>
+            {/* Buttons skeleton */}
+            <div className="flex gap-3">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 flex-1" />
             </div>
-
-            <div className="space-y-2">
-              <Label>Récurrence</Label>
-              <Select
-                value={recurrenceType || "none"}
-                onValueChange={(value) => {
-                  if (value === "none") {
-                    setRecurrenceType(null);
-                  } else {
-                    setRecurrenceType(value as "daily" | "weekly" | "monthly");
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Aucune récurrence" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Aucune récurrence</SelectItem>
-                  <SelectItem value="daily">Quotidien</SelectItem>
-                  <SelectItem value="weekly">Hebdomadaire</SelectItem>
-                  <SelectItem value="monthly">Mensuel</SelectItem>
-                </SelectContent>
-              </Select>
-              {recurrenceType && scheduledDate && scheduledTime && (
-                <p className="text-xs text-muted-foreground">
-                  {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
-                  {recurrenceType === "weekly" && (() => {
-                    const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                    const dayOfWeek = scheduledDateObj.getDay();
-                    return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
-                  })()}
-                  {recurrenceType === "monthly" && (() => {
-                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                    const dayOfMonth = scheduledDateObj.getDate();
-                    if (dayOfMonth >= 28) {
-                      return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
-                    }
-                    return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
-                  })()}
-                </p>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (optionnel)</Label>
-              <Input
-                id="notes"
-                placeholder="Objectifs, focus du jour..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Exercices */}
-        <Card className="mt-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Exercices</CardTitle>
+          </div>
+        ) : (
+          <>
+            {/* Informations générales */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informations</CardTitle>
                 <CardDescription>
-                  {selectedExercises.length} exercice{selectedExercises.length > 1 ? "s" : ""} ajouté{selectedExercises.length > 1 ? "s" : ""}
+                  Définissez les détails de la séance
                 </CardDescription>
-              </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Nom */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nom de la séance *</Label>
+                  <Input
+                    id="name"
+                    placeholder="Ex: Push Day, Leg Day, Cardio..."
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+
+                {/* Types d'activités (multi-select) */}
+                <div className="space-y-2">
+                  <Label>Types d&apos;activités</Label>
+                  <MultiSelect
+                    options={activityTypes.map(activity => ({
+                      label: activity.name,
+                      value: activity.id.toString(),
+                    }))}
+                    selected={selectedActivityIds.map(id => id.toString())}
+                    onChange={(selected) => {
+                      setSelectedActivityIds(selected.map(s => parseInt(s)));
+                    }}
+                    placeholder="Sélectionner une ou plusieurs activités"
+                    renderOption={(option) => {
+                      const activity = activityTypes.find(a => a.id.toString() === option.value);
+                      return (
+                        <div className="flex items-center gap-2">
+                          {activity && (
+                            <ActivityIcon iconName={getActivityIcon(activity)} className="h-4 w-4" />
+                          )}
+                          <span>{option.label}</span>
+                        </div>
+                      );
+                    }}
+                    renderBadge={(option) => {
+                      const activity = activityTypes.find(a => a.id.toString() === option.value);
+                      return (
+                        <div className="flex items-center gap-1">
+                          {activity && (
+                            <ActivityIcon iconName={getActivityIcon(activity)} className="h-3 w-3" />
+                          )}
+                          <span>{option.label}</span>
+                        </div>
+                      );
+                    }}
+                  />
+                </div>
+
+                {/* Date et heure */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="time">Heure</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Récurrence</Label>
+                  <Select
+                    value={recurrenceType || "none"}
+                    onValueChange={(value) => {
+                      if (value === "none") {
+                        setRecurrenceType(null);
+                      } else {
+                        setRecurrenceType(value as "daily" | "weekly" | "monthly");
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Aucune récurrence" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Aucune récurrence</SelectItem>
+                      <SelectItem value="daily">Quotidien</SelectItem>
+                      <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                      <SelectItem value="monthly">Mensuel</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {recurrenceType && scheduledDate && scheduledTime && (
+                    <p className="text-xs text-muted-foreground">
+                      {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
+                      {recurrenceType === "weekly" && (() => {
+                        const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+                        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                        const dayOfWeek = scheduledDateObj.getDay();
+                        return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
+                      })()}
+                      {recurrenceType === "monthly" && (() => {
+                        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                        const dayOfMonth = scheduledDateObj.getDate();
+                        if (dayOfMonth >= 28) {
+                          return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
+                        }
+                        return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
+                      })()}
+                    </p>
+                  )}
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes (optionnel)</Label>
+                  <Input
+                    id="notes"
+                    placeholder="Objectifs, focus du jour..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Exercices */}
+            <Card className="mt-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Exercices</CardTitle>
+                    <CardDescription>
+                      {selectedExercises.length} exercice{selectedExercises.length > 1 ? "s" : ""} ajouté{selectedExercises.length > 1 ? "s" : ""}
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowExerciseDialog(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {selectedExercises.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Dumbbell className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Aucun exercice ajouté</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => setShowExerciseDialog(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter un exercice
+                    </Button>
+                  </div>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={selectedExercises.map((item) => item.exercise.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-3">
+                        {selectedExercises.map((item, index) => (
+                          <SortableExerciseItem
+                            key={item.exercise.id}
+                            item={item}
+                            onUpdateField={(fieldId, value) =>
+                              handleUpdateFieldValue(index, fieldId, value)
+                            }
+                            onAddField={(field) => handleAddField(index, field)}
+                            onRemoveField={(fieldId) => handleRemoveField(index, fieldId)}
+                            onRemoveExercise={() => handleRemoveExercise(index)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Boutons d'action */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => setShowExerciseDialog(true)}
+                className="flex-1"
+                onClick={() => router.back()}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter
+                Annuler
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleSubmit}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Calendar className="mr-2 h-4 w-4" />
+                Planifier
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleStartNow}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Lancer maintenant
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {selectedExercises.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Dumbbell className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Aucun exercice ajouté</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => setShowExerciseDialog(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter un exercice
-                </Button>
-              </div>
-            ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={selectedExercises.map((item) => item.exercise.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-3">
-                    {selectedExercises.map((item, index) => (
-                      <SortableExerciseItem
-                        key={item.exercise.id}
-                        item={item}
-                        onUpdateField={(fieldId, value) =>
-                          handleUpdateFieldValue(index, fieldId, value)
-                        }
-                        onAddField={(field) => handleAddField(index, field)}
-                        onRemoveField={(fieldId) => handleRemoveField(index, fieldId)}
-                        onRemoveExercise={() => handleRemoveExercise(index)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Boutons d'action */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => router.back()}
-          >
-            Annuler
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Calendar className="mr-2 h-4 w-4" />
-            Planifier
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handleStartNow}
-            disabled={isLoading}
-          >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Lancer maintenant
-          </Button>
-        </div>
+          </>
+        )}
       </main>
 
       <Footer />

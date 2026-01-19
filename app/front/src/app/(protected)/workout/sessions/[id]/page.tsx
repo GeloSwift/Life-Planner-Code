@@ -8,10 +8,13 @@
  * - Liste des exercices avec séries à cocher
  * - Possibilité d'ajouter des sets
  * - Timer de repos entre les séries
+ * 
+ * Pour les séances récurrentes, utilise le système d'occurrences
+ * qui permet de tracker chaque occurrence individuellement.
  */
 
 import { useEffect, useState, useCallback, use } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
 import { Button } from "@/components/ui/button";
@@ -19,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { workoutApi } from "@/lib/workout-api";
+import { workoutApi, type SessionOccurrence } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -48,9 +51,14 @@ interface PageProps {
 export default function SessionPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { success, error: showError, info } = useToast();
 
+  // Date d'occurrence passée depuis le calendrier
+  const occurrenceDate = searchParams.get("date");
+
   const [session, setSession] = useState<WorkoutSession | null>(null);
+  const [occurrence, setOccurrence] = useState<SessionOccurrence | null>(null);
   const [exercises, setExercises] = useState<WorkoutSessionExercise[]>([]);
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +104,20 @@ export default function SessionPage({ params }: PageProps) {
       // Charger les notes de la séance
       setSessionNotes(sessionData.notes || "");
 
+      // Pour les séances récurrentes avec une date d'occurrence,
+      // vérifier si une occurrence existe déjà (en cours)
+      if (sessionData.recurrence_type && occurrenceDate) {
+        try {
+          // Essayer de créer/récupérer l'occurrence pour voir son état
+          const occ = await workoutApi.occurrences.createOrGet(sessionData.id, occurrenceDate);
+          if (occ.status === "en_cours" || occ.status === "terminee") {
+            setOccurrence(occ);
+          }
+        } catch {
+          // Si ça échoue, on continue sans occurrence (elle sera créée au start)
+        }
+      }
+
       // Charger les notes des exercices
       const notesMap: Record<number, string> = {};
       exercisesList.forEach((ex) => {
@@ -118,17 +140,23 @@ export default function SessionPage({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, occurrenceDate]);
 
   useEffect(() => {
     loadSession();
   }, [loadSession]);
 
-  // Timer de séance
+  // Timer de séance - fonctionne avec occurrence ou session
   useEffect(() => {
-    if (!session?.started_at || session.status !== "en_cours") return;
+    // Utiliser l'occurrence si elle existe, sinon la session
+    const activeStartTime = occurrence?.started_at || session?.started_at;
+    const isActive = occurrence
+      ? occurrence.status === "en_cours"
+      : session?.status === "en_cours";
 
-    const startTime = new Date(session.started_at).getTime();
+    if (!activeStartTime || !isActive) return;
+
+    const startTime = new Date(activeStartTime).getTime();
 
     const updateTime = () => {
       const now = Date.now();
@@ -139,7 +167,7 @@ export default function SessionPage({ params }: PageProps) {
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
-  }, [session?.started_at, session?.status]);
+  }, [session?.started_at, session?.status, occurrence?.started_at, occurrence?.status]);
 
   // Timer de repos
   useEffect(() => {
@@ -190,9 +218,20 @@ export default function SessionPage({ params }: PageProps) {
     if (!session) return;
     setIsSubmitting(true);
     try {
-      const updated = await workoutApi.sessions.start(session.id);
-      setSession(updated);
-      success(`Séance lancée ! 🚀 ${session.name}`);
+      // Pour les séances récurrentes avec une date d'occurrence
+      if (session.recurrence_type && occurrenceDate) {
+        // Créer ou récupérer l'occurrence
+        const occ = await workoutApi.occurrences.createOrGet(session.id, occurrenceDate);
+        // Démarrer l'occurrence
+        const startedOcc = await workoutApi.occurrences.start(occ.id);
+        setOccurrence(startedOcc);
+        success(`Séance lancée ! 🚀 ${session.name}`);
+      } else {
+        // Comportement existant pour les séances non-récurrentes
+        const updated = await workoutApi.sessions.start(session.id);
+        setSession(updated);
+        success(`Séance lancée ! 🚀 ${session.name}`);
+      }
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -211,9 +250,17 @@ export default function SessionPage({ params }: PageProps) {
         });
       }
 
-      // Terminer la séance (les notes ont déjà été sauvegardées via update)
-      await workoutApi.sessions.complete(session.id);
-      success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
+      // Pour les séances récurrentes avec occurrence
+      if (occurrence) {
+        await workoutApi.occurrences.complete(occurrence.id, {
+          notes: sessionNotes || undefined,
+        });
+        success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
+      } else {
+        // Terminer la séance (les notes ont déjà été sauvegardées via update)
+        await workoutApi.sessions.complete(session.id);
+        success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
+      }
       router.push("/workout/history");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur");
@@ -731,9 +778,11 @@ export default function SessionPage({ params }: PageProps) {
     );
   }
 
-  const isActive = session.status === "en_cours";
-  const isPlanned = session.status === "planifiee";
-  const isCancelled = session.status === "annulee";
+  // Pour les séances récurrentes avec occurrence, utiliser le statut de l'occurrence
+  const effectiveStatus = occurrence?.status || session.status;
+  const isActive = effectiveStatus === "en_cours";
+  const isPlanned = effectiveStatus === "planifiee";
+  const isCancelled = effectiveStatus === "annulee";
 
   // Vérifier si on peut lancer la séance (même jour que planifié ou jour de récurrence)
   const canStartSession = (): boolean => {
@@ -995,10 +1044,10 @@ export default function SessionPage({ params }: PageProps) {
                           }}
                           disabled={allExerciseSetsCompleted || !isActive}
                           className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all shrink-0 ${allExerciseSetsCompleted || exercise.is_completed
-                              ? "bg-green-500 border-green-500 text-white"
-                              : isActive
-                                ? "border-primary text-primary hover:bg-primary/10 cursor-pointer"
-                                : "border-muted-foreground/30 text-muted-foreground"
+                            ? "bg-green-500 border-green-500 text-white"
+                            : isActive
+                              ? "border-primary text-primary hover:bg-primary/10 cursor-pointer"
+                              : "border-muted-foreground/30 text-muted-foreground"
                             }`}
                           title="Valider toutes les séries"
                         >
@@ -1053,17 +1102,17 @@ export default function SessionPage({ params }: PageProps) {
                               }
                             }}
                             className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${set.is_completed
-                                ? "bg-muted/30 border-muted cursor-pointer"
-                                : isActive
-                                  ? "bg-muted/50 cursor-pointer hover:border-primary"
-                                  : "bg-muted/50"
+                              ? "bg-muted/30 border-muted cursor-pointer"
+                              : isActive
+                                ? "bg-muted/50 cursor-pointer hover:border-primary"
+                                : "bg-muted/50"
                               }`}
                           >
                             {/* Cercle style radio button */}
                             <div
                               className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${set.is_completed
-                                  ? "bg-primary border-primary"
-                                  : "border-primary"
+                                ? "bg-primary border-primary"
+                                : "border-primary"
                                 }`}
                             >
                               {set.is_completed && (
