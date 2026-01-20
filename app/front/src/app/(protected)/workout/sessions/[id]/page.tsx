@@ -10,7 +10,7 @@
  * - Timer de repos entre les séries
  */
 
-import { useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -45,7 +45,7 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function SessionPage({ params }: PageProps) {
+function SessionContent({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1254,5 +1254,13 @@ export default function SessionPage({ params }: PageProps) {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SessionPage({ params }: PageProps) {
+  return (
+    <Suspense fallback={<div className="container py-6">Chargement...</div>}>
+      <SessionContent params={params} />
+    </Suspense>
   );
 }

@@ -10,7 +10,7 @@
  * - Ajouter des exercices
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -437,7 +437,7 @@ function SortableExerciseItem({
   );
 }
 
-export default function NewSessionPage() {
+function NewSessionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
@@ -681,6 +681,7 @@ export default function NewSessionPage() {
         notes: notes || undefined,
         recurrence_type: recurrenceType || undefined,
         recurrence_data: recurrenceData,
+        recurrence_end_date: recurrenceEndDateStr,
         exercises: selectedExercises.map((item, idx) => {
           const params = extractExerciseParams(item.exercise, item.fieldValues);
           return {
@@ -1214,5 +1215,13 @@ export default function NewSessionPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function NewSessionPage() {
+  return (
+    <Suspense fallback={<div className="container py-6">Chargement...</div>}>
+      <NewSessionContent />
+    </Suspense>
   );
 }
