@@ -75,7 +75,7 @@ const PARAM_PATTERNS = {
 // Fonction pour identifier le type de paramètre via regex
 function identifyParamType(fieldName: string): string | null {
   const normalizedName = fieldName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  
+
   for (const [type, pattern] of Object.entries(PARAM_PATTERNS)) {
     if (pattern.test(normalizedName)) {
       return type;
@@ -96,19 +96,19 @@ interface ExerciseParams {
 
 function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
   const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
-  
+
   if (!exercise.field_values) return params;
-  
+
   exercise.field_values.forEach((fieldValue) => {
     const field = fieldValue.field;
     if (!field) return;
-    
+
     // Utiliser la valeur override si disponible, sinon la valeur par défaut de l'exercice
     const value = overrideValues?.[field.id] ?? fieldValue.value;
     if (!value) return;
-    
+
     const paramType = identifyParamType(field.name);
-    
+
     switch (paramType) {
       case "series":
         params.sets = parseInt(value) || 3;
@@ -130,7 +130,7 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
         break;
     }
   });
-  
+
   return params;
 }
 
@@ -161,7 +161,7 @@ function renderCustomField(
           </SelectContent>
         </Select>
       );
-    
+
     case "multi_select":
       let selectedValues: string[] = [];
       try {
@@ -182,7 +182,7 @@ function renderCustomField(
           placeholder={field.placeholder || "Sélectionner..."}
         />
       );
-    
+
     case "text":
       return (
         <Input
@@ -193,7 +193,7 @@ function renderCustomField(
           className="h-8 text-sm"
         />
       );
-    
+
     case "number":
       return (
         <Input
@@ -204,7 +204,7 @@ function renderCustomField(
           className="h-8 text-sm"
         />
       );
-    
+
     case "checkbox":
       return (
         <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ function renderCustomField(
           />
         </div>
       );
-    
+
     case "date":
       return (
         <Input
@@ -226,7 +226,7 @@ function renderCustomField(
           className="h-8 text-sm"
         />
       );
-    
+
     case "duration":
       return (
         <Input
@@ -237,7 +237,7 @@ function renderCustomField(
           className="h-8 text-sm"
         />
       );
-    
+
     default:
       return (
         <Input
@@ -305,7 +305,7 @@ function SortableExerciseItem({
             {activity.name}
           </p>
         )}
-        
+
         {/* Champs personnalisés utilisés */}
         {availableFields.length > 0 && (
           <div className="space-y-2 mt-3">
@@ -336,7 +336,7 @@ function SortableExerciseItem({
                   </Button>
                 </div>
               ))}
-            
+
             {/* Bouton pour ajouter un champ */}
             {unusedFields.length > 0 && (
               <Select
@@ -404,6 +404,8 @@ export default function EditSessionPage({ params }: PageProps) {
   const [scheduledTime, setScheduledTime] = useState<string>("09:00");
   const [notes, setNotes] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
+  const [recurrenceDuration, setRecurrenceDuration] = useState<string>("3"); // Durée en mois
+  const [originalRecurrenceEndDate, setOriginalRecurrenceEndDate] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -418,6 +420,21 @@ export default function EditSessionPage({ params }: PageProps) {
       setName(sessionData.name || "");
       setNotes(sessionData.notes || "");
       setRecurrenceType(sessionData.recurrence_type || null);
+
+      // Charger la date de fin de récurrence existante
+      if (sessionData.recurrence_end_date) {
+        setOriginalRecurrenceEndDate(sessionData.recurrence_end_date);
+        // Calculer la durée approximative en mois
+        const startDate = sessionData.scheduled_at ? new Date(sessionData.scheduled_at) : new Date();
+        const endDate = new Date(sessionData.recurrence_end_date);
+        const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+        if (monthsDiff <= 1) setRecurrenceDuration("1");
+        else if (monthsDiff <= 3) setRecurrenceDuration("3");
+        else if (monthsDiff <= 6) setRecurrenceDuration("6");
+        else if (monthsDiff <= 9) setRecurrenceDuration("9");
+        else if (monthsDiff <= 12) setRecurrenceDuration("12");
+        else setRecurrenceDuration("24");
+      }
 
       // Types d'activités
       const ids =
@@ -443,7 +460,7 @@ export default function EditSessionPage({ params }: PageProps) {
               }
             });
           }
-          
+
           return {
             exercise: se.exercise!,
             fieldValues,
@@ -490,7 +507,7 @@ export default function EditSessionPage({ params }: PageProps) {
       // Filtrer par activités personnalisées sélectionnées et exclure ceux déjà ajoutés
       let filtered = data;
       if (selectedActivityIds.length > 0) {
-        filtered = data.filter(ex => 
+        filtered = data.filter(ex =>
           ex.custom_activity_type_id && selectedActivityIds.includes(ex.custom_activity_type_id)
         );
       }
@@ -639,7 +656,7 @@ export default function EditSessionPage({ params }: PageProps) {
         const [year, month, day] = scheduledDate.split("-").map(Number);
         const [hours, minutes] = scheduledTime.split(":").map(Number);
         const scheduledDateObj = new Date(year, month - 1, day, hours, minutes, 0);
-        
+
         if (recurrenceType === "weekly") {
           const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
           const dayOfWeek = scheduledDateObj.getDay();
@@ -659,6 +676,7 @@ export default function EditSessionPage({ params }: PageProps) {
         custom_activity_type_ids: number[];
         recurrence_type?: "daily" | "weekly" | "monthly";
         recurrence_data?: (number | string)[];
+        recurrence_end_date?: string;
         exercises?: Array<{
           exercise_id: number;
           order: number;
@@ -707,6 +725,20 @@ export default function EditSessionPage({ params }: PageProps) {
       updatePayload.recurrence_type = recurrenceType || undefined;
       updatePayload.recurrence_data = recurrenceData;
 
+      // Calculer la date de fin de récurrence
+      if (recurrenceType && scheduledDate && scheduledTime) {
+        const [year, month, day] = scheduledDate.split("-").map(Number);
+        const [hours, minutes] = scheduledTime.split(":").map(Number);
+        const scheduledDateObj = new Date(year, month - 1, day, hours, minutes, 0);
+        const monthsToAdd = parseInt(recurrenceDuration);
+        const endDateObj = new Date(scheduledDateObj);
+        endDateObj.setMonth(endDateObj.getMonth() + monthsToAdd);
+        const endYear = endDateObj.getFullYear();
+        const endMonth = String(endDateObj.getMonth() + 1).padStart(2, "0");
+        const endDay = String(endDateObj.getDate()).padStart(2, "0");
+        updatePayload.recurrence_end_date = `${endYear}-${endMonth}-${endDay}`;
+      }
+
       await workoutApi.sessions.update(sessionId, updatePayload);
 
       // Sync automatique avec les calendriers (silencieux)
@@ -715,7 +747,7 @@ export default function EditSessionPage({ params }: PageProps) {
           googleCalendarApi.getStatus().catch(() => ({ connected: false })),
           appleCalendarApi.getStatus().catch(() => ({ connected: false })),
         ]);
-        
+
         const syncPromises = [];
         if (googleStatus.connected) {
           syncPromises.push(googleCalendarApi.syncSession(sessionId));
@@ -852,20 +884,20 @@ export default function EditSessionPage({ params }: PageProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
-                <Input 
-                  id="date" 
-                  type="date" 
-                  value={scheduledDate} 
+                <Input
+                  id="date"
+                  type="date"
+                  value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
                   disabled={isSessionInProgress}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="time">Heure</Label>
-                <Input 
-                  id="time" 
-                  type="time" 
-                  value={scheduledTime} 
+                <Input
+                  id="time"
+                  type="time"
+                  value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
                   disabled={isSessionInProgress}
                 />
@@ -900,23 +932,45 @@ export default function EditSessionPage({ params }: PageProps) {
                 </SelectContent>
               </Select>
               {recurrenceType && scheduledDate && scheduledTime && (
-                <p className="text-xs text-muted-foreground">
-                  {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
-                  {recurrenceType === "weekly" && (() => {
-                    const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                    const dayOfWeek = scheduledDateObj.getDay();
-                    return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
-                  })()}
-                  {recurrenceType === "monthly" && (() => {
-                    const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                    const dayOfMonth = scheduledDateObj.getDate();
-                    if (dayOfMonth >= 28) {
-                      return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
-                    }
-                    return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
-                  })()}
-                </p>
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
+                    {recurrenceType === "weekly" && (() => {
+                      const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+                      const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                      const dayOfWeek = scheduledDateObj.getDay();
+                      return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
+                    })()}
+                    {recurrenceType === "monthly" && (() => {
+                      const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                      const dayOfMonth = scheduledDateObj.getDate();
+                      if (dayOfMonth >= 28) {
+                        return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
+                      }
+                      return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
+                    })()}
+                  </p>
+
+                  <div className="space-y-2 pt-2">
+                    <Label htmlFor="recurrence-duration">Durée de la récurrence</Label>
+                    <Select
+                      value={recurrenceDuration}
+                      onValueChange={setRecurrenceDuration}
+                    >
+                      <SelectTrigger id="recurrence-duration">
+                        <SelectValue placeholder="Durée" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 mois</SelectItem>
+                        <SelectItem value="3">3 mois</SelectItem>
+                        <SelectItem value="6">6 mois</SelectItem>
+                        <SelectItem value="9">9 mois</SelectItem>
+                        <SelectItem value="12">1 an</SelectItem>
+                        <SelectItem value="24">2 ans</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
               )}
             </div>
 

@@ -5,7 +5,7 @@ Schemas pour valider les requêtes et sérialiser les réponses.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 from typing import Optional, Any, Union
 
@@ -431,7 +431,7 @@ class WorkoutSessionBase(BaseModel):
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence (jours de la semaine pour weekly, jours du mois pour monthly)
     recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD) pour les occurrences supprimées
-    recurrence_end_date: Optional[datetime] = None  # Date de fin de la récurrence
+    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence (YYYY-MM-DD)
 
 
 class WorkoutSessionCreate(WorkoutSessionBase):
@@ -452,6 +452,7 @@ class WorkoutSessionUpdate(BaseModel):
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence
     recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD)
+    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence (YYYY-MM-DD)
     rating: Optional[int] = Field(None, ge=1, le=5)
     perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
     calories_burned: Optional[int] = Field(None, ge=0)
