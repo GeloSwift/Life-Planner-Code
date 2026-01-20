@@ -261,7 +261,30 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
   const sessionsByDay = useMemo(() => {
     const map = new Map<string, WorkoutSession[]>();
 
+    // Étape 1: Collecter les dates d'occurrences réelles (sessions enfants) par parent_id
+    // Cela permet de ne pas générer d'occurrence virtuelle là où un enfant existe déjà
+    const childOccurrenceDatesByParent = new Map<number, Set<string>>();
     sessions.forEach((session) => {
+      if (session.parent_session_id && session.occurrence_date) {
+        const parentId = session.parent_session_id;
+        if (!childOccurrenceDatesByParent.has(parentId)) {
+          childOccurrenceDatesByParent.set(parentId, new Set());
+        }
+        // occurrence_date est au format YYYY-MM-DD
+        childOccurrenceDatesByParent.get(parentId)!.add(session.occurrence_date);
+      }
+    });
+
+    sessions.forEach((session) => {
+      // Si c'est une session enfant (occurrence réelle), l'afficher à sa date d'occurrence
+      if (session.parent_session_id && session.occurrence_date) {
+        const occDate = new Date(session.occurrence_date + "T00:00:00");
+        const key = `${occDate.getFullYear()}-${occDate.getMonth()}-${occDate.getDate()}`;
+        const existing = map.get(key) || [];
+        map.set(key, [...existing, session]);
+        return; // Ne pas traiter comme session récurrente
+      }
+
       const sessionDate = session.scheduled_at
         ? new Date(session.scheduled_at)
         : session.started_at
@@ -289,6 +312,9 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
         (session.recurrence_exceptions ?? []).map((d) => String(d))
       );
 
+      // Dates où des occurrences enfants existent pour ce parent
+      const childDates = childOccurrenceDatesByParent.get(session.id) ?? new Set<string>();
+
       const recurringDates = generateRecurringDates(
         sessionDate,
         session.recurrence_type ?? null,
@@ -302,7 +328,9 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
         const m = String(date.getMonth() + 1).padStart(2, "0");
         const d = String(date.getDate()).padStart(2, "0");
         const isoDay = `${y}-${m}-${d}`;
-        if (exceptionDates.has(isoDay)) return;
+
+        // Exclure si dans les exceptions OU si une occurrence enfant existe pour cette date
+        if (exceptionDates.has(isoDay) || childDates.has(isoDay)) return;
 
         const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
         const existing = map.get(key) || [];
@@ -504,10 +532,11 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
             <p className="text-xs text-muted-foreground truncate">
               {ACTIVITY_TYPE_LABELS[session.activity_type]}
             </p>
-            {session.scheduled_at && (
+            {/* Afficher started_at pour les séances terminées, sinon scheduled_at */}
+            {(session.status === "terminee" ? session.started_at : session.scheduled_at) && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                 <Clock className="h-2.5 w-2.5" />
-                {formatTime(session.scheduled_at)}
+                {formatTime(session.status === "terminee" && session.started_at ? session.started_at : session.scheduled_at!)}
               </p>
             )}
           </div>
@@ -548,9 +577,10 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
             <div key={session.id} className="flex items-center gap-1.5 text-xs">
               {getStatusIcon(session.status)}
               <span className="truncate flex-1">{session.name}</span>
-              {session.scheduled_at && (
+              {/* Afficher started_at pour les séances terminées, sinon scheduled_at */}
+              {(session.status === "terminee" ? session.started_at : session.scheduled_at) && (
                 <span className="text-muted-foreground shrink-0">
-                  {formatTime(session.scheduled_at)}
+                  {formatTime(session.status === "terminee" && session.started_at ? session.started_at : session.scheduled_at!)}
                 </span>
               )}
             </div>

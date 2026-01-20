@@ -1038,6 +1038,8 @@ def get_dashboard(
             recurrence_data=s.recurrence_data,
             recurrence_exceptions=s.recurrence_exceptions,
             recurrence_end_date=s.recurrence_end_date,
+            parent_session_id=s.parent_session_id,
+            occurrence_date=s.occurrence_date,
             created_at=s.created_at,
         )
         for s in recent
@@ -1065,6 +1067,8 @@ def get_dashboard(
             recurrence_data=s.recurrence_data,
             recurrence_exceptions=s.recurrence_exceptions,
             recurrence_end_date=s.recurrence_end_date,
+            parent_session_id=s.parent_session_id,
+            occurrence_date=s.occurrence_date,
             created_at=s.created_at,
         )
         for s in upcoming

@@ -1088,6 +1088,17 @@ class SessionService:
         
         # Créer une nouvelle occurrence
         # L'occurrence hérite de toutes les propriétés du parent
+        # Combiner la date de l'occurrence avec l'heure du parent
+        scheduled_datetime = occurrence_date_only
+        if parent.scheduled_at:
+            # Utiliser l'heure du parent planifié
+            scheduled_datetime = occurrence_date_only.replace(
+                hour=parent.scheduled_at.hour,
+                minute=parent.scheduled_at.minute,
+                second=0,
+                microsecond=0,
+            )
+        
         occurrence = WorkoutSession(
             name=parent.name,
             activity_type=parent.activity_type,
@@ -1096,7 +1107,7 @@ class SessionService:
             status=SessionStatus.PLANIFIEE,
             user_id=user_id,
             template_id=parent.template_id,
-            scheduled_at=occurrence_date,
+            scheduled_at=scheduled_datetime,
             notes=parent.notes,
             # Lien vers le parent
             parent_session_id=parent_session_id,

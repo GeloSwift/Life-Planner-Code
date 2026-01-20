@@ -552,6 +552,8 @@ class WorkoutSessionListResponse(BaseModel):
     recurrence_data: Optional[list[Union[int, str]]] = None
     recurrence_exceptions: Optional[list[str]] = None
     recurrence_end_date: Optional[date] = None
+    parent_session_id: Optional[int] = None  # ID de la session parente (si occurrence)
+    occurrence_date: Optional[date] = None  # Date spécifique de cette occurrence
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
