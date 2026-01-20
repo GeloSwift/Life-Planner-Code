@@ -834,9 +834,12 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
               className="justify-start"
               onClick={() => {
                 if (actionMenuSession) {
-                  // Passer la date d'occurrence pour les séances récurrentes
-                  const dateStr = formatLocalDate(actionMenuSession.date);
-                  router.push(`/workout/sessions/${actionMenuSession.session.id}?date=${dateStr}`);
+                  const { session, date } = actionMenuSession;
+                  // Si séance récurrente, passer la date de l'occurrence
+                  const dateStr = session.recurrence_type
+                    ? `?occurrence_date=${formatLocalDate(date)}`
+                    : "";
+                  router.push(`/workout/sessions/${session.id}${dateStr}`);
                   setActionMenuSession(null);
                 }
               }}

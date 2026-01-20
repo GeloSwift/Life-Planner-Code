@@ -8,12 +8,9 @@
  * - Liste des exercices avec séries à cocher
  * - Possibilité d'ajouter des sets
  * - Timer de repos entre les séries
- * 
- * Pour les séances récurrentes, utilise le système d'occurrences
- * qui permet de tracker chaque occurrence individuellement.
  */
 
-import { Suspense, useEffect, useState, useCallback, use } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { BackgroundDecorations } from "@/components/layout/background-decorations";
@@ -22,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { workoutApi, type SessionOccurrence } from "@/lib/workout-api";
+import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import {
   ACTIVITY_TYPE_LABELS,
@@ -48,17 +45,16 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-function SessionPageContent({ params }: PageProps) {
+export default function SessionPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError, info } = useToast();
 
-  // Date d'occurrence passée depuis le calendrier
-  const occurrenceDate = searchParams.get("date");
+  // Date de l'occurrence (si séance récurrente)
+  const occurrenceDate = searchParams.get("occurrence_date");
 
   const [session, setSession] = useState<WorkoutSession | null>(null);
-  const [occurrence, setOccurrence] = useState<SessionOccurrence | null>(null);
   const [exercises, setExercises] = useState<WorkoutSessionExercise[]>([]);
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -104,20 +100,6 @@ function SessionPageContent({ params }: PageProps) {
       // Charger les notes de la séance
       setSessionNotes(sessionData.notes || "");
 
-      // Pour les séances récurrentes avec une date d'occurrence,
-      // vérifier si une occurrence existe déjà (en cours)
-      if (sessionData.recurrence_type && occurrenceDate) {
-        try {
-          // Essayer de créer/récupérer l'occurrence pour voir son état
-          const occ = await workoutApi.occurrences.createOrGet(sessionData.id, occurrenceDate);
-          if (occ.status === "en_cours" || occ.status === "terminee") {
-            setOccurrence(occ);
-          }
-        } catch {
-          // Si ça échoue, on continue sans occurrence (elle sera créée au start)
-        }
-      }
-
       // Charger les notes des exercices
       const notesMap: Record<number, string> = {};
       exercisesList.forEach((ex) => {
@@ -140,23 +122,17 @@ function SessionPageContent({ params }: PageProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [id, occurrenceDate]);
+  }, [id]);
 
   useEffect(() => {
     loadSession();
   }, [loadSession]);
 
-  // Timer de séance - fonctionne avec occurrence ou session
+  // Timer de séance
   useEffect(() => {
-    // Utiliser l'occurrence si elle existe, sinon la session
-    const activeStartTime = occurrence?.started_at || session?.started_at;
-    const isActive = occurrence
-      ? occurrence.status === "en_cours"
-      : session?.status === "en_cours";
+    if (!session?.started_at || session.status !== "en_cours") return;
 
-    if (!activeStartTime || !isActive) return;
-
-    const startTime = new Date(activeStartTime).getTime();
+    const startTime = new Date(session.started_at).getTime();
 
     const updateTime = () => {
       const now = Date.now();
@@ -167,7 +143,7 @@ function SessionPageContent({ params }: PageProps) {
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
-  }, [session?.started_at, session?.status, occurrence]);
+  }, [session?.started_at, session?.status]);
 
   // Timer de repos
   useEffect(() => {
@@ -218,20 +194,24 @@ function SessionPageContent({ params }: PageProps) {
     if (!session) return;
     setIsSubmitting(true);
     try {
-      // Pour les séances récurrentes avec une date d'occurrence
+      let updated: WorkoutSession;
+
+      // Si c'est une séance récurrente avec une date d'occurrence, créer/démarrer l'occurrence
       if (session.recurrence_type && occurrenceDate) {
-        // Créer ou récupérer l'occurrence
-        const occ = await workoutApi.occurrences.createOrGet(session.id, occurrenceDate);
-        // Démarrer l'occurrence
-        const startedOcc = await workoutApi.occurrences.start(occ.id);
-        setOccurrence(startedOcc);
-        success(`Séance lancée ! 🚀 ${session.name}`);
+        updated = await workoutApi.sessions.startOccurrence(session.id, occurrenceDate);
+        // Mettre à jour l'URL pour pointer vers l'occurrence créée
+        router.replace(`/workout/sessions/${updated.id}`);
       } else {
-        // Comportement existant pour les séances non-récurrentes
-        const updated = await workoutApi.sessions.start(session.id);
-        setSession(updated);
-        success(`Séance lancée ! 🚀 ${session.name}`);
+        // Séance normale (non récurrente)
+        updated = await workoutApi.sessions.start(session.id);
       }
+
+      setSession(updated);
+      // Recharger les exercices car l'occurrence a ses propres exercices
+      if (updated.exercises) {
+        setExercises(updated.exercises);
+      }
+      success(`Séance lancée ! 🚀 ${session.name}`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -250,17 +230,9 @@ function SessionPageContent({ params }: PageProps) {
         });
       }
 
-      // Pour les séances récurrentes avec occurrence
-      if (occurrence) {
-        await workoutApi.occurrences.complete(occurrence.id, {
-          notes: sessionNotes || undefined,
-        });
-        success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
-      } else {
-        // Terminer la séance (les notes ont déjà été sauvegardées via update)
-        await workoutApi.sessions.complete(session.id);
-        success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
-      }
+      // Terminer la séance (les notes ont déjà été sauvegardées via update)
+      await workoutApi.sessions.complete(session.id);
+      success(`Séance terminée ! 🎉 ${session.name} - ${formatTime(elapsedTime)}`);
       router.push("/workout/history");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur");
@@ -778,11 +750,9 @@ function SessionPageContent({ params }: PageProps) {
     );
   }
 
-  // Pour les séances récurrentes avec occurrence, utiliser le statut de l'occurrence
-  const effectiveStatus = occurrence?.status || session.status;
-  const isActive = effectiveStatus === "en_cours";
-  const isPlanned = effectiveStatus === "planifiee";
-  const isCancelled = effectiveStatus === "annulee";
+  const isActive = session.status === "en_cours";
+  const isPlanned = session.status === "planifiee";
+  const isCancelled = session.status === "annulee";
 
   // Vérifier si on peut lancer la séance (même jour que planifié ou jour de récurrence)
   const canStartSession = (): boolean => {
@@ -1284,18 +1254,5 @@ function SessionPageContent({ params }: PageProps) {
         </div>
       )}
     </div>
-  );
-}
-
-// Wrapper avec Suspense pour useSearchParams
-export default function SessionPage({ params }: PageProps) {
-  return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    }>
-      <SessionPageContent params={params} />
-    </Suspense>
   );
 }

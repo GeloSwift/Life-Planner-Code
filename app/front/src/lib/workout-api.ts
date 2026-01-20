@@ -398,6 +398,73 @@ export const sessionsApi = {
       { method: "POST" }
     );
   },
+
+  // ==========================================================================
+  // OCCURRENCE MANAGEMENT (for recurring sessions)
+  // ==========================================================================
+
+  /**
+   * Démarre une occurrence spécifique d'une séance récurrente.
+   * Crée l'occurrence si elle n'existe pas encore.
+   */
+  async startOccurrence(parentSessionId: number, occurrenceDate: string): Promise<WorkoutSession> {
+    return workoutFetch<WorkoutSession>(
+      `/workout/sessions/${parentSessionId}/occurrences/start?occurrence_date=${encodeURIComponent(occurrenceDate)}`,
+      { method: "POST" }
+    );
+  },
+
+  /**
+   * Récupère ou crée une occurrence pour une date donnée.
+   * Ne démarre pas la session.
+   */
+  async getOccurrence(parentSessionId: number, occurrenceDate: string): Promise<WorkoutSession | null> {
+    try {
+      return await workoutFetch<WorkoutSession>(
+        `/workout/sessions/${parentSessionId}/occurrence?occurrence_date=${encodeURIComponent(occurrenceDate)}`
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Liste toutes les occurrences d'une séance récurrente.
+   */
+  async listOccurrences(parentSessionId: number, status?: string): Promise<WorkoutSession[]> {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    const query = params.toString();
+    return workoutFetch<WorkoutSession[]>(
+      `/workout/sessions/${parentSessionId}/occurrences${query ? `?${query}` : ""}`
+    );
+  },
+
+  /**
+   * Récupère l'historique des séances terminées.
+   * Inclut les séances non-récurrentes ET les occurrences terminées.
+   */
+  async getHistory(params?: {
+    start_date?: string;
+    end_date?: string;
+  }): Promise<WorkoutSession[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.start_date) searchParams.set("start_date", params.start_date);
+    if (params?.end_date) searchParams.set("end_date", params.end_date);
+    const query = searchParams.toString();
+    return workoutFetch<WorkoutSession[]>(`/workout/history${query ? `?${query}` : ""}`);
+  },
+
+  /**
+   * Récupère uniquement les sessions parentes (pour la liste des séances).
+   * Exclut les occurrences (enfants).
+   */
+  async getParentSessions(status?: string): Promise<WorkoutSession[]> {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    const query = params.toString();
+    return workoutFetch<WorkoutSession[]>(`/workout/sessions/parents${query ? `?${query}` : ""}`);
+  },
 };
 
 // =============================================================================
@@ -611,140 +678,6 @@ export const enumsApi = {
 };
 
 // =============================================================================
-// OCCURRENCES API
-// =============================================================================
-
-export interface SessionOccurrence {
-  id: number;
-  session_id: number;
-  occurrence_date: string;
-  status: string;
-  started_at?: string | null;
-  ended_at?: string | null;
-  duration_seconds?: number | null;
-  notes?: string | null;
-  rating?: number | null;
-  perceived_difficulty?: number | null;
-  calories_burned?: number | null;
-  created_at: string;
-  updated_at: string;
-  exercise_sets?: OccurrenceExercise[];
-}
-
-export interface OccurrenceExercise {
-  id: number;
-  occurrence_id: number;
-  session_exercise_id: number;
-  is_completed: boolean;
-  notes?: string | null;
-  sets: OccurrenceSet[];
-}
-
-export interface OccurrenceSet {
-  id: number;
-  occurrence_exercise_id: number;
-  set_number: number;
-  actual_reps?: number | null;
-  actual_weight?: number | null;
-  actual_duration?: number | null;
-  actual_distance?: number | null;
-  is_completed: boolean;
-  rest_taken?: number | null;
-}
-
-export interface OccurrenceListItem {
-  id: number;
-  session_id: number;
-  occurrence_date: string;
-  status: string;
-  started_at?: string | null;
-  ended_at?: string | null;
-  duration_seconds?: number | null;
-  rating?: number | null;
-  notes?: string | null;
-  session_name?: string | null;
-  activity_type?: string | null;
-}
-
-export const occurrencesApi = {
-  /** Crée ou récupère une occurrence pour une séance à une date donnée */
-  async createOrGet(sessionId: number, occurrenceDate: string): Promise<SessionOccurrence> {
-    return workoutFetch<SessionOccurrence>("/workout/occurrences", {
-      method: "POST",
-      body: JSON.stringify({
-        session_id: sessionId,
-        occurrence_date: occurrenceDate,
-      }),
-    });
-  },
-
-  /** Récupère une occurrence par son ID */
-  async get(occurrenceId: number): Promise<SessionOccurrence> {
-    return workoutFetch<SessionOccurrence>(`/workout/occurrences/${occurrenceId}`);
-  },
-
-  /** Démarre une occurrence */
-  async start(occurrenceId: number): Promise<SessionOccurrence> {
-    return workoutFetch<SessionOccurrence>(`/workout/occurrences/${occurrenceId}/start`, {
-      method: "POST",
-    });
-  },
-
-  /** Termine une occurrence */
-  async complete(
-    occurrenceId: number,
-    data?: { rating?: number; notes?: string; perceived_difficulty?: number }
-  ): Promise<SessionOccurrence> {
-    return workoutFetch<SessionOccurrence>(`/workout/occurrences/${occurrenceId}/complete`, {
-      method: "POST",
-      body: JSON.stringify(data || {}),
-    });
-  },
-
-  /** Met à jour une série dans une occurrence */
-  async updateSet(
-    setId: number,
-    data: {
-      set_number: number;
-      actual_reps?: number | null;
-      actual_weight?: number | null;
-      actual_duration?: number | null;
-      actual_distance?: number | null;
-      is_completed?: boolean;
-    }
-  ): Promise<void> {
-    await workoutFetch<{ status: string }>(`/workout/occurrence-sets/${setId}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    });
-  },
-
-  /** Liste des occurrences terminées (historique) */
-  async listHistory(params?: {
-    month?: number;
-    year?: number;
-    limit?: number;
-  }): Promise<OccurrenceListItem[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.month) searchParams.append("month", params.month.toString());
-    if (params?.year) searchParams.append("year", params.year.toString());
-    if (params?.limit) searchParams.append("limit", params.limit.toString());
-
-    const query = searchParams.toString();
-    return workoutFetch<OccurrenceListItem[]>(
-      `/workout/occurrences/history/list${query ? `?${query}` : ""}`
-    );
-  },
-
-  /** Statistiques d'occurrences par mois */
-  async getStats(year: number, month: number): Promise<{ total: number; completed: number; planned: number }> {
-    return workoutFetch<{ total: number; completed: number; planned: number }>(
-      `/workout/occurrences/stats/${year}/${month}`
-    );
-  },
-};
-
-// =============================================================================
 // EXPORT ALL
 // =============================================================================
 
@@ -757,7 +690,6 @@ export const workoutApi = {
   stats: statsApi,
   enums: enumsApi,
   activityTypes: activityTypesApi,
-  occurrences: occurrencesApi,
 };
 
 export default workoutApi;

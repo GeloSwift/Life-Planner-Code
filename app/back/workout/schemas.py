@@ -431,6 +431,7 @@ class WorkoutSessionBase(BaseModel):
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence (jours de la semaine pour weekly, jours du mois pour monthly)
     recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD) pour les occurrences supprimées
+    recurrence_end_date: Optional[datetime] = None  # Date de fin de la récurrence
 
 
 class WorkoutSessionCreate(WorkoutSessionBase):
@@ -471,6 +472,9 @@ class WorkoutSessionResponse(WorkoutSessionBase):
     perceived_difficulty: Optional[int] = None
     calories_burned: Optional[int] = None
     exercises: list[SessionExerciseResponse] = []
+    # Champs pour le système Parent/Enfant de récurrence
+    parent_session_id: Optional[int] = None  # ID de la session parente (si occurrence)
+    occurrence_date: Optional[datetime] = None  # Date spécifique de cette occurrence
     created_at: datetime
     updated_at: datetime
     
@@ -721,107 +725,3 @@ class CalendarResponse(BaseModel):
     events: list[CalendarEventResponse]
     month: int
     year: int
-
-
-# =============================================================================
-# SESSION OCCURRENCE SCHEMAS
-# =============================================================================
-
-class OccurrenceSetBase(BaseModel):
-    """Base schema pour une série dans une occurrence."""
-    set_number: int
-    actual_reps: Optional[int] = None
-    actual_weight: Optional[float] = None
-    actual_duration: Optional[int] = None
-    actual_distance: Optional[float] = None
-    is_completed: bool = False
-    rest_taken: Optional[int] = None
-
-
-class OccurrenceSetCreate(OccurrenceSetBase):
-    """Création d'une série dans une occurrence."""
-    pass
-
-
-class OccurrenceSetResponse(OccurrenceSetBase):
-    """Réponse pour une série dans une occurrence."""
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    occurrence_exercise_id: int
-    created_at: datetime
-
-
-class OccurrenceExerciseBase(BaseModel):
-    """Base schema pour un exercice dans une occurrence."""
-    is_completed: bool = False
-    notes: Optional[str] = None
-
-
-class OccurrenceExerciseCreate(OccurrenceExerciseBase):
-    """Création d'un exercice dans une occurrence."""
-    session_exercise_id: int
-
-
-class OccurrenceExerciseResponse(OccurrenceExerciseBase):
-    """Réponse pour un exercice dans une occurrence."""
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    occurrence_id: int
-    session_exercise_id: int
-    sets: list[OccurrenceSetResponse] = []
-    created_at: datetime
-
-
-class SessionOccurrenceBase(BaseModel):
-    """Base schema pour une occurrence de séance."""
-    occurrence_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-    status: str = "planifiee"
-    notes: Optional[str] = None
-    rating: Optional[int] = Field(None, ge=1, le=5)
-    perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
-    calories_burned: Optional[int] = None
-
-
-class SessionOccurrenceCreate(BaseModel):
-    """Création d'une occurrence (lancer une séance pour une date)."""
-    session_id: int
-    occurrence_date: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}$")
-
-
-class SessionOccurrenceUpdate(BaseModel):
-    """Mise à jour d'une occurrence."""
-    status: Optional[str] = None
-    notes: Optional[str] = None
-    rating: Optional[int] = Field(None, ge=1, le=5)
-    perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
-    calories_burned: Optional[int] = None
-
-
-class SessionOccurrenceResponse(SessionOccurrenceBase):
-    """Réponse pour une occurrence de séance."""
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    session_id: int
-    started_at: Optional[datetime] = None
-    ended_at: Optional[datetime] = None
-    duration_seconds: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-    exercise_sets: list[OccurrenceExerciseResponse] = []
-
-
-class SessionOccurrenceListResponse(BaseModel):
-    """Réponse pour la liste des occurrences (historique)."""
-    model_config = ConfigDict(from_attributes=True)
-    id: int
-    session_id: int
-    occurrence_date: str
-    status: str
-    started_at: Optional[datetime] = None
-    ended_at: Optional[datetime] = None
-    duration_seconds: Optional[int] = None
-    rating: Optional[int] = None
-    notes: Optional[str] = None
-    # Infos de la séance parente (injectées)
-    session_name: Optional[str] = None
-    activity_type: Optional[str] = None

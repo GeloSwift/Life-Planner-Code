@@ -376,6 +376,10 @@ export interface WorkoutSession {
   recurrence_type?: "daily" | "weekly" | "monthly" | null;
   recurrence_data?: (number | string)[] | null; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
   recurrence_exceptions?: string[] | null; // Dates d'exclusion "YYYY-MM-DD"
+  recurrence_end_date?: string | null; // Date de fin de la récurrence
+  // Système Parent/Enfant pour les occurrences de récurrence
+  parent_session_id?: number | null; // ID de la session parente (si occurrence)
+  occurrence_date?: string | null; // Date spécifique de cette occurrence
   created_at: string;
   updated_at: string;
   exercises?: WorkoutSessionExercise[];
@@ -392,6 +396,7 @@ export interface WorkoutSessionCreate {
   recurrence_type?: "daily" | "weekly" | "monthly";
   recurrence_data?: (number | string)[]; // Pour weekly: ["monday", "wednesday"], pour monthly: [1, 15]
   recurrence_exceptions?: string[]; // Dates d'exclusion "YYYY-MM-DD"
+  recurrence_end_date?: string; // Date de fin de la récurrence
   exercises?: Array<{
     exercise_id: number;
     order?: number;

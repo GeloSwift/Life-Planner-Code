@@ -80,98 +80,24 @@ const extractMuscles = (exercise: WorkoutSessionExercise): string | null => {
     return null;
 };
 
-// Interface unifiée pour l'affichage dans l'historique
-interface HistoryItem {
-    id: string; // "session_X" ou "occurrence_X"
-    type: "session" | "occurrence";
-    name: string;
-    activity_type: string;
-    date: Date;
-    duration_seconds: number | null;
-    rating: number | null;
-    notes: string | null;
-    // Données originales pour affichage détaillé
-    session?: WorkoutSession;
-    occurrence?: {
-        id: number;
-        session_id: number;
-        occurrence_date: string;
-        status: string;
-        started_at?: string | null;
-        ended_at?: string | null;
-        duration_seconds?: number | null;
-        rating?: number | null;
-        notes?: string | null;
-        session_name?: string | null;
-        activity_type?: string | null;
-    };
-}
-
 export default function HistoryPage() {
     const router = useRouter();
     const { error: showError } = useToast();
     const [sessions, setSessions] = useState<WorkoutSession[]>([]);
     const [allSessions, setAllSessions] = useState<WorkoutSession[]>([]); // Toutes les sessions (pour calcul)
-    const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]); // Items fusionnés pour affichage
     const [isLoading, setIsLoading] = useState(true);
     const [selectedMonth, setSelectedMonth] = useState<string>("all");
-    const [expandedSession, setExpandedSession] = useState<string | null>(null);
+    const [expandedSession, setExpandedSession] = useState<number | null>(null);
 
     const loadSessions = useCallback(async () => {
         try {
-            // Charger les séances terminées (non-récurrentes)
-            const [completedData, allData, occurrencesData] = await Promise.all([
-                workoutApi.sessions.list({
-                    status: "terminee",
-                    limit: 100,
-                }),
-                workoutApi.sessions.list({ limit: 100 }),
-                workoutApi.occurrences.listHistory({ limit: 100 }),
-            ]);
-
+            // Charger l'historique des séances terminées (inclut les occurrences)
+            const completedData = await workoutApi.sessions.getHistory();
             setSessions(completedData);
+
+            // Charger toutes les séances parentes pour calculer les stats
+            const allData = await workoutApi.sessions.list({ limit: 100 });
             setAllSessions(allData);
-
-            // Créer les items d'historique unifiés
-            const items: HistoryItem[] = [];
-
-            // Ajouter les sessions terminées non-récurrentes
-            completedData.forEach((session) => {
-                // Ne pas inclure les sessions récurrentes car elles sont représentées par leurs occurrences
-                if (!session.recurrence_type) {
-                    items.push({
-                        id: `session_${session.id}`,
-                        type: "session",
-                        name: session.name,
-                        activity_type: session.activity_type,
-                        date: new Date(session.ended_at || session.started_at || session.created_at),
-                        duration_seconds: session.duration_seconds || null,
-                        rating: session.rating || null,
-                        notes: session.notes || null,
-                        session,
-                    });
-                }
-            });
-
-            // Ajouter les occurrences terminées
-            occurrencesData.forEach((occ) => {
-                items.push({
-                    id: `occurrence_${occ.id}`,
-                    type: "occurrence",
-                    name: occ.session_name || "Séance",
-                    activity_type: occ.activity_type || "autre",
-                    date: new Date(occ.occurrence_date),
-                    duration_seconds: occ.duration_seconds || null,
-                    rating: occ.rating || null,
-                    notes: occ.notes || null,
-                    occurrence: occ,
-                });
-            });
-
-            // Trier par date décroissante
-            items.sort((a, b) => b.date.getTime() - a.date.getTime());
-            setHistoryItems(items);
-
         } catch (err) {
             showError(err instanceof Error ? err.message : "Erreur lors du chargement");
         } finally {
@@ -183,80 +109,66 @@ export default function HistoryPage() {
         loadSessions();
     }, [loadSessions]);
 
-    // Générer la liste des mois disponibles (basé sur historyItems)
+    // Générer la liste des mois disponibles (basé sur toutes les sessions ET les sessions terminées)
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
-        // Ajouter les mois depuis toutes les sessions planifiées
+        // Ajouter les mois depuis toutes les sessions
         allSessions.forEach((session) => {
             const date = new Date(session.scheduled_at || session.created_at);
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
             months.add(monthKey);
         });
-        // Ajouter les mois des historyItems
-        historyItems.forEach((item) => {
-            const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
+        // Ajouter aussi les mois des sessions terminées (au cas où allSessions est incomplet)
+        sessions.forEach((session) => {
+            const date = new Date(session.ended_at || session.started_at || session.created_at);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
             months.add(monthKey);
         });
         return Array.from(months).sort((a, b) => b.localeCompare(a)); // Plus récent en premier
-    }, [allSessions, historyItems]);
+    }, [allSessions, sessions]);
 
-    // Filtrer les historyItems par mois sélectionné
-    const filteredItems = useMemo(() => {
-        if (selectedMonth === "all") return historyItems;
-        return historyItems.filter((item) => {
-            const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
+    // Filtrer par mois sélectionné
+    const filteredSessions = useMemo(() => {
+        if (selectedMonth === "all") return sessions;
+        return sessions.filter((session) => {
+            const date = new Date(session.ended_at || session.started_at || session.created_at);
+            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
             return monthKey === selectedMonth;
         });
-    }, [historyItems, selectedMonth]);
+    }, [sessions, selectedMonth]);
 
-    // Note: itemsByMonth est gardé pour référence future si on veut grouper par mois
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _itemsByMonth = useMemo(() => {
-        const grouped: Record<string, HistoryItem[]> = {};
-        filteredItems.forEach((item) => {
-            const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
-            if (!grouped[monthKey]) {
-                grouped[monthKey] = [];
-            }
-            grouped[monthKey].push(item);
-        });
-        return grouped;
-    }, [filteredItems]);
-
-    // Garder sortedSessions pour compatibilité avec l'affichage existant
+    // Trier par date décroissante
     const sortedSessions = useMemo(() => {
-        // Créer un tableau fusionné avec les sessions ET les occurrences
-        // On retourne les sessions des historyItems pour garder l'affichage compatible
-        return historyItems
-            .filter(item => {
-                if (selectedMonth === "all") return true;
-                const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
-                return monthKey === selectedMonth;
-            })
-            .filter(item => item.session) // Pour l'instant on filtre les pure occurrences
-            .map(item => item.session!);
-    }, [historyItems, selectedMonth]);
+        return [...filteredSessions].sort(
+            (a, b) =>
+                new Date(b.ended_at || b.started_at || b.created_at).getTime() -
+                new Date(a.ended_at || a.started_at || a.created_at).getTime()
+        );
+    }, [filteredSessions]);
 
     // Calculer les statistiques de progression pour le mois sélectionné
-    // Maintenant inclut les occurrences pour un comptage précis des séances récurrentes
     const monthStats = useMemo(() => {
         const targetMonth = selectedMonth === "all" ? null : selectedMonth;
 
-        // Compter les items terminés (sessions + occurrences)
+        // Utiliser allSessions si disponible, sinon fallback sur sessions terminées
+        const sessionsToCount = allSessions.length > 0 ? allSessions : sessions;
+
+        // Compter les séances terminées pour ce mois/période
         let completedCount = 0;
-        historyItems.forEach((item) => {
+        sessions.forEach((session) => {
             if (targetMonth) {
-                const monthKey = `${item.date.getFullYear()}-${String(item.date.getMonth() + 1).padStart(2, "0")}`;
+                const sessionDate = new Date(session.ended_at || session.started_at || session.created_at);
+                const monthKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, "0")}`;
                 if (monthKey === targetMonth) {
                     completedCount++;
                 }
             } else {
+                // Tous les mois - compter toutes les séances terminées
                 completedCount++;
             }
         });
 
-        // Compter TOUTES les séances planifiées pour ce mois
-        const sessionsToCount = allSessions.length > 0 ? allSessions : sessions;
+        // Compter TOUTES les séances (planifiées, terminées, annulées, en cours) pour ce mois
         let plannedCount = 0;
         sessionsToCount.forEach((session) => {
             const sessionDate = new Date(session.scheduled_at || session.created_at);
@@ -267,6 +179,7 @@ export default function HistoryPage() {
                     plannedCount++;
                 }
             } else {
+                // Tous les mois - compter toutes les séances
                 plannedCount++;
             }
         });
@@ -278,9 +191,9 @@ export default function HistoryPage() {
         const percentage = plannedCount > 0 ? Math.round((completedCount / plannedCount) * 100) : 0;
 
         return { completed: completedCount, planned: plannedCount, percentage };
-    }, [historyItems, sessions, allSessions, selectedMonth]);
+    }, [sessions, allSessions, selectedMonth]);
 
-    // Grouper par mois (pour l'affichage existant)
+    // Grouper par mois
     const sessionsByMonth = useMemo(() => {
         const grouped: Record<string, WorkoutSession[]> = {};
         sortedSessions.forEach((session) => {
@@ -462,8 +375,7 @@ export default function HistoryPage() {
                                 </h2>
                                 <div className="space-y-3">
                                     {monthSessions.map((session) => {
-                                        const sessionKey = `session_${session.id}`;
-                                        const isExpanded = expandedSession === sessionKey;
+                                        const isExpanded = expandedSession === session.id;
                                         const sessionProgress = getSessionProgress(session);
 
                                         return (
@@ -475,7 +387,7 @@ export default function HistoryPage() {
                                                     <div
                                                         className="flex items-center justify-between cursor-pointer"
                                                         onClick={() =>
-                                                            setExpandedSession(isExpanded ? null : sessionKey)
+                                                            setExpandedSession(isExpanded ? null : session.id)
                                                         }
                                                     >
                                                         <div className="flex items-center gap-4">
