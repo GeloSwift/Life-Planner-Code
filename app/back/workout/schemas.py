@@ -431,7 +431,7 @@ class WorkoutSessionBase(BaseModel):
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence (jours de la semaine pour weekly, jours du mois pour monthly)
     recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD) pour les occurrences supprimées
-    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence (YYYY-MM-DD)
+    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence
 
 
 class WorkoutSessionCreate(WorkoutSessionBase):
@@ -452,7 +452,7 @@ class WorkoutSessionUpdate(BaseModel):
     recurrence_type: Optional[str] = Field(None, pattern="^(daily|weekly|monthly)$")  # Type de récurrence
     recurrence_data: Optional[list[Union[int, str]]] = None  # Données de récurrence
     recurrence_exceptions: Optional[list[str]] = None  # Dates d'exclusion (YYYY-MM-DD)
-    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence (YYYY-MM-DD)
+    recurrence_end_date: Optional[date] = None  # Date de fin de la récurrence
     rating: Optional[int] = Field(None, ge=1, le=5)
     perceived_difficulty: Optional[int] = Field(None, ge=1, le=10)
     calories_burned: Optional[int] = Field(None, ge=0)
@@ -476,8 +476,11 @@ class WorkoutSessionResponse(WorkoutSessionBase):
     # Champs pour le système Parent/Enfant de récurrence
     parent_session_id: Optional[int] = None  # ID de la session parente (si occurrence)
     occurrence_date: Optional[datetime] = None  # Date spécifique de cette occurrence
+    # Assuré que recurrence_end_date est inclus dans la réponse (hérité de WorkoutSessionBase mais déclaré explicitement)
+    recurrence_end_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
+    
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -548,6 +551,7 @@ class WorkoutSessionListResponse(BaseModel):
     recurrence_type: Optional[str] = None
     recurrence_data: Optional[list[Union[int, str]]] = None
     recurrence_exceptions: Optional[list[str]] = None
+    recurrence_end_date: Optional[date] = None
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)

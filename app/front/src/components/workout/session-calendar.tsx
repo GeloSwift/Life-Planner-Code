@@ -134,7 +134,9 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     // Utiliser recurrence_end_date si fourni, sinon fallback sur X mois
     let endDate: Date;
     if (recurrenceEndDate) {
-      endDate = new Date(recurrenceEndDate + "T23:59:59");
+      // Gérer les formats date (YYYY-MM-DD) et datetime (YYYY-MM-DDTHH:MM:SS...)
+      const dateOnly = recurrenceEndDate.split("T")[0]; // Extraire YYYY-MM-DD
+      endDate = new Date(dateOnly + "T23:59:59");
     } else {
       endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + monthsAheadFallback);
@@ -287,7 +289,6 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
         (session.recurrence_exceptions ?? []).map((d) => String(d))
       );
 
-      // Générer toutes les dates récurrentes (utilise recurrence_end_date si disponible)
       const recurringDates = generateRecurringDates(
         sessionDate,
         session.recurrence_type ?? null,

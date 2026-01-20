@@ -328,9 +328,10 @@ def get_sessions(
     session_status = SessionStatus(status_filter.value) if status_filter else None
     activity = ActivityType(activity_type.value) if activity_type else None
     
-    return SessionService.get_sessions(
+    sessions = SessionService.get_sessions(
         db, current_user.id, session_status, activity, start_date, end_date, skip, limit
     )
+    return sessions
 
 
 @router.get(
@@ -1036,6 +1037,7 @@ def get_dashboard(
             recurrence_type=s.recurrence_type,
             recurrence_data=s.recurrence_data,
             recurrence_exceptions=s.recurrence_exceptions,
+            recurrence_end_date=s.recurrence_end_date,
             created_at=s.created_at,
         )
         for s in recent
@@ -1062,6 +1064,7 @@ def get_dashboard(
             recurrence_type=s.recurrence_type,
             recurrence_data=s.recurrence_data,
             recurrence_exceptions=s.recurrence_exceptions,
+            recurrence_end_date=s.recurrence_end_date,
             created_at=s.created_at,
         )
         for s in upcoming

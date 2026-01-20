@@ -16,7 +16,7 @@ Architecture:
 - Chaque session a des exercices, chaque exercice a des séries
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from enum import Enum
 from typing import Optional
 
@@ -24,6 +24,7 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    Date,
     Boolean,
     Integer,
     Float,
@@ -406,7 +407,7 @@ class WorkoutSession(Base):
     # Exceptions de récurrence (occurrences supprimées) - JSON list de dates "YYYY-MM-DD" (Europe/Paris)
     recurrence_exceptions: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Date de fin de récurrence (optionnel)
-    recurrence_end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    recurrence_end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     
     # Système Parent/Enfant pour les occurrences de récurrence
     # - Si parent_session_id est NULL et recurrence_type est défini -> c'est un PARENT (template)
