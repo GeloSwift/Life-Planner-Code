@@ -123,15 +123,22 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
     startDate: Date,
     recurrenceType: "daily" | "weekly" | "monthly" | null | undefined,
     recurrenceData: (number | string)[] | null | undefined,
-    monthsAhead: number = 3
+    recurrenceEndDate?: string | null, // Date de fin de récurrence (YYYY-MM-DD)
+    monthsAheadFallback: number = 6 // Fallback si pas de date de fin
   ): Date[] => {
     if (!recurrenceType || !startDate) {
       return [startDate];
     }
 
     const dates: Date[] = [];
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + monthsAhead);
+    // Utiliser recurrence_end_date si fourni, sinon fallback sur X mois
+    let endDate: Date;
+    if (recurrenceEndDate) {
+      endDate = new Date(recurrenceEndDate + "T23:59:59");
+    } else {
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + monthsAheadFallback);
+    }
 
     // Mapping des jours de la semaine
     const dayMapping: Record<string, number> = {
@@ -280,12 +287,12 @@ export function SessionCalendar({ sessions, onSessionDeleted }: SessionCalendarP
         (session.recurrence_exceptions ?? []).map((d) => String(d))
       );
 
-      // Générer toutes les dates récurrentes (6 mois à l'avance pour être sûr)
+      // Générer toutes les dates récurrentes (utilise recurrence_end_date si disponible)
       const recurringDates = generateRecurringDates(
         sessionDate,
         session.recurrence_type ?? null,
         parsedRecurrenceData,
-        6 // 6 mois à l'avance pour couvrir une large période
+        session.recurrence_end_date // Passe la date de fin de récurrence
       );
 
       // Ajouter chaque occurrence au mapping
