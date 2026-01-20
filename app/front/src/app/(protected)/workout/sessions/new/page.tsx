@@ -457,6 +457,8 @@ export default function NewSessionPage() {
   const [scheduledTime, setScheduledTime] = useState("09:00");
   const [notes, setNotes] = useState("");
   const [recurrenceType, setRecurrenceType] = useState<"daily" | "weekly" | "monthly" | null>(null);
+  // Durée de récurrence (1, 3, 6, 9, 12, 24 mois)
+  const [recurrenceDuration, setRecurrenceDuration] = useState<string>("3"); // 3 mois par défaut
 
   // Activités personnalisées
   const [activityTypes, setActivityTypes] = useState<UserActivityType[]>([]);
@@ -644,7 +646,10 @@ export default function NewSessionPage() {
       const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
 
       // Calculer recurrence_data automatiquement selon le type
+
       let recurrenceData: (number | string)[] | undefined = undefined;
+      let recurrenceEndDateStr: string | undefined = undefined;
+
       if (recurrenceType) {
         const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
         if (recurrenceType === "weekly") {
@@ -658,6 +663,12 @@ export default function NewSessionPage() {
           recurrenceData = [dayOfMonth];
         }
         // Pour "daily", recurrenceData reste undefined
+
+        // Calculer la date de fin
+        const monthsToAdd = parseInt(recurrenceDuration);
+        const endDateObj = new Date(scheduledDateObj);
+        endDateObj.setMonth(endDateObj.getMonth() + monthsToAdd);
+        recurrenceEndDateStr = endDateObj.toISOString().split("T")[0];
       }
 
       // Créer la séance (on stocke la première activité sélectionnée)
@@ -964,23 +975,45 @@ export default function NewSessionPage() {
                     </SelectContent>
                   </Select>
                   {recurrenceType && scheduledDate && scheduledTime && (
-                    <p className="text-xs text-muted-foreground">
-                      {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
-                      {recurrenceType === "weekly" && (() => {
-                        const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-                        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                        const dayOfWeek = scheduledDateObj.getDay();
-                        return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
-                      })()}
-                      {recurrenceType === "monthly" && (() => {
-                        const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
-                        const dayOfMonth = scheduledDateObj.getDate();
-                        if (dayOfMonth >= 28) {
-                          return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
-                        }
-                        return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
-                      })()}
-                    </p>
+                    <div className="space-y-4 pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        {recurrenceType === "daily" && "Cette séance sera programmée tous les jours à la même heure."}
+                        {recurrenceType === "weekly" && (() => {
+                          const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+                          const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                          const dayOfWeek = scheduledDateObj.getDay();
+                          return `Cette séance sera programmée tous les ${dayNames[dayOfWeek]}s à la même heure.`;
+                        })()}
+                        {recurrenceType === "monthly" && (() => {
+                          const scheduledDateObj = new Date(`${scheduledDate}T${scheduledTime}:00`);
+                          const dayOfMonth = scheduledDateObj.getDate();
+                          if (dayOfMonth >= 28) {
+                            return `Cette séance sera programmée le dernier jour de chaque mois à la même heure.`;
+                          }
+                          return `Cette séance sera programmée le ${dayOfMonth} de chaque mois à la même heure.`;
+                        })()}
+                      </p>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="recurrence-duration">Durée de la récurrence</Label>
+                        <Select
+                          value={recurrenceDuration}
+                          onValueChange={setRecurrenceDuration}
+                        >
+                          <SelectTrigger id="recurrence-duration">
+                            <SelectValue placeholder="Durée" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 mois</SelectItem>
+                            <SelectItem value="3">3 mois</SelectItem>
+                            <SelectItem value="6">6 mois</SelectItem>
+                            <SelectItem value="9">9 mois</SelectItem>
+                            <SelectItem value="12">1 an</SelectItem>
+                            <SelectItem value="24">2 ans</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   )}
                 </div>
 
