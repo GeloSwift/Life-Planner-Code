@@ -1172,10 +1172,10 @@ END:VEVENT`;
 
   return `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Life Planner//Workout Planner//FR
+PRODID:-//My Life Planner//Workout Planner//FR
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:Life Planner - Séances
+X-WR-CALNAME:My Life Planner - Séances
 ${events}
 END:VCALENDAR`;
 }

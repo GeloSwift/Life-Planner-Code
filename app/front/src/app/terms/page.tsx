@@ -45,7 +45,7 @@ export default function TermsPage() {
                             Acceptation des conditions
                         </h2>
                         <p className="text-muted-foreground leading-relaxed">
-                            En accédant à <strong className="text-foreground">Life Planner</strong> (accessible via
+                            En accédant à <strong className="text-foreground">My Life Planner</strong> (accessible via
                             mylifeplanner.space), vous acceptez d&apos;être lié par ces conditions d&apos;utilisation.
                             Si vous n&apos;acceptez pas ces conditions, veuillez ne pas utiliser notre service.
                         </p>
@@ -58,7 +58,7 @@ export default function TermsPage() {
                         </h2>
                         <div className="space-y-4 text-muted-foreground">
                             <p className="leading-relaxed">
-                                Life Planner est une application de planification de vie personnelle qui vous permet de :
+                                My Life Planner est une application de planification de vie personnelle qui vous permet de :
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">
                                 <li>Planifier et suivre vos séances d&apos;entraînement</li>
@@ -78,7 +78,7 @@ export default function TermsPage() {
                         </h2>
                         <div className="space-y-4 text-muted-foreground">
                             <p className="leading-relaxed">
-                                Pour utiliser Life Planner, vous devez créer un compte. Vous vous engagez à :
+                                Pour utiliser My Life Planner, vous devez créer un compte. Vous vous engagez à :
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">
                                 <li>Fournir des informations exactes et à jour</li>
@@ -113,7 +113,7 @@ export default function TermsPage() {
                             Propriété intellectuelle
                         </h2>
                         <p className="text-muted-foreground leading-relaxed">
-                            Le contenu de Life Planner (code, design, logos, textes) est protégé par les droits
+                            Le contenu de My Life Planner (code, design, logos, textes) est protégé par les droits
                             d&apos;auteur. Vous conservez tous les droits sur les données que vous créez dans
                             l&apos;application (exercices personnalisés, séances, notes).
                         </p>
@@ -127,7 +127,7 @@ export default function TermsPage() {
                         </h2>
                         <div className="p-4 bg-amber-500/10 rounded-xl border border-amber-500/20">
                             <p className="text-amber-600 dark:text-amber-400 leading-relaxed">
-                                <strong>Important :</strong> Life Planner est un outil de planification et de suivi.
+                                <strong>Important :</strong> My Life Planner est un outil de planification et de suivi.
                                 Il ne remplace pas les conseils d&apos;un professionnel de santé. Consultez un médecin
                                 avant de commencer tout programme d&apos;exercice, surtout si vous avez des conditions
                                 médicales préexistantes.

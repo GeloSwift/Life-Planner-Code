@@ -88,7 +88,7 @@ export default function HomePage() {
     {
       icon: Smartphone,
       title: "Accessible partout",
-      description: "Accédez à Life Planner depuis n'importe quel appareil : ordinateur, tablette ou smartphone.",
+      description: "Accédez à My Life Planner depuis n'importe quel appareil : ordinateur, tablette ou smartphone.",
     },
   ];
 
@@ -111,7 +111,7 @@ export default function HomePage() {
           </h1>
 
           <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl leading-relaxed text-muted-foreground px-2 sm:px-0">
-            <strong className="text-foreground">Life Planner</strong> est une application de planification personnelle
+            <strong className="text-foreground">My Life Planner</strong> est une application de planification personnelle
             qui vous aide à organiser vos séances de sport, gérer votre budget, suivre vos habitudes
             et réviser vos cours — le tout synchronisé avec <strong className="text-foreground">Google Calendar</strong>.
           </p>
@@ -179,7 +179,7 @@ export default function HomePage() {
             Comment ça <span className="gradient-text">fonctionne</span>
           </h2>
           <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Life Planner s&apos;intègre avec vos outils favoris pour vous offrir une expérience fluide et connectée
+            My Life Planner s&apos;intègre avec vos outils favoris pour vous offrir une expérience fluide et connectée
           </p>
         </div>
 
@@ -212,7 +212,7 @@ export default function HomePage() {
             Prêt à organiser votre vie ?
           </h2>
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-            Rejoignez Life Planner et commencez à planifier vos objectifs dès aujourd&apos;hui.
+            Rejoignez My Life Planner et commencez à planifier vos objectifs dès aujourd&apos;hui.
             Synchronisez vos activités avec Google Calendar et ne manquez plus jamais une séance.
           </p>
           {!isAuthenticated && (

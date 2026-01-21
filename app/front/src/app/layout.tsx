@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Life Planner",
+  title: "My Life Planner",
   description: "Planifiez votre vie, atteignez vos objectifs",
   verification: {
     google: "gwWYXB6z4IkCXycHVx7D6yvwcsbPF4tUUwxjEnLmK-o",

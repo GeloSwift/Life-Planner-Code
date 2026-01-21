@@ -21,7 +21,7 @@ import { useToast, ToastContainer } from "@/components/ui/toast";
 function ForgotPasswordContent() {
   const searchParams = useSearchParams();
   const { toasts, success, error, closeToast } = useToast();
-  
+
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -69,19 +69,18 @@ function ForgotPasswordContent() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-20" />
         <div className="absolute -left-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-pulse" />
         <div className="absolute -bottom-20 -right-20 h-96 w-96 rounded-full bg-accent/20 blur-3xl animate-pulse delay-1000" />
-        <div 
-          className={`relative flex h-full flex-col justify-between p-12 text-primary-foreground transition-all duration-700 ${
-            mounted ? "translate-x-0 opacity-100" : "-translate-x-10 opacity-0"
-          }`}
+        <div
+          className={`relative flex h-full flex-col justify-between p-12 text-primary-foreground transition-all duration-700 ${mounted ? "translate-x-0 opacity-100" : "-translate-x-10 opacity-0"
+            }`}
         >
           <Link href="/" className="w-fit">
             <h1 className="text-3xl font-bold tracking-tight hover:opacity-80 transition-opacity cursor-pointer">
-              Life Planner
+              My Life Planner
             </h1>
           </Link>
           <div className="space-y-4">
             <blockquote className="text-xl font-medium leading-relaxed">
-              &ldquo;Un mot de passe oublié n&apos;est pas la fin du monde. 
+              &ldquo;Un mot de passe oublié n&apos;est pas la fin du monde.
               C&apos;est juste un nouveau départ.&rdquo;
             </blockquote>
           </div>
@@ -93,23 +92,22 @@ function ForgotPasswordContent() {
 
       {/* Right side - Form */}
       <div className="flex w-full items-center justify-center px-4 lg:w-1/2">
-        <Card 
-          className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${
-            mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
+        <Card
+          className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+            }`}
         >
           <CardHeader className="space-y-1 text-center">
             <Link href="/" className="mb-4 lg:hidden block">
               <h1 className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
-                Life Planner
+                My Life Planner
               </h1>
             </Link>
             <CardTitle className="text-2xl font-bold tracking-tight">
               Mot de passe oublié ?
             </CardTitle>
             <CardDescription>
-              {isSuccess 
-                ? "Vérifiez votre boîte email" 
+              {isSuccess
+                ? "Vérifiez votre boîte email"
                 : "Entrez votre email pour recevoir un lien de réinitialisation"}
             </CardDescription>
           </CardHeader>
@@ -140,11 +138,10 @@ function ForgotPasswordContent() {
                 </div>
               </div>
             ) : (
-              <form 
-                onSubmit={handleSubmit} 
-                className={`space-y-4 transition-all duration-500 delay-200 ${
-                  mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                }`}
+              <form
+                onSubmit={handleSubmit}
+                className={`space-y-4 transition-all duration-500 delay-200 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                  }`}
               >
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -181,15 +178,14 @@ function ForgotPasswordContent() {
               </form>
             )}
 
-            <div 
-              className={`transition-all duration-500 delay-300 ${
-                mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-              }`}
+            <div
+              className={`transition-all duration-500 delay-300 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                }`}
             >
               <p className="text-center text-sm text-muted-foreground">
                 Vous vous souvenez de votre mot de passe ?{" "}
-                <Link 
-                  href="/login" 
+                <Link
+                  href="/login"
                   className="font-medium text-primary hover:underline"
                 >
                   Se connecter

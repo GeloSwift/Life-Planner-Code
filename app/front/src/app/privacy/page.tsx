@@ -45,7 +45,7 @@ export default function PrivacyPage() {
                             Introduction
                         </h2>
                         <p className="text-muted-foreground leading-relaxed">
-                            Chez <strong className="text-foreground">Life Planner</strong>, nous accordons une importance
+                            Chez <strong className="text-foreground">My Life Planner</strong>, nous accordons une importance
                             primordiale à la protection de vos données personnelles. Cette politique de confidentialité
                             explique quelles informations nous collectons, comment nous les utilisons et quels sont vos
                             droits concernant ces données.
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
                                 <li><strong className="text-foreground">Informations de compte</strong> : nom, adresse email, photo de profil (optionnel)</li>
                                 <li><strong className="text-foreground">Données d&apos;authentification</strong> : mot de passe hashé, tokens de session</li>
                                 <li><strong className="text-foreground">Données d&apos;utilisation</strong> : séances d&apos;entraînement, exercices, objectifs, pesées</li>
-                                <li><strong className="text-foreground">Données de calendrier</strong> : si vous connectez Google Calendar, nous accédons uniquement aux événements que vous synchronisez avec Life Planner</li>
+                                <li><strong className="text-foreground">Données de calendrier</strong> : si vous connectez Google Calendar, nous accédons uniquement aux événements que vous synchronisez avec My Life Planner</li>
                             </ul>
                         </div>
                     </div>
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
                         </h2>
                         <div className="space-y-4 text-muted-foreground">
                             <p className="leading-relaxed">
-                                Life Planner utilise l&apos;API Google Calendar pour vous permettre de synchroniser vos
+                                My Life Planner utilise l&apos;API Google Calendar pour vous permettre de synchroniser vos
                                 séances d&apos;entraînement avec votre calendrier Google. Voici ce que vous devez savoir :
                             </p>
                             <ul className="list-disc list-inside space-y-2 ml-4">

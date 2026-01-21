@@ -97,9 +97,9 @@ export function Header({ variant = "default" }: HeaderProps) {
     <header className={headerClasses}>
       <div className={containerClasses}>
         <Link href="/" className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
-          Life Planner
+          My Life Planner
         </Link>
-        
+
         {/* Navigation desktop - visible à partir de md (768px) */}
         <nav className="hidden md:flex items-center gap-2 lg:gap-4">
           <ThemeToggle />
@@ -146,7 +146,7 @@ export function Header({ variant = "default" }: HeaderProps) {
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Liens de navigation */}
                     <Button
                       variant="ghost"
@@ -166,10 +166,10 @@ export function Header({ variant = "default" }: HeaderProps) {
                         Mon profil
                       </Link>
                     </Button>
-                    
+
                     {/* Séparateur */}
                     <div className="my-2 border-t" />
-                    
+
                     {/* Déconnexion */}
                     <Button
                       variant="ghost"

@@ -27,7 +27,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 function RegisterContent() {
   const { register, loginWithGoogle, isAuthenticated, isLoading: authLoading } = useAuth();
-  
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -137,15 +137,14 @@ function RegisterContent() {
 
       {/* Left side - Form */}
       <div className="flex w-full items-center justify-center px-4 lg:w-1/2">
-        <Card 
-          className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${
-            mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
+        <Card
+          className={`w-full max-w-md border-0 shadow-none transition-all duration-500 lg:border lg:shadow-sm ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+            }`}
         >
           <CardHeader className="space-y-1 text-center">
             <Link href="/" className="mb-4 lg:hidden block">
               <h1 className="gradient-text text-2xl font-bold hover:opacity-80 transition-opacity">
-                Life Planner
+                My Life Planner
               </h1>
             </Link>
             <CardTitle className="text-2xl font-bold tracking-tight">
@@ -158,10 +157,9 @@ function RegisterContent() {
           <CardContent className="space-y-6">
             {/* OAuth Buttons */}
             {oauthProviders.google && (
-              <div 
-                className={`space-y-4 transition-all duration-500 delay-100 ${
-                  mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                }`}
+              <div
+                className={`space-y-4 transition-all duration-500 delay-100 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                  }`}
               >
                 <Button
                   variant="outline"
@@ -195,11 +193,10 @@ function RegisterContent() {
             )}
 
             {/* Registration Form */}
-            <form 
-              onSubmit={handleSubmit} 
-              className={`space-y-4 transition-all duration-500 delay-200 ${
-                mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-              }`}
+            <form
+              onSubmit={handleSubmit}
+              className={`space-y-4 transition-all duration-500 delay-200 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                }`}
             >
               <div className="space-y-2">
                 <Label htmlFor="fullName">Nom complet</Label>
@@ -254,14 +251,12 @@ function RegisterContent() {
                     {passwordRequirements.map((req, index) => (
                       <div
                         key={req.label}
-                        className={`flex items-center gap-2 text-xs transition-all duration-300 ${
-                          req.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                        }`}
+                        className={`flex items-center gap-2 text-xs transition-all duration-300 ${req.met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                          }`}
                         style={{ transitionDelay: `${index * 50}ms` }}
                       >
-                        <div className={`rounded-full p-0.5 transition-all ${
-                          req.met ? "bg-green-600 dark:bg-green-400" : "bg-muted"
-                        }`}>
+                        <div className={`rounded-full p-0.5 transition-all ${req.met ? "bg-green-600 dark:bg-green-400" : "bg-muted"
+                          }`}>
                           <Check className={`h-2 w-2 text-white transition-all ${req.met ? "scale-100" : "scale-0"}`} />
                         </div>
                         {req.label}
@@ -280,11 +275,10 @@ function RegisterContent() {
                     placeholder="••••••••"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`h-12 pl-10 transition-all focus:scale-[1.01] text-[16px] ${
-                      confirmPassword.length > 0 && !doPasswordsMatch
+                    className={`h-12 pl-10 transition-all focus:scale-[1.01] text-[16px] ${confirmPassword.length > 0 && !doPasswordsMatch
                         ? "border-destructive focus-visible:ring-destructive"
                         : ""
-                    }`}
+                      }`}
                     required
                     autoComplete="new-password"
                   />
@@ -318,15 +312,14 @@ function RegisterContent() {
               </Button>
             </form>
 
-            <div 
-              className={`space-y-4 transition-all duration-500 delay-300 ${
-                mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-              }`}
+            <div
+              className={`space-y-4 transition-all duration-500 delay-300 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                }`}
             >
               <p className="text-center text-sm text-muted-foreground">
                 Déjà un compte ?{" "}
-                <Link 
-                  href="/login?from=register" 
+                <Link
+                  href="/login?from=register"
                   className="inline-flex items-center gap-1 font-medium text-primary hover:underline group"
                 >
                   <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
@@ -357,14 +350,13 @@ function RegisterContent() {
         {/* Animated circles */}
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl animate-pulse" />
         <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-primary/20 blur-3xl animate-pulse delay-1000" />
-        <div 
-          className={`relative flex h-full flex-col justify-between p-12 text-white transition-all duration-700 ${
-            mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"
-          }`}
+        <div
+          className={`relative flex h-full flex-col justify-between p-12 text-white transition-all duration-700 ${mounted ? "translate-x-0 opacity-100" : "translate-x-10 opacity-0"
+            }`}
         >
           <Link href="/" className="text-right w-full block">
             <h1 className="text-3xl font-bold tracking-tight hover:opacity-80 transition-opacity cursor-pointer">
-              Life Planner
+              My Life Planner
             </h1>
           </Link>
           <div className="space-y-6">
@@ -378,11 +370,10 @@ function RegisterContent() {
                 "Planification de vos séances de sport",
                 "Suivi de votre budget",
               ].map((item, index) => (
-                <li 
+                <li
                   key={item}
-                  className={`flex items-center gap-3 transition-all duration-500 ${
-                    mounted ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
-                  }`}
+                  className={`flex items-center gap-3 transition-all duration-500 ${mounted ? "translate-x-0 opacity-100" : "translate-x-4 opacity-0"
+                    }`}
                   style={{ transitionDelay: `${400 + index * 100}ms` }}
                 >
                   <div className="rounded-full bg-white/20 p-1">
