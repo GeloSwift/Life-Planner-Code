@@ -777,10 +777,21 @@ function NewSessionContent() {
       });
 
       // Démarrer immédiatement
-      await workoutApi.sessions.start(session.id);
+      // Pour les séances récurrentes, utiliser startOccurrence pour créer une occurrence
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+      let sessionToNavigate = session;
+      if (recurrenceType) {
+        // Créer et démarrer une occurrence pour aujourd'hui
+        sessionToNavigate = await workoutApi.sessions.startOccurrence(session.id, todayStr);
+      } else {
+        // Séance non-récurrente : démarrer directement
+        await workoutApi.sessions.start(session.id);
+      }
 
       success(`Séance "${name}" lancée ! 💪`);
-      router.push(`/workout/sessions/${session.id}`);
+      // Rediriger vers l'occurrence créée (ou la session elle-même si non-récurrente)
+      router.push(`/workout/sessions/${sessionToNavigate.id}`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {

@@ -756,9 +756,16 @@ function SessionContent({ params }: PageProps) {
 
   // Vérifier si on peut lancer la séance (même jour que planifié ou jour de récurrence)
   const canStartSession = (): boolean => {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
+    // Si on a une date d'occurrence spécifique (passée via URL), vérifier qu'elle correspond à aujourd'hui
+    if (occurrenceDate) {
+      return occurrenceDate === todayStr;
+    }
+
     if (!session.scheduled_at) return true; // Si pas de date planifiée, on peut toujours lancer
 
-    const now = new Date();
     const scheduled = new Date(session.scheduled_at);
 
     // Pour les séances récurrentes, vérifier si aujourd'hui correspond au pattern
@@ -771,7 +778,18 @@ function SessionContent({ params }: PageProps) {
       };
 
       if (session.recurrence_type === "daily") {
-        return true; // Tous les jours
+        // Pour daily, vérifier que la date d'aujourd'hui est dans la plage [scheduled, recurrence_end_date]
+        const scheduledDate = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate());
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        if (today < scheduledDate) return false; // Avant la date de début
+
+        if (session.recurrence_end_date) {
+          const endDate = new Date(session.recurrence_end_date + "T23:59:59");
+          if (today > endDate) return false; // Après la date de fin
+        }
+
+        return true;
       }
 
       if (session.recurrence_type === "weekly" && session.recurrence_data) {

@@ -956,7 +956,14 @@ export default function SessionsPage() {
                     if (selectionMode) {
                       toggleSessionSelection(session.id);
                     } else {
-                      router.push(`/workout/sessions/${session.id}`);
+                      // Pour les séances récurrentes planifiées, ajouter la date du jour comme occurrence_date
+                      if (session.recurrence_type && session.status === "planifiee") {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                        router.push(`/workout/sessions/${session.id}?occurrence_date=${todayStr}`);
+                      } else {
+                        router.push(`/workout/sessions/${session.id}`);
+                      }
                     }
                   }}
                   onTouchStart={(e) => handleTouchStart(session, e)}

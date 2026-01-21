@@ -80,6 +80,116 @@ const extractMuscles = (exercise: WorkoutSessionExercise): string | null => {
     return null;
 };
 
+// Générer toutes les dates d'une récurrence (pour le calcul de stats)
+const generateRecurringDatesForStats = (
+    startDate: Date,
+    recurrenceType: string | null,
+    recurrenceData: (number | string)[] | null,
+    recurrenceEndDate: string | null | undefined,
+    filterMonth?: string // Format: "YYYY-MM" ou null pour tous les mois
+): string[] => {
+    if (!recurrenceType) {
+        // Pas de récurrence, juste la date de départ
+        const key = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
+        if (!filterMonth) return [key];
+        const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+        return monthKey === filterMonth ? [key] : [];
+    }
+
+    const dates: string[] = [];
+    let endDate: Date;
+
+    if (recurrenceEndDate) {
+        const dateOnly = recurrenceEndDate.split("T")[0];
+        endDate = new Date(dateOnly + "T23:59:59");
+    } else {
+        // Fallback: 3 mois
+        endDate = new Date(startDate);
+        endDate.setMonth(endDate.getMonth() + 3);
+    }
+
+    const dayMapping: Record<string, number> = {
+        "monday": 1, "lundi": 1,
+        "tuesday": 2, "mardi": 2,
+        "wednesday": 3, "mercredi": 3,
+        "thursday": 4, "jeudi": 4,
+        "friday": 5, "vendredi": 5,
+        "saturday": 6, "samedi": 6,
+        "sunday": 0, "dimanche": 0,
+    };
+
+    if (recurrenceType === "daily") {
+        const current = new Date(startDate);
+        while (current <= endDate) {
+            const y = current.getFullYear();
+            const m = String(current.getMonth() + 1).padStart(2, "0");
+            const d = String(current.getDate()).padStart(2, "0");
+            const isoDay = `${y}-${m}-${d}`;
+            const monthKey = `${y}-${m}`;
+
+            if (!filterMonth || monthKey === filterMonth) {
+                dates.push(isoDay);
+            }
+            current.setDate(current.getDate() + 1);
+        }
+    } else if (recurrenceType === "weekly" && recurrenceData) {
+        const targetDays = recurrenceData.map(day => {
+            if (typeof day === "number") return day;
+            return dayMapping[day.toLowerCase()] ?? -1;
+        }).filter(d => d !== -1);
+
+        const current = new Date(startDate);
+        while (current <= endDate) {
+            if (targetDays.includes(current.getDay())) {
+                const y = current.getFullYear();
+                const m = String(current.getMonth() + 1).padStart(2, "0");
+                const d = String(current.getDate()).padStart(2, "0");
+                const isoDay = `${y}-${m}-${d}`;
+                const monthKey = `${y}-${m}`;
+
+                if (!filterMonth || monthKey === filterMonth) {
+                    dates.push(isoDay);
+                }
+            }
+            current.setDate(current.getDate() + 1);
+        }
+    } else if (recurrenceType === "monthly" && recurrenceData) {
+        const targetDays = recurrenceData
+            .filter((d): d is number => typeof d === "number")
+            .filter(d => d >= 1 && d <= 31);
+
+        const current = new Date(startDate);
+        current.setDate(1);
+        while (current <= endDate) {
+            for (const targetDay of targetDays) {
+                const lastDayOfMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+                const dayToUse = Math.min(targetDay, lastDayOfMonth);
+                const testDate = new Date(current.getFullYear(), current.getMonth(), dayToUse);
+                if (testDate >= startDate && testDate <= endDate) {
+                    const y = testDate.getFullYear();
+                    const m = String(testDate.getMonth() + 1).padStart(2, "0");
+                    const d = String(testDate.getDate()).padStart(2, "0");
+                    const isoDay = `${y}-${m}-${d}`;
+                    const monthKey = `${y}-${m}`;
+
+                    if (!filterMonth || monthKey === filterMonth) {
+                        dates.push(isoDay);
+                    }
+                }
+            }
+            current.setMonth(current.getMonth() + 1);
+        }
+    } else {
+        // Fallback: juste la date de départ
+        const key = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
+        if (!filterMonth) return [key];
+        const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}`;
+        return monthKey === filterMonth ? [key] : [];
+    }
+
+    return dates;
+};
+
 export default function HistoryPage() {
     const router = useRouter();
     const { error: showError } = useToast();
@@ -109,23 +219,58 @@ export default function HistoryPage() {
         loadSessions();
     }, [loadSessions]);
 
-    // Générer la liste des mois disponibles (basé sur toutes les sessions ET les sessions terminées)
+    // Générer la liste des mois disponibles (basé sur les sessions terminées ET les occurrences planifiées)
     const availableMonths = useMemo(() => {
         const months = new Set<string>();
-        // Ajouter les mois depuis toutes les sessions
-        allSessions.forEach((session) => {
-            const date = new Date(session.scheduled_at || session.created_at);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-            months.add(monthKey);
-        });
-        // Ajouter aussi les mois des sessions terminées (au cas où allSessions est incomplet)
+
+        // Ajouter les mois des sessions terminées
         sessions.forEach((session) => {
             const date = new Date(session.ended_at || session.started_at || session.created_at);
             const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
             months.add(monthKey);
         });
-        return Array.from(months).sort((a, b) => b.localeCompare(a)); // Plus récent en premier
-    }, [allSessions, sessions]);
+
+        // Ajouter les mois des occurrences virtuelles (récurrences)
+        allSessions.forEach((session) => {
+            // Ignorer les sessions enfants
+            if (session.parent_session_id) return;
+
+            const sessionDate = session.scheduled_at
+                ? new Date(session.scheduled_at)
+                : new Date(session.created_at);
+
+            // Parser recurrence_data si c'est une string
+            let parsedRecurrenceData: (number | string)[] | null = null;
+            if (session.recurrence_data) {
+                if (typeof session.recurrence_data === "string") {
+                    try {
+                        parsedRecurrenceData = JSON.parse(session.recurrence_data);
+                    } catch {
+                        parsedRecurrenceData = null;
+                    }
+                } else if (Array.isArray(session.recurrence_data)) {
+                    parsedRecurrenceData = session.recurrence_data;
+                }
+            }
+
+            // Générer toutes les dates pour cette session (sans filtre de mois)
+            const occurrenceDates = generateRecurringDatesForStats(
+                sessionDate,
+                session.recurrence_type ?? null,
+                parsedRecurrenceData,
+                session.recurrence_end_date,
+                undefined // Pas de filtre de mois
+            );
+
+            // Ajouter chaque mois unique
+            occurrenceDates.forEach((date) => {
+                const monthKey = date.substring(0, 7); // "YYYY-MM"
+                months.add(monthKey);
+            });
+        });
+
+        return Array.from(months).sort((a, b) => a.localeCompare(b)); // Ordre chronologique (plus ancien en premier)
+    }, [sessions, allSessions]);
 
     // Filtrer par mois sélectionné
     const filteredSessions = useMemo(() => {
@@ -150,8 +295,20 @@ export default function HistoryPage() {
     const monthStats = useMemo(() => {
         const targetMonth = selectedMonth === "all" ? null : selectedMonth;
 
-        // Utiliser allSessions si disponible, sinon fallback sur sessions terminées
-        const sessionsToCount = allSessions.length > 0 ? allSessions : sessions;
+        // Collecter les dates d'occurrences enfants existantes par parent
+        const childOccurrenceDatesByParent = new Map<number, Set<string>>();
+        const childOccurrenceDates = new Set<string>(); // Toutes les dates avec enfants
+
+        allSessions.forEach((session) => {
+            if (session.parent_session_id && session.occurrence_date) {
+                const parentId = session.parent_session_id;
+                if (!childOccurrenceDatesByParent.has(parentId)) {
+                    childOccurrenceDatesByParent.set(parentId, new Set());
+                }
+                childOccurrenceDatesByParent.get(parentId)!.add(session.occurrence_date);
+                childOccurrenceDates.add(session.occurrence_date);
+            }
+        });
 
         // Compter les séances terminées pour ce mois/période
         let completedCount = 0;
@@ -168,24 +325,66 @@ export default function HistoryPage() {
             }
         });
 
-        // Compter TOUTES les séances (planifiées, terminées, annulées, en cours) pour ce mois
-        let plannedCount = 0;
-        sessionsToCount.forEach((session) => {
-            const sessionDate = new Date(session.scheduled_at || session.created_at);
+        // Compter TOUTES les occurrences planifiées (incluant les récurrences virtuelles)
+        const allPlannedDates = new Set<string>();
 
-            if (targetMonth) {
-                const monthKey = `${sessionDate.getFullYear()}-${String(sessionDate.getMonth() + 1).padStart(2, "0")}`;
-                if (monthKey === targetMonth) {
-                    plannedCount++;
+        allSessions.forEach((session) => {
+            // Ignorer les sessions enfants (elles seront comptées via leur parent ou comme terminées)
+            if (session.parent_session_id) return;
+
+            const sessionDate = session.scheduled_at
+                ? new Date(session.scheduled_at)
+                : new Date(session.created_at);
+
+            // Parser recurrence_data si c'est une string
+            let parsedRecurrenceData: (number | string)[] | null = null;
+            if (session.recurrence_data) {
+                if (typeof session.recurrence_data === "string") {
+                    try {
+                        parsedRecurrenceData = JSON.parse(session.recurrence_data);
+                    } catch {
+                        parsedRecurrenceData = null;
+                    }
+                } else if (Array.isArray(session.recurrence_data)) {
+                    parsedRecurrenceData = session.recurrence_data;
                 }
-            } else {
-                // Tous les mois - compter toutes les séances
-                plannedCount++;
+            }
+
+            // Générer toutes les dates pour cette session
+            const occurrenceDates = generateRecurringDatesForStats(
+                sessionDate,
+                session.recurrence_type ?? null,
+                parsedRecurrenceData,
+                session.recurrence_end_date,
+                targetMonth ?? undefined
+            );
+
+            // Dates d'enfants existants pour ce parent
+            const childDates = childOccurrenceDatesByParent.get(session.id) ?? new Set<string>();
+
+            // Ajouter les dates qui n'ont pas déjà un enfant
+            occurrenceDates.forEach((date) => {
+                if (!childDates.has(date)) {
+                    allPlannedDates.add(date);
+                }
+            });
+        });
+
+        // Ajouter les enfants complétés comme "planifiés" aussi
+        sessions.forEach((session) => {
+            if (session.occurrence_date) {
+                if (!targetMonth) {
+                    allPlannedDates.add(session.occurrence_date);
+                } else {
+                    const monthKey = session.occurrence_date.substring(0, 7);
+                    if (monthKey === targetMonth) {
+                        allPlannedDates.add(session.occurrence_date);
+                    }
+                }
             }
         });
 
-        // S'assurer qu'on a au moins autant de planifiées que de terminées
-        plannedCount = Math.max(plannedCount, completedCount);
+        const plannedCount = Math.max(allPlannedDates.size, completedCount);
 
         // Calculer le pourcentage
         const percentage = plannedCount > 0 ? Math.round((completedCount / plannedCount) * 100) : 0;
@@ -286,7 +485,7 @@ export default function HistoryPage() {
                                 <SelectValue placeholder="Filtrer par mois" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Tous les mois</SelectItem>
+                                <SelectItem value="all" className="font-semibold">Tous les mois</SelectItem>
                                 {availableMonths.map((monthKey) => (
                                     <SelectItem key={monthKey} value={monthKey}>
                                         {formatMonthLabel(monthKey)}
