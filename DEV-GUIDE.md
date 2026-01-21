@@ -210,12 +210,13 @@ pnpm dlx shadcn@latest add X   # Ajouter un composant
 | Planification date/heure | ✅ |
 | **Séances récurrentes** (quotidienne, hebdomadaire, mensuelle) | ✅ |
 | Affichage "Tous les samedis, 09:00" | ✅ |
-| Lancement le jour prévu uniquement | ✅ |
+| Lancement le jour prévu uniquement (check date) | ✅ |
 | Timer de séance en temps réel | ✅ |
 | Timer de repos (60s avec notification) | ✅ |
 | Suivi des séries (cocher, modifier poids/reps) | ✅ |
 | Auto-complétion de séance | ✅ |
 | Replanification vers prochaine occurrence | ✅ |
+| Gestion des occurrences virtuelles vs concrètes | ✅ |
 | Notes exercices et séance | ✅ |
 
 ### 🗓️ Calendrier
@@ -417,6 +418,8 @@ pnpm dlx shadcn@latest add X   # Ajouter un composant
 | `POST` | `/workout/sessions/{id}/cancel` | Annuler séance |
 | `DELETE` | `/workout/sessions/{id}` | Supprimer séance |
 | `POST` | `/workout/sessions/{id}/exclude-occurrence` | Exclure occurrence |
+| `POST` | `/workout/sessions/{id}/occurrences/start` | Démarrer occurrence |
+| `GET` | `/workout/sessions/{id}/occurrences` | Liste occurrences |
 
 ### Séries
 

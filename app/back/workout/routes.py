@@ -138,7 +138,31 @@ def create_exercise(
     current_user: User = Depends(get_current_user),
 ):
     """Crée un nouvel exercice personnel."""
-    return ExerciseService.create_exercise(db, exercise, current_user.id)
+    new_exercise = ExerciseService.create_exercise(db, exercise, current_user.id)
+    
+    # Envoyer une notification email à l'admin
+    try:
+        from core.email import get_email_service
+        email_service = get_email_service()
+        if email_service:
+            email_service.send_admin_notification_email(
+                subject="Nouvel exercice créé",
+                message="Un utilisateur a créé un nouvel exercice. Pensez à vérifier si cet exercice pourrait être ajouté aux exercices globaux ou si des stats dynamiques sont nécessaires.",
+                context={
+                    "Nom": exercise.name,
+                    "Type d'activité": exercise.activity_type or "Non spécifié",
+                    "Groupe musculaire": exercise.muscle_group or "Non spécifié",
+                    "Description": exercise.description or "Aucune",
+                    "Créé par": current_user.email,
+                    "ID utilisateur": str(current_user.id),
+                    "Documentation": "Voir docs/DYNAMIC_CONTENT.md",
+                }
+            )
+    except Exception as e:
+        # Ne pas bloquer la création si l'email échoue
+        print(f"[WARNING] Failed to send admin notification email: {e}")
+    
+    return new_exercise
 
 
 @router.put(
@@ -1219,7 +1243,7 @@ def create_user_activity_type(
                     "Couleur": activity_type.color or "Aucune",
                     "Créé par": current_user.email,
                     "ID utilisateur": str(current_user.id),
-                    "Documentation": "Voir docs/ACTIVITY_TYPES_DYNAMIC.md",
+                    "Documentation": "Voir docs/DYNAMIC_CONTENT.md",
                 }
             )
     except Exception as e:
