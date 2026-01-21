@@ -18,6 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Life Planner",
   description: "Planifiez votre vie, atteignez vos objectifs",
+  verification: {
+    google: "gwWYXB6z4IkCXycHVx7D6yvwcsbPF4tUUwxjEnLmK-o",
+  },
 };
 
 export default function RootLayout({

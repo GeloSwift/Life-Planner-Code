@@ -24,6 +24,10 @@ import {
   ArrowRight,
   Sparkles,
   GraduationCap,
+  Calendar,
+  BarChart3,
+  Shield,
+  Smartphone,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -65,6 +69,29 @@ export default function HomePage() {
     },
   ];
 
+  const highlights = [
+    {
+      icon: Calendar,
+      title: "Synchronisation Google Calendar",
+      description: "Connectez votre compte Google pour synchroniser automatiquement vos séances d'entraînement avec Google Calendar. Recevez des rappels et gardez vos événements à jour.",
+    },
+    {
+      icon: BarChart3,
+      title: "Suivi de progression",
+      description: "Visualisez votre évolution avec des graphiques détaillés. Suivez votre poids, vos performances et atteignez vos objectifs.",
+    },
+    {
+      icon: Shield,
+      title: "Données sécurisées",
+      description: "Vos données sont chiffrées et stockées de manière sécurisée. Nous ne vendons jamais vos informations personnelles.",
+    },
+    {
+      icon: Smartphone,
+      title: "Accessible partout",
+      description: "Accédez à Life Planner depuis n'importe quel appareil : ordinateur, tablette ou smartphone.",
+    },
+  ];
+
   return (
     <div className="min-h-screen overflow-hidden">
       <BackgroundDecorations />
@@ -77,16 +104,16 @@ export default function HomePage() {
             <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="whitespace-nowrap">Votre assistant de vie personnel</span>
           </div>
-          
+
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
             Organisez votre vie,{" "}
             <span className="gradient-text">atteignez vos objectifs</span>
           </h1>
-          
+
           <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl leading-relaxed text-muted-foreground px-2 sm:px-0">
-            Life Planner regroupe tous les outils dont vous avez besoin pour 
-            planifier votre sport, gérer votre budget, suivre vos habitudes, 
-            réviser vos cours et atteindre vos objectifs.
+            <strong className="text-foreground">Life Planner</strong> est une application de planification personnelle
+            qui vous aide à organiser vos séances de sport, gérer votre budget, suivre vos habitudes
+            et réviser vos cours — le tout synchronisé avec <strong className="text-foreground">Google Calendar</strong>.
           </p>
 
           <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 pt-2 sm:flex-row">
@@ -101,7 +128,7 @@ export default function HomePage() {
               <>
                 <Button size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                   <Link href="/register">
-                    Créer un compte
+                    Créer un compte gratuit
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -142,6 +169,62 @@ export default function HomePage() {
               </p>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* How it works / Highlights Section */}
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-24">
+        <div className="mb-12 sm:mb-16 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
+            Comment ça <span className="gradient-text">fonctionne</span>
+          </h2>
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+            Life Planner s&apos;intègre avec vos outils favoris pour vous offrir une expérience fluide et connectée
+          </p>
+        </div>
+
+        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2">
+          {highlights.map((highlight) => (
+            <div
+              key={highlight.title}
+              className="flex gap-4 rounded-2xl border bg-card p-6"
+            >
+              <div className="flex-shrink-0">
+                <div className="inline-flex rounded-xl bg-primary/10 p-3">
+                  <highlight.icon className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">{highlight.title}</h3>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {highlight.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-24">
+        <div className="mx-auto max-w-3xl text-center rounded-2xl border bg-card p-8 md:p-12">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
+            Prêt à organiser votre vie ?
+          </h2>
+          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+            Rejoignez Life Planner et commencez à planifier vos objectifs dès aujourd&apos;hui.
+            Synchronisez vos activités avec Google Calendar et ne manquez plus jamais une séance.
+          </p>
+          {!isAuthenticated && (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button size="lg" asChild>
+                <Link href="/register">
+                  Commencer gratuitement
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
