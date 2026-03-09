@@ -31,10 +31,10 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
-  // Pas de spinner de loading - on affiche le contenu immédiatement
-  // avec les boutons "non connecté" par défaut, puis ça se met à jour
+  // Pas de spinner de loading entier pour ne pas interrompre l'expérience
+  // On masque ou affiche seulement les boutons selon isLoading
 
   const features = [
     {
@@ -116,15 +116,15 @@ export default function HomePage() {
             et réviser vos cours — le tout synchronisé avec <strong className="text-foreground">Google Calendar</strong>.
           </p>
 
-          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 pt-2 sm:flex-row">
-            {isAuthenticated ? (
+          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 pt-2 sm:flex-row h-[100px] sm:h-auto">
+            {!isLoading && isAuthenticated ? (
               <Button size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                 <Link href="/dashboard">
                   Accéder au tableau de bord
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-            ) : (
+            ) : !isLoading && !isAuthenticated ? (
               <>
                 <Button size="lg" className="h-11 sm:h-12 w-full sm:w-auto px-6 sm:px-8 text-sm sm:text-base" asChild>
                   <Link href="/register">
@@ -136,6 +136,9 @@ export default function HomePage() {
                   <Link href="/login">Se connecter</Link>
                 </Button>
               </>
+            ) : (
+              // Empty placeholder for loading state to prevent flash
+              <div className="w-full sm:w-[350px] flex gap-4 h-11 sm:h-12"></div>
             )}
           </div>
         </div>
@@ -215,7 +218,7 @@ export default function HomePage() {
             Rejoignez My Life Planner et commencez à planifier vos objectifs dès aujourd&apos;hui.
             Synchronisez vos activités avec Google Calendar et ne manquez plus jamais une séance.
           </p>
-          {!isAuthenticated && (
+          {!isLoading && !isAuthenticated && (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" asChild>
                 <Link href="/register">
