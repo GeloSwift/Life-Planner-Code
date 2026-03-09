@@ -125,10 +125,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   /**
    * Connexion avec email et mot de passe.
    */
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, rememberMe: boolean = false) => {
     setIsLoading(true);
     try {
-      await authApi.login({ email, password });
+      await authApi.login({ email, password, remember_me: rememberMe });
       const currentUser = await authApi.getMe();
       setUser(currentUser);
       // Utilise replace pour éviter le flash et l'historique

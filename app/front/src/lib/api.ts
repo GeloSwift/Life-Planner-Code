@@ -35,22 +35,47 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
+const STORAGE_TYPE_KEY = "auth_storage_type";
 
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
+  const storageType = localStorage.getItem(STORAGE_TYPE_KEY) || "local";
+  const storage = storageType === "session" ? sessionStorage : localStorage;
+  return storage.getItem(TOKEN_KEY);
 }
 
-export function setStoredTokens(accessToken: string, refreshToken: string): void {
+export function setStoredTokens(accessToken: string, refreshToken: string, rememberMe?: boolean): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  
+  let storage: Storage;
+  if (rememberMe !== undefined) {
+    storage = rememberMe ? localStorage : sessionStorage;
+    localStorage.setItem(STORAGE_TYPE_KEY, rememberMe ? "local" : "session");
+    // Nettoyer l'autre stockage pour éviter les conflits
+    if (rememberMe) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_TOKEN_KEY);
+    }
+  } else {
+    // Utiliser le réglage existant si non spécifié (utile pour le refresh automatique)
+    const storageType = localStorage.getItem(STORAGE_TYPE_KEY) || "local";
+    storage = storageType === "session" ? sessionStorage : localStorage;
+  }
+
+  storage.setItem(TOKEN_KEY, accessToken);
+  storage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 export function clearStoredTokens(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(STORAGE_TYPE_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
 }
 
 
@@ -195,8 +220,8 @@ export const authApi = {
       body: JSON.stringify(data),
       skipAuth: true,
     });
-    // Stocke les tokens pour les requêtes futures
-    setStoredTokens(response.access_token, response.refresh_token);
+    // Stocke les tokens pour les requêtes futures, en tenant compte de remember_me
+    setStoredTokens(response.access_token, response.refresh_token, data.remember_me);
     return response;
   },
 
@@ -250,7 +275,7 @@ export const authApi = {
     const response = await apiFetch<TokenResponse>("/auth/refresh", {
       method: "POST",
     });
-    // Met à jour les tokens stockés
+    // Met à jour les tokens stockés en conservant le type d'espace de stockage (session ou local)
     setStoredTokens(response.access_token, response.refresh_token);
     return response;
   },

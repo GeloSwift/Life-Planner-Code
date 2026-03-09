@@ -33,6 +33,7 @@ function LoginContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [oauthProviders, setOauthProviders] = useState({ google: false });
@@ -88,7 +89,7 @@ function LoginContent() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       // Rediriger vers l'URL demandée après connexion
       setTimeout(() => {
         router.replace(redirectUrl);
@@ -268,6 +269,22 @@ function LoginContent() {
                     autoComplete="current-password"
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                />
+                <Label
+                  htmlFor="remember-me"
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Rester connecté sur cet appareil
+                </Label>
               </div>
 
               <Button

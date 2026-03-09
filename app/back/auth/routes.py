@@ -66,7 +66,7 @@ REFRESH_TOKEN_COOKIE = "refresh_token"
 # HELPER FUNCTIONS
 # =============================================================================
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def set_auth_cookies(response: Response, access_token: str, refresh_token: str, remember_me: bool = True) -> None:
     """
     Définit les cookies d'authentification httpOnly.
     
@@ -82,13 +82,16 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
     # En dev local (HTTP): samesite=lax + secure=false
     samesite_policy = "none" if is_https else "lax"
     
+    access_max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    refresh_max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60 if remember_me else None
+    
     response.set_cookie(
         key=ACCESS_TOKEN_COOKIE,
         value=access_token,
         httponly=True,
         secure=is_https,
         samesite=samesite_policy,
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        max_age=access_max_age,
         path="/",
     )
     response.set_cookie(
@@ -97,7 +100,7 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
         httponly=True,
         secure=is_https,
         samesite=samesite_policy,
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        max_age=refresh_max_age,
         path="/",
     )
 
@@ -270,7 +273,7 @@ def login(
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
     # Définit les cookies httpOnly
-    set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token, remember_me=login_data.remember_me)
     
     return TokenResponse(
         access_token=access_token,
@@ -652,8 +655,8 @@ def refresh(
     access_token = create_access_token(data={"sub": str(user.id)})
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
-    # Met à jour les cookies
-    set_auth_cookies(response, access_token, new_refresh_token)
+    # Met à jour les cookies (utilise comportement Remember Me True par défaut pour le refresh)
+    set_auth_cookies(response, access_token, new_refresh_token, remember_me=True)
     
     return TokenResponse(
         access_token=access_token,

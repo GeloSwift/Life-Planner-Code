@@ -89,6 +89,7 @@ class LoginRequest(BaseModel):
     """Schema pour la requête de login."""
     email: EmailStr = Field(..., description="Email")
     password: str = Field(..., description="Mot de passe")
+    remember_me: bool = Field(default=False, description="Rester connecté")
 
 
 class TokenResponse(BaseModel):
