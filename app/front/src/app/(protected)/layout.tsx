@@ -64,13 +64,14 @@ export default function ProtectedLayout({
     hasRedirected.current = false;
   }, [pathname]);
 
-  // Pendant le chargement initial de l'auth, on laisse les enfants se rendre
-  // avec leurs propres skeletons - cela réduit le "flash" de loading
-  // On n'affiche un spinner que si vraiment nécessaire (redirect en cours)
+  // Pendant le chargement initial de l'auth, on affiche un spinner
+  // pour éviter un flash de contenu déconnecté (user = null) ou non stylisé.
   if (isLoading) {
-    // Optimisation: On ne bloque plus avec un spinner plein écran
-    // Les pages enfants affichent leurs propres skeletons
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Affiche un loader UNIQUEMENT si non connecté (en attendant la redirection)

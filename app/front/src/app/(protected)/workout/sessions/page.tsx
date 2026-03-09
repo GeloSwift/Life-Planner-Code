@@ -463,7 +463,7 @@ export default function SessionsPage() {
       // Rediriger directement vers la page d'édition sans recharger la liste
       // Utiliser replace au lieu de push pour éviter d'ajouter une entrée dans l'historique
       // et rendre la transition plus fluide (évite les flashs)
-      router.replace(`/workout/sessions/${finalSession.id}/edit`);
+      router.replace(`/workout/sessions/${finalSession.id}/edit?new_duplicate=true`);
     } catch (err) {
       console.error("Erreur lors de la duplication:", err);
       showError(err instanceof Error ? err.message : "Erreur lors de la duplication");

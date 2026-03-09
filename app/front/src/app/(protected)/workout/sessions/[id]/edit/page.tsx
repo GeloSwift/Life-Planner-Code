@@ -407,6 +407,27 @@ export default function EditSessionPage({ params }: PageProps) {
   const [recurrenceDuration, setRecurrenceDuration] = useState<string>("3"); // Durée en mois
   const [originalRecurrenceEndDate, setOriginalRecurrenceEndDate] = useState<string | null>(null);
 
+  // Vérifier s'il s'agit d'une nouvelle duplication
+  const [isNewDuplicate, setIsNewDuplicate] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const search = new URLSearchParams(window.location.search);
+      setIsNewDuplicate(search.get("new_duplicate") === "true");
+    }
+  }, []);
+
+  const handleCancelClick = async () => {
+    if (isNewDuplicate) {
+      try {
+        await workoutApi.sessions.delete(sessionId);
+        success("Brouillon supprimé");
+      } catch (err) {
+        console.error("Erreur suppression brouillon:", err);
+      }
+    }
+    router.push("/workout/sessions");
+  };
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -835,11 +856,11 @@ export default function EditSessionPage({ params }: PageProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/workout/sessions")}
+            onClick={handleCancelClick}
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
+            Annuler
           </Button>
 
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Modifier la séance</h1>
@@ -881,7 +902,7 @@ export default function EditSessionPage({ params }: PageProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
                 <Input
@@ -1086,8 +1107,8 @@ export default function EditSessionPage({ params }: PageProps) {
         </Dialog>
 
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <Button variant="outline" className="flex-1" onClick={() => router.push("/workout/sessions")}>
-            Retour
+          <Button variant="outline" className="flex-1" onClick={handleCancelClick}>
+            Annuler
           </Button>
           {canEdit && (
             <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
