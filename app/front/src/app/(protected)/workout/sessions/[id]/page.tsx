@@ -881,10 +881,10 @@ function SessionContent({ params }: PageProps) {
             Retour
           </Button>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">{session.name}</h1>
-              <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold break-words">{session.name}</h1>
+              <p className="text-sm text-muted-foreground break-words mt-1">
                 {getSessionActivityNames()}
               </p>
               {isCancelled && (
@@ -898,8 +898,8 @@ function SessionContent({ params }: PageProps) {
 
             {/* Timer principal */}
             {isActive && (
-              <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-4 py-2">
-                <Timer className="h-5 w-5 text-primary" />
+              <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-4 py-2 shrink-0 self-start sm:self-auto">
+                <Timer className="h-5 w-5 text-primary shrink-0" />
                 <span className="font-mono text-2xl font-bold tabular-nums">
                   {formatTime(elapsedTime)}
                 </span>
@@ -1022,17 +1022,17 @@ function SessionContent({ params }: PageProps) {
                           )}
                         </button>
                         <div
-                          className="flex-1 cursor-pointer min-w-0"
+                          className="flex-1 cursor-pointer min-w-0 pr-2"
                           onClick={() =>
                             setExpandedExercise(isExpanded ? null : exercise.id)
                           }
                         >
-                          <CardTitle className="text-base truncate">
+                          <CardTitle className="text-sm sm:text-base font-semibold break-words leading-tight">
                             {exercise.exercise?.name || `Exercice ${index + 1}`}
                           </CardTitle>
                           {/* Muscles travaillés */}
                           {secondaryDetails && (
-                            <p className="text-xs text-primary/70 mt-0.5">
+                            <p className="text-xs text-primary/70 mt-1 break-words line-clamp-2">
                               {secondaryDetails}
                             </p>
                           )}
@@ -1042,7 +1042,7 @@ function SessionContent({ params }: PageProps) {
                         onClick={() =>
                           setExpandedExercise(isExpanded ? null : exercise.id)
                         }
-                        className="p-1"
+                        className="p-1 shrink-0 ml-1"
                       >
                         {isExpanded ? (
                           <ChevronUp className="h-5 w-5 text-muted-foreground" />
@@ -1084,11 +1084,11 @@ function SessionContent({ params }: PageProps) {
                               )}
                             </div>
                             {/* Détails de la série construits dynamiquement */}
-                            <span className={`text-sm flex-1 ${set.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                            <span className={`text-sm flex-1 break-words min-w-0 ${set.is_completed ? "line-through text-muted-foreground" : ""}`}>
                               {formatSetDetails(set, details)}
                             </span>
                             {set.is_warmup && (
-                              <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded shrink-0">
+                              <span className="text-[10px] sm:text-xs bg-yellow-500/20 text-yellow-600 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ml-1">
                                 Échauffement
                               </span>
                             )}
@@ -1098,37 +1098,40 @@ function SessionContent({ params }: PageProps) {
 
                       {/* Ajouter un set - champs dynamiques */}
                       {isActive && !exercise.is_completed && (
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap items-end gap-2 mb-4 w-full">
                           {inputFields.map((field) => (
-                            <Input
-                              key={field.key}
-                              type={field.type}
-                              placeholder={field.placeholder}
-                              className="w-20"
-                              value={
-                                newSetData.exerciseId === exercise.id
-                                  ? newSetData.values[field.key] || ""
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                setNewSetData({
-                                  exerciseId: exercise.id,
-                                  values: {
-                                    ...(newSetData.exerciseId === exercise.id
-                                      ? newSetData.values
-                                      : {}),
-                                    [field.key]: e.target.value,
-                                  },
-                                })
-                              }
-                            />
+                            <div key={field.key} className="flex-1 min-w-[3.5rem] max-w-[6rem]">
+                              <Label className="text-[10px] text-muted-foreground mb-1 line-clamp-1">{field.label}</Label>
+                              <Input
+                                type={field.type}
+                                placeholder={field.placeholder}
+                                className="w-full text-center px-1"
+                                value={
+                                  newSetData.exerciseId === exercise.id
+                                    ? newSetData.values[field.key] || ""
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setNewSetData({
+                                    exerciseId: exercise.id,
+                                    values: {
+                                      ...(newSetData.exerciseId === exercise.id
+                                        ? newSetData.values
+                                        : {}),
+                                      [field.key]: e.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </div>
                           ))}
                           <Button
                             size="sm"
+                            className="shrink-0 mb-[1px]"
                             onClick={() => handleAddSet(exercise.id, details)}
                           >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Ajouter
+                            <Plus className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Ajouter</span>
                           </Button>
                         </div>
                       )}
@@ -1247,35 +1250,36 @@ function SessionContent({ params }: PageProps) {
             </div>
           )}
 
-          <div className="p-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-primary">
+          <div className="flex px-3 sm:px-4 py-3 items-center justify-between gap-3 overflow-hidden">
+            <div className="flex items-center gap-2 shrink-0 min-w-0">
+              <span className="text-sm sm:text-base font-bold text-primary shrink-0">
                 {calculateProgress().percentage}%
               </span>
-              <span className="text-xs text-muted-foreground hidden sm:inline">
-                ({calculateProgress().completed}/{calculateProgress().total})
+              <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap truncate">
+                <span className="hidden sm:inline">séries validées </span>({calculateProgress().completed}/{calculateProgress().total})
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar mask-edges min-w-0">
               <Button
                 variant="outline"
                 size="sm"
+                className="shrink-0 px-2 sm:px-3 text-xs sm:text-sm"
                 onClick={startRest}
                 disabled={isResting}
               >
-                <RotateCcw className="h-4 w-4 sm:mr-2" />
+                <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Repos ({restDuration}s)</span>
               </Button>
               <Button
                 size="sm"
                 onClick={handleCompleteSession}
                 disabled={isSubmitting}
-                className={allSetsCompleted ? "bg-green-500 hover:bg-green-600" : ""}
+                className={`shrink-0 px-2 sm:px-3 text-xs sm:text-sm ${allSetsCompleted ? "bg-green-500 hover:bg-green-600" : ""}`}
               >
                 {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2 animate-spin" />
                 ) : (
-                  <Square className="h-4 w-4 sm:mr-2" />
+                  <Square className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
                 )}
                 <span className="hidden sm:inline">Terminer</span>
               </Button>

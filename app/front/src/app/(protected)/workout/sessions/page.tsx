@@ -799,11 +799,11 @@ export default function SessionsPage() {
                 {selectionMode ? "Sélectionnez les séances à supprimer" : "Gérez vos séances d'entraînement"}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
               {selectionMode ? (
                 <>
                   {/* Sur PC, afficher tous les boutons dans le header */}
-                  <div className="hidden sm:flex gap-2">
+                  <div className="hidden sm:flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       onClick={selectedSessionIds.size === filteredSessions.length ? deselectAll : selectAll}
@@ -992,7 +992,7 @@ export default function SessionsPage() {
 
                   {/* Actions rapides (masquées en mode sélection) */}
                   {!selectionMode && (
-                    <div className="absolute top-2 right-2 z-20 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-2 right-2 z-20 flex gap-1 flex-wrap justify-end max-w-[calc(100%-3rem)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       {/* Boutons pour séances actives (planifiée, en cours) */}
                       {session.status !== "annulee" && session.status !== "terminee" && (
                         <>

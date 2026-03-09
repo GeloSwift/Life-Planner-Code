@@ -584,27 +584,27 @@ export default function HistoryPage() {
                                             >
                                                 <CardContent className="p-4">
                                                     <div
-                                                        className="flex items-center justify-between cursor-pointer"
+                                                        className="flex items-start sm:items-center justify-between cursor-pointer gap-2"
                                                         onClick={() =>
                                                             setExpandedSession(isExpanded ? null : session.id)
                                                         }
                                                     >
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`rounded-full p-3 ${sessionProgress.percentage >= 70
+                                                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                                                            <div className={`shrink-0 rounded-full p-2 sm:p-3 ${sessionProgress.percentage >= 70
                                                                 ? "bg-green-500/10"
                                                                 : sessionProgress.percentage >= 20
                                                                     ? "bg-orange-500/10"
                                                                     : "bg-red-500/10"
                                                                 }`}>
-                                                                <CheckCircle className={`h-5 w-5 ${getProgressColorClass(sessionProgress.percentage, "text")}`} />
+                                                                <CheckCircle className={`h-4 w-4 sm:h-5 sm:w-5 ${getProgressColorClass(sessionProgress.percentage, "text")}`} />
                                                             </div>
-                                                            <div>
-                                                                <h3 className="font-semibold">{session.name}</h3>
-                                                                <p className="text-sm text-muted-foreground">
+                                                            <div className="min-w-0 flex-1">
+                                                                <h3 className="font-semibold truncate">{session.name}</h3>
+                                                                <p className="text-sm text-muted-foreground truncate">
                                                                     {ACTIVITY_TYPE_LABELS[session.activity_type]}
                                                                 </p>
-                                                                <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                                                                    <span className="flex items-center gap-1">
+                                                                <div className="flex items-center gap-y-1 gap-x-3 flex-wrap mt-1 text-xs text-muted-foreground">
+                                                                    <span className="flex items-center gap-1 shrink-0">
                                                                         <Calendar className="h-3 w-3" />
                                                                         {new Date(
                                                                             session.ended_at ||
@@ -615,11 +615,11 @@ export default function HistoryPage() {
                                                                             month: "short",
                                                                         })}
                                                                     </span>
-                                                                    <span className="flex items-center gap-1">
+                                                                    <span className="flex items-center gap-1 shrink-0">
                                                                         <Clock className="h-3 w-3" />
                                                                         {formatDuration(session.duration_seconds)}
                                                                     </span>
-                                                                    <span className={`flex items-center gap-1 ${getProgressColorClass(sessionProgress.percentage, "text")}`}>
+                                                                    <span className={`flex items-center gap-1 shrink-0 ${getProgressColorClass(sessionProgress.percentage, "text")}`}>
                                                                         <Target className="h-3 w-3" />
                                                                         {sessionProgress.completed}/{sessionProgress.total} séries
                                                                         ({sessionProgress.percentage}%)
@@ -627,7 +627,7 @@ export default function HistoryPage() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                                                             {session.rating && (
                                                                 <div className="flex items-center gap-1">
                                                                     <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />

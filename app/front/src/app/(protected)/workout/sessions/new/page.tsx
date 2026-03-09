@@ -1045,7 +1045,7 @@ function NewSessionContent() {
             {/* Exercices */}
             <Card className="mt-6">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle>Exercices</CardTitle>
                     <CardDescription>
@@ -1055,6 +1055,7 @@ function NewSessionContent() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => setShowExerciseDialog(true)}
                   >
                     <Plus className="h-4 w-4 mr-2" />
