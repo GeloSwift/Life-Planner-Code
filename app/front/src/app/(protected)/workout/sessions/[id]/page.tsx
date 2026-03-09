@@ -908,31 +908,7 @@ function SessionContent({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Timer de repos */}
-        {isResting && (
-          <Card className="mb-6 bg-orange-500/10 border-orange-500">
-            <CardContent className="py-6 text-center">
-              <p className="text-sm text-orange-600 dark:text-orange-400 mb-2">
-                Temps de repos
-              </p>
-              <p className="font-mono text-4xl font-bold text-orange-600 dark:text-orange-400">
-                {formatTime(restTimer)}
-              </p>
-              <div className="flex justify-center gap-2 mt-4">
-                <Button variant="outline" size="sm" onClick={stopRest}>
-                  Passer
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setRestTimer((prev) => prev + 30)}
-                >
-                  +30s
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
         {/* Actions pour séance planifiée */}
         {isPlanned && (
@@ -1235,6 +1211,42 @@ function SessionContent({ params }: PageProps) {
               style={{ width: `${calculateProgress().percentage}%` }}
             />
           </div>
+
+          {/* Timer de repos fixe */}
+          {isResting && (
+            <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center p-1.5 bg-orange-500/20 rounded-full animate-pulse">
+                  <Timer className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold text-orange-600/80 dark:text-orange-400/80 uppercase tracking-wider">Temps de repos</span>
+                  <span className="font-mono text-xl font-bold text-orange-600 dark:text-orange-400 leading-none drop-shadow-sm">
+                    {formatTime(restTimer)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-xs font-semibold border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 hover:border-orange-500/50 transition-all active:scale-95" 
+                  onClick={() => setRestTimer((prev) => prev + 30)}
+                >
+                  +30s
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-500/20 hover:text-orange-700 dark:hover:text-orange-300 transition-all active:scale-95 px-2" 
+                  onClick={stopRest}
+                >
+                  Passer
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-primary">
