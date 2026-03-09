@@ -276,12 +276,28 @@ function SessionContent({ params }: PageProps) {
   });
 
   // Désélectionner une série (marquer comme non complétée)
-  const handleUncompleteSet = async (setId: number) => {
+  const handleUncompleteSet = async (exerciseId: number, setId: number) => {
     if (!session) return;
+    
+    // Mise à jour optimiste du front-end
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId
+          ? {
+              ...ex,
+              sets: ex.sets?.map((s) => (s.id === setId ? { ...s, is_completed: false } : s)),
+            }
+          : ex
+      )
+    );
+
     try {
       await workoutApi.sessions.updateSet(setId, { is_completed: false });
-      await loadSession(true); // Préserver l'exercice étendu
+      // Lancer la mise à jour complète en arrière-plan sans bloquer
+      loadSession(true);
     } catch (err) {
+      // En cas d'erreur on annule en rechargeant la vraie session
+      loadSession(true);
       showError(err instanceof Error ? err.message : "Erreur");
     }
   };
@@ -292,7 +308,7 @@ function SessionContent({ params }: PageProps) {
 
     if (isCompleted) {
       // Désélectionner
-      await handleUncompleteSet(setId);
+      await handleUncompleteSet(exerciseId, setId);
     } else {
       // Compléter
       await handleCompleteSetInternal(exerciseId, setId);
@@ -301,13 +317,29 @@ function SessionContent({ params }: PageProps) {
 
   const handleCompleteSetInternal = async (exerciseId: number, setId: number) => {
     if (!session) return;
+
+    // Mise à jour optimiste
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId
+          ? {
+              ...ex,
+              sets: ex.sets?.map((s) => (s.id === setId ? { ...s, is_completed: true } : s)),
+            }
+          : ex
+      )
+    );
+
+    // Lancer le timer de repos optimisé
+    startRest();
+
     try {
       await workoutApi.sessions.completeSet(setId);
-      await loadSession(true); // Préserver l'exercice étendu
-      // Lancer le timer de repos automatiquement
-      startRest();
+      
+      // Rafraîchissement complet en arrière-plan
+      loadSession(true);
 
-      // Vérifier si toutes les séries sont maintenant complétées après rechargement
+      // Vérifier de manière asynchrone si la séance est finie
       const updatedSession = await workoutApi.sessions.get(session.id);
       const updatedExercises = updatedSession.exercises || [];
       const allCompleted = updatedExercises.length > 0 &&
@@ -318,11 +350,11 @@ function SessionContent({ params }: PageProps) {
         });
 
       if (allCompleted && session.status === "en_cours") {
-        // Auto-valider immédiatement
         info("Toutes les séries sont complétées ! Séance terminée.");
         handleCompleteSession();
       }
     } catch (err) {
+      loadSession(true);
       showError(err instanceof Error ? err.message : "Erreur");
     }
   };
@@ -346,17 +378,40 @@ function SessionContent({ params }: PageProps) {
       return;
     }
 
+    const newSetDataPayload = {
+      set_number: setNumber,
+      weight: weight || undefined,
+      reps: reps || undefined,
+      duration_seconds: duration || undefined,
+      distance: distance || undefined,
+    };
+
+    // Mise à jour optimiste
+    const optimisticSet = {
+      id: Date.now(), // ID temporaire
+      session_exercise_id: exerciseId,
+      ...newSetDataPayload,
+      weight: weight || null,
+      reps: reps || null,
+      duration_seconds: duration || null,
+      distance: distance || null,
+      is_completed: false,
+    };
+
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId
+          ? { ...ex, sets: [...(ex.sets || []), optimisticSet as any] }
+          : ex
+      )
+    );
+    setNewSetData({ exerciseId: null, values: {} });
+
     try {
-      await workoutApi.sessions.addSet(session.id, exerciseId, {
-        set_number: setNumber,
-        weight: weight || undefined,
-        reps: reps || undefined,
-        duration_seconds: duration || undefined,
-        distance: distance || undefined,
-      });
-      setNewSetData({ exerciseId: null, values: {} });
-      await loadSession(true); // Préserver l'exercice étendu
+      await workoutApi.sessions.addSet(session.id, exerciseId, newSetDataPayload);
+      loadSession(true); // Lancer en arrière-plan sans bloquer
     } catch (err) {
+      loadSession(true); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur");
     }
   };
@@ -696,15 +751,27 @@ function SessionContent({ params }: PageProps) {
     const incompleteSets = exercise.sets?.filter((s) => !s.is_completed) || [];
     if (incompleteSets.length === 0) return;
 
-    try {
-      // Compléter toutes les séries une par une
-      for (const set of incompleteSets) {
-        await workoutApi.sessions.completeSet(set.id);
-      }
-      await loadSession(true); // Préserver l'exercice étendu
-      startRest();
+    // Mise à jour optimiste
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId
+          ? {
+              ...ex,
+              sets: ex.sets?.map((s) => ({ ...s, is_completed: true })),
+            }
+          : ex
+      )
+    );
+    startRest();
 
-      // Vérifier si toutes les séries de tous les exercices sont complétées
+    try {
+      // Exécuter les validations en parallèle
+      const promises = incompleteSets.map((set) => workoutApi.sessions.completeSet(set.id));
+      await Promise.all(promises);
+
+      // Rafraîchir
+      loadSession(true);
+
       const updatedSession = await workoutApi.sessions.get(session.id);
       const updatedExercises = updatedSession.exercises || [];
       const allCompleted = updatedExercises.length > 0 &&
@@ -715,11 +782,11 @@ function SessionContent({ params }: PageProps) {
         });
 
       if (allCompleted && session.status === "en_cours") {
-        // Auto-valider immédiatement
         info("Toutes les séries sont complétées ! Séance terminée.");
         handleCompleteSession();
       }
     } catch (err) {
+      loadSession(true);
       showError(err instanceof Error ? err.message : "Erreur");
     }
   };
