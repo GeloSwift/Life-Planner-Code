@@ -171,56 +171,77 @@ export default function SportsPage() {
             return;
         }
 
-        setIsSaving(true);
+        const name = formData.name;
+        const icon = formData.icon || undefined;
+        const color = formData.color || undefined;
+        const isEditing = !!editingType;
+        const prevEditingType = editingType;
+
+        // Optimistic UI : fermer la modal et modifier l'UI locale
+        setShowDialog(false);
+        if (isEditing && prevEditingType) {
+            setActivityTypes((prev) => prev.map((t) => 
+                t.id === prevEditingType.id ? { ...t, name, icon: icon || null, color: color || null } : t
+            ));
+        }
+
         try {
-            if (editingType) {
-                await workoutApi.activityTypes.update(editingType.id, {
-                    name: formData.name,
-                    icon: formData.icon || undefined,
-                    color: formData.color || undefined,
+            if (isEditing && prevEditingType) {
+                await workoutApi.activityTypes.update(prevEditingType.id, {
+                    name,
+                    icon,
+                    color,
                 });
                 success("Sport modifié ✏️");
             } else {
                 await workoutApi.activityTypes.create({
-                    name: formData.name,
-                    icon: formData.icon || undefined,
-                    color: formData.color || undefined,
+                    name,
+                    icon,
+                    color,
                 });
                 success("Sport créé ✨");
             }
-            setShowDialog(false);
-            loadActivityTypes();
+            loadActivityTypes(); // Refresh silencieux
         } catch (err) {
+            loadActivityTypes(); // Rollback en cas d'erreur
             showError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde");
-        } finally {
-            setIsSaving(false);
         }
     };
 
     const handleDelete = async () => {
         if (!typeToDelete) return;
 
-        setIsSaving(true);
+        const typeId = typeToDelete.id;
+        
+        // Optimistic UI
+        setShowDeleteConfirm(false);
+        setTypeToDelete(null);
+        setActivityTypes((prev) => prev.filter((t) => t.id !== typeId));
+
         try {
-            await workoutApi.activityTypes.delete(typeToDelete.id);
+            await workoutApi.activityTypes.delete(typeId);
             success("Sport supprimé 🗑️");
-            setShowDeleteConfirm(false);
-            setTypeToDelete(null);
-            loadActivityTypes();
+            loadActivityTypes(); // Refresh silencieux
         } catch (err) {
+            loadActivityTypes(); // Rollback
             showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
-        } finally {
-            setIsSaving(false);
         }
     };
 
     const handleToggleFavorite = async (type: UserActivityType, e: React.MouseEvent) => {
         e.stopPropagation();
+        
+        // Optimistic UI
+        setActivityTypes((prev) => prev.map((t) => 
+            t.id === type.id ? { ...t, is_favorite: !t.is_favorite } : t
+        ));
+
         try {
             await workoutApi.activityTypes.toggleFavorite(type.id);
-            success(type.is_favorite ? "Favori retiré" : "Marqué comme favori ⭐");
+            // success(type.is_favorite ? "Favori retiré" : "Marqué comme favori ⭐"); // Trop de toasts tue le toast !
             loadActivityTypes();
         } catch (err) {
+            loadActivityTypes(); // Rollback
             showError(err instanceof Error ? err.message : "Erreur");
         }
     };

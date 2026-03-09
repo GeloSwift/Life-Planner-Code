@@ -26,6 +26,7 @@ import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import { WeightChart } from "@/components/workout/weight-chart";
 import type { WeightEntry } from "@/lib/workout-types";
+import { SkeletonWeightPage } from "@/components/ui/skeleton";
 import {
   Loader2,
   Scale,
@@ -72,33 +73,51 @@ export default function WeightPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    const dateTime = new Date(`${newDate}T${newTime}:00`);
+
+    // Mise à jour optimiste
+    const optimisticEntry: WeightEntry = {
+      id: Date.now(),
+      user_id: 0,
+      weight,
+      body_fat_percentage: null,
+      muscle_mass: null,
+      water_percentage: null,
+      measured_at: dateTime.toISOString(),
+      notes: newNotes || null,
+      created_at: new Date().toISOString(),
+    };
+
+    setEntries((prev) => [optimisticEntry, ...prev]);
+    setShowNewEntry(false);
+    setNewWeight("");
+    setNewNotes("");
+    
+    // Note: on ne met plus isSubmitting(true) ici pour fermer la modale instantanément sans loader bloquant
     try {
-      const dateTime = new Date(`${newDate}T${newTime}:00`);
       await workoutApi.weight.create({
         weight,
         measured_at: dateTime.toISOString(),
         notes: newNotes || undefined,
       });
+      loadEntries(); // Refresh silencieux en arrière-plan
       success(`Pesée enregistrée : ${weight} kg`);
-      setShowNewEntry(false);
-      setNewWeight("");
-      setNewNotes("");
-      setNewTime(new Date().toTimeString().slice(0, 5));
-      loadEntries();
     } catch (err) {
+      loadEntries(); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (entry: WeightEntry) => {
+    // Mise à jour optimiste
+    setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+
     try {
       await workoutApi.weight.delete(entry.id);
       success("Pesée supprimée");
-      loadEntries();
+      loadEntries(); // Refresh silencieux en arrière-plan
     } catch (err) {
+      loadEntries(); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
     }
   };
@@ -223,11 +242,8 @@ export default function WeightPage() {
 
         {/* Liste des pesées */}
         <section>
-          <h2 className="text-lg font-semibold mb-4">Historique</h2>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
+            <SkeletonWeightPage />
           ) : sortedEntries.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">

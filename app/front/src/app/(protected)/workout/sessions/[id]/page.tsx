@@ -35,6 +35,7 @@ import {
   Square,
   Check,
   Plus,
+  Trash2,
   ChevronDown,
   ChevronUp,
   Dumbbell,
@@ -117,8 +118,10 @@ function SessionContent({ params }: PageProps) {
           setExpandedExercise(firstIncomplete.id);
         }
       }
+      return { sessionData, activitiesData };
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors du chargement");
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -243,28 +246,34 @@ function SessionContent({ params }: PageProps) {
 
   const handleSaveExerciseNotes = async (exerciseId: number, notes: string) => {
     if (!session) return;
-    try {
-      // Utiliser l'endpoint dédié pour mettre à jour les notes (sans toucher aux séries)
-      await workoutApi.sessions.updateExerciseNotes(session.id, exerciseId, notes);
+    
+    // Optimistic
+    setExercises((prev) =>
+      prev.map((ex) => (ex.id === exerciseId ? { ...ex, notes } : ex))
+    );
+    setExerciseNotes(prev => ({ ...prev, [exerciseId]: notes }));
 
-      // Mettre à jour l'état local
-      setExercises((prev) =>
-        prev.map((ex) => (ex.id === exerciseId ? { ...ex, notes } : ex))
-      );
+    try {
+      await workoutApi.sessions.updateExerciseNotes(session.id, exerciseId, notes);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde des notes");
+      loadSession(true); // Rollback
     }
   };
 
   const handleSaveSessionNotes = async () => {
     if (!session) return;
+    
+    // Optimistic
+    setSession((prev) => (prev ? { ...prev, notes: sessionNotes } : null));
+
     try {
       await workoutApi.sessions.update(session.id, {
         notes: sessionNotes || undefined,
       });
-      setSession((prev) => (prev ? { ...prev, notes: sessionNotes } : null));
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde des notes");
+      loadSession(true); // Rollback
     }
   };
 
@@ -336,12 +345,12 @@ function SessionContent({ params }: PageProps) {
     try {
       await workoutApi.sessions.completeSet(setId);
       
-      // Rafraîchissement complet en arrière-plan
-      loadSession(true);
+      // Rafraîchissement complet en arrière-plan et vérification de fin de séance
+      const data = await loadSession(true);
+      if (!data) return;
 
-      // Vérifier de manière asynchrone si la séance est finie
-      const updatedSession = await workoutApi.sessions.get(session.id);
-      const updatedExercises = updatedSession.exercises || [];
+      const { sessionData } = data;
+      const updatedExercises = sessionData.exercises || [];
       const allCompleted = updatedExercises.length > 0 &&
         updatedExercises.every((ex) => {
           const totalSets = ex.sets?.length || 0;
@@ -413,6 +422,27 @@ function SessionContent({ params }: PageProps) {
     } catch (err) {
       loadSession(true); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur");
+    }
+  };
+
+  const handleDeleteSet = async (exerciseId: number, setId: number) => {
+    if (!session) return;
+
+    // Mise à jour optimiste
+    setExercises((prev) =>
+      prev.map((ex) =>
+        ex.id === exerciseId
+          ? { ...ex, sets: ex.sets?.filter((s) => s.id !== setId) }
+          : ex
+      )
+    );
+
+    try {
+      await workoutApi.sessions.deleteSet(setId);
+      loadSession(true); // Refresh silencieux
+    } catch (err) {
+      loadSession(true); // Rollback
+      showError(err instanceof Error ? err.message : "Erreur lors de la suppression de la série");
     }
   };
 
@@ -1158,6 +1188,19 @@ function SessionContent({ params }: PageProps) {
                               <span className="text-[10px] sm:text-xs bg-yellow-500/20 text-yellow-600 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ml-1">
                                 Échauffement
                               </span>
+                            )}
+                            {isActive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive shrink-0 ml-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteSet(exercise.id, set.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         ))}

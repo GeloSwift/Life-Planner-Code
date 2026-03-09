@@ -195,6 +195,18 @@ function ProfileContent() {
     }
 
     setIsUploadingAvatar(true);
+    
+    // Preview immédiate (Optimistic)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (user && e.target?.result) {
+        // On simule la mise à jour locale de l'avatar pour le feedback immédiat
+        // Note: l'objet user vient d'auth-context par référence, mais on ne peut pas le muter directement
+        // refreshUser fera le vrai boulot à la fin.
+      }
+    };
+    reader.readAsDataURL(file);
+
     try {
       // Compresse l'image avant l'upload (max 400px de largeur, qualité 80%)
       const compressedBase64 = await compressImage(file, 400, 0.8);
@@ -209,17 +221,14 @@ function ProfileContent() {
       }
       
       await refreshUser();
-      success("Photo de profil mise à jour avec succès !");
+      success("Photo de profil mise à jour !");
     } catch (err) {
       console.error("Erreur lors de la mise à jour de l'avatar:", err);
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-      error(`Erreur lors de la mise à jour de la photo de profil: ${errorMessage}`);
+      error(`Erreur lors de la mise à jour : ${errorMessage}`);
     } finally {
       setIsUploadingAvatar(false);
-      // Réinitialise l'input pour permettre de sélectionner le même fichier
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -230,17 +239,17 @@ function ProfileContent() {
       return;
     }
 
-    setIsSavingName(true);
+    const oldName = user.full_name;
+    setIsEditingName(false);
+    
     try {
       await authApi.updateMe({ full_name: fullName.trim() || undefined });
       await refreshUser();
-      setIsEditingName(false);
-      success("Nom mis à jour avec succès !");
+      success("Nom mis à jour !");
     } catch (err) {
       console.error("Erreur lors de la mise à jour du nom:", err);
       error("Erreur lors de la mise à jour du nom");
-    } finally {
-      setIsSavingName(false);
+      setFullName(oldName || "");
     }
   };
 
@@ -261,12 +270,13 @@ function ProfileContent() {
   };
 
   const handleDisconnectCalendar = async () => {
+    setCalendarConnected(false); // Optimistic
     try {
       await googleCalendarApi.disconnect();
-      setCalendarConnected(false);
       success("Google Calendar déconnecté");
     } catch (err) {
       console.error("Erreur lors de la déconnexion:", err);
+      setCalendarConnected(true); // Rollback
       error("Erreur lors de la déconnexion");
     }
   };
@@ -298,12 +308,13 @@ function ProfileContent() {
   };
 
   const handleDisconnectAppleCalendar = async () => {
+    setAppleCalendarConnected(false); // Optimistic
     try {
       await appleCalendarApi.disconnect();
-      setAppleCalendarConnected(false);
       success("Apple Calendar déconnecté");
     } catch (err) {
       console.error("Erreur lors de la déconnexion:", err);
+      setAppleCalendarConnected(true); // Rollback
       error("Erreur lors de la déconnexion");
     }
   };

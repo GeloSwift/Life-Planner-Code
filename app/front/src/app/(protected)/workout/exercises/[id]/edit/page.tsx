@@ -258,19 +258,39 @@ export default function EditExercisePage() {
       return;
     }
 
+    const name = newActivityName;
+    const icon = newActivityIcon;
+    setShowNewActivity(false);
+    setNewActivityName("");
+    setNewActivityIcon("Activity");
+
+    // Optimistic
+    const tempId = Math.floor(Math.random() * -1000000);
+    const optimisticActivity: UserActivityType = {
+      id: tempId,
+      user_id: 0,
+      name: name,
+      icon: icon,
+      is_default: false,
+      is_favorite: false,
+      color: null,
+      custom_fields: [],
+      created_at: new Date().toISOString(),
+    };
+    setActivityTypes(prev => [...prev, optimisticActivity]);
+    setSelectedActivityId(tempId);
+
     try {
       const newActivity = await workoutApi.activityTypes.create({
-        name: newActivityName,
-        icon: newActivityIcon,
+        name: name,
+        icon: icon,
       });
       
-      setActivityTypes(prev => [...prev, newActivity]);
+      setActivityTypes(prev => prev.map(a => a.id === tempId ? newActivity : a));
       setSelectedActivityId(newActivity.id);
-      setShowNewActivity(false);
-      setNewActivityName("");
-      setNewActivityIcon("Activity");
-      success(`Activité "${newActivityName}" créée`);
+      success(`Activité "${name}" créée`);
     } catch (err) {
+      loadActivityTypes(); // Rollback
       showError("Erreur lors de la création de l'activité");
       console.error(err);
     }
@@ -284,17 +304,18 @@ export default function EditExercisePage() {
     const activity = activityTypes.find(a => a.id === activityId);
     if (!activity || activity.is_default) return;
 
+    // Optimistic
+    setActivityTypes(prev => prev.filter(a => a.id !== activityId));
+    if (selectedActivityId === activityId) {
+      const remaining = activityTypes.filter(a => a.id !== activityId);
+      setSelectedActivityId(remaining[0]?.id || null);
+    }
+
     try {
       await workoutApi.activityTypes.delete(activityId);
-      setActivityTypes(prev => prev.filter(a => a.id !== activityId));
-      
-      if (selectedActivityId === activityId) {
-        const remaining = activityTypes.filter(a => a.id !== activityId);
-        setSelectedActivityId(remaining[0]?.id || null);
-      }
-      
       success("Activité supprimée");
     } catch (err) {
+      loadActivityTypes(); // Rollback
       showError("Erreur lors de la suppression");
       console.error(err);
     }
@@ -307,35 +328,62 @@ export default function EditExercisePage() {
       return;
     }
 
+    const name = newFieldName;
+    const type = newFieldType;
+    const unit = newFieldUnit;
+    const fieldOptions = newFieldOptions;
+    const activityId = selectedActivityId;
+
+    setShowNewField(false);
+    setNewFieldName("");
+    setNewFieldType("text");
+    setNewFieldUnit("");
+    setNewFieldOptions("");
+
+    // Optimistic
+    setActivityTypes(prev => prev.map(a => {
+      if (a.id === activityId) {
+        const tempId = Math.floor(Math.random() * -1000000);
+        const options = type === "select" || type === "multi_select"
+          ? fieldOptions.split(",").map(o => o.trim()).filter(Boolean)
+          : undefined;
+        return {
+          ...a,
+          custom_fields: [...(a.custom_fields || []), {
+            id: tempId,
+            custom_activity_type_id: activityId,
+            name: name,
+            field_type: type,
+            unit: unit || null,
+            options: options || null,
+            is_required: false,
+            placeholder: null,
+            activity_type_id: activityId,
+            default_value: null,
+            created_at: new Date().toISOString(),
+            order: (a.custom_fields?.length || 0) + 1
+          }],
+        };
+      }
+      return a;
+    }));
+
     try {
-      const options = newFieldType === "select" || newFieldType === "multi_select"
-        ? newFieldOptions.split(",").map(o => o.trim()).filter(Boolean)
+      const options = type === "select" || type === "multi_select"
+        ? fieldOptions.split(",").map(o => o.trim()).filter(Boolean)
         : undefined;
 
-      const newField = await workoutApi.activityTypes.addField(selectedActivityId, {
-        name: newFieldName,
-        field_type: newFieldType,
-        unit: newFieldUnit || undefined,
+      await workoutApi.activityTypes.addField(activityId, {
+        name: name,
+        field_type: type,
+        unit: unit || undefined,
         options,
       });
 
-      setActivityTypes(prev => prev.map(a => {
-        if (a.id === selectedActivityId) {
-          return {
-            ...a,
-            custom_fields: [...(a.custom_fields || []), newField],
-          };
-        }
-        return a;
-      }));
-
-      setShowNewField(false);
-      setNewFieldName("");
-      setNewFieldType("text");
-      setNewFieldUnit("");
-      setNewFieldOptions("");
-      success(`Champ "${newFieldName}" ajouté à ${selectedActivity?.name}`);
+      success(`Champ "${name}" ajouté`);
+      loadActivityTypes(); // Refresh for correct IDs
     } catch (err) {
+      loadActivityTypes(); // Rollback
       showError("Erreur lors de l'ajout du champ");
       console.error(err);
     }
@@ -343,22 +391,22 @@ export default function EditExercisePage() {
 
   // Supprimer un champ personnalisé
   const handleDeleteField = async (fieldId: number) => {
+    // Optimistic
+    setActivityTypes(prev => prev.map(a => ({
+      ...a,
+      custom_fields: a.custom_fields?.filter(f => f.id !== fieldId) || [],
+    })));
+    setFieldValues(prev => {
+      const updated = { ...prev };
+      delete updated[fieldId];
+      return updated;
+    });
+
     try {
       await workoutApi.activityTypes.deleteField(fieldId);
-      
-      setActivityTypes(prev => prev.map(a => ({
-        ...a,
-        custom_fields: a.custom_fields?.filter(f => f.id !== fieldId) || [],
-      })));
-      
-      setFieldValues(prev => {
-        const updated = { ...prev };
-        delete updated[fieldId];
-        return updated;
-      });
-      
       success("Champ supprimé");
     } catch (err) {
+      loadActivityTypes(); // Rollback
       showError("Erreur lors de la suppression du champ");
       console.error(err);
     }
@@ -376,7 +424,11 @@ export default function EditExercisePage() {
       return;
     }
 
-    setIsLoading(true);
+    const payloadName = name;
+    // Redirection immédiate
+    router.push("/workout/exercises");
+    success(`Modification de "${payloadName}" en cours...`);
+
     try {
       // Préparer les valeurs des champs
       const fieldValuesData: ExerciseFieldValueCreate[] = Object.entries(fieldValues)
@@ -395,7 +447,7 @@ export default function EditExercisePage() {
       else if (selectedActivityName.includes("volleyball")) legacyActivityType = "volleyball";
 
       await workoutApi.exercises.update(exerciseId, {
-        name,
+        name: payloadName,
         description: description || undefined,
         activity_type: legacyActivityType as never,
         custom_activity_type_id: selectedActivityId,
@@ -403,12 +455,9 @@ export default function EditExercisePage() {
         field_values: fieldValuesData.length > 0 ? fieldValuesData : undefined,
       });
       
-      success(`Exercice "${name}" modifié avec succès`);
-      router.push("/workout/exercises");
+      success(`Exercice "${payloadName}" modifié !`);
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la modification");
-    } finally {
-      setIsLoading(false);
     }
   };
 

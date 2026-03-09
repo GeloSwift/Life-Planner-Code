@@ -389,6 +389,32 @@ function SkeletonHomePage() {
   )
 }
 
+// Skeleton pour la page de poids
+function SkeletonWeightPage() {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-32" />
+        <div className="flex justify-between items-center">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-10 w-32" />
+        </div>
+      </div>
+      
+      {/* Chart Skeleton */}
+      <Skeleton className="h-[300px] w-full rounded-xl" />
+      
+      {/* History List Skeleton */}
+      <div className="space-y-3">
+        <Skeleton className="h-6 w-32" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export {
   Skeleton,
   SkeletonCard,
@@ -404,5 +430,6 @@ export {
   SkeletonExercisesList,
   SkeletonProfile,
   SkeletonHomePage,
+  SkeletonWeightPage,
 }
 

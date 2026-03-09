@@ -37,6 +37,7 @@ import {
   type GoalType,
   type GoalCreate,
 } from "@/lib/workout-types";
+import { SkeletonGoalCard } from "@/components/ui/skeleton";
 import {
   Loader2,
   Target,
@@ -92,43 +93,82 @@ export default function GoalsPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    const goalToCreate = newGoal as GoalCreate;
+    
+    // Optimistic UI (on ajoute un ID temporaire)
+    const tempId = Math.floor(Math.random() * -1000000);
+    const optimisticGoal: Goal = {
+      id: tempId,
+      user_id: 0, // Placeholder
+      name: goalToCreate.name,
+      goal_type: goalToCreate.goal_type,
+      target_value: goalToCreate.target_value,
+      current_value: goalToCreate.current_value || 0,
+      unit: goalToCreate.unit,
+      is_active: true,
+      is_achieved: (goalToCreate.current_value || 0) >= goalToCreate.target_value,
+      description: null,
+      initial_value: goalToCreate.current_value || 0,
+      exercise_id: null,
+      deadline: null,
+      achieved_at: (goalToCreate.current_value || 0) >= goalToCreate.target_value ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setGoals((prev) => [optimisticGoal, ...prev]);
+    setShowNewGoal(false);
+    setNewGoal({
+      name: "",
+      goal_type: "poids_corporel",
+      target_value: 0,
+      unit: "kg",
+    });
+
     try {
-      await workoutApi.goals.create(newGoal as GoalCreate);
-      success(`Objectif créé ! 🎯 ${newGoal.name}`);
-      setShowNewGoal(false);
-      setNewGoal({
-        name: "",
-        goal_type: "poids_corporel",
-        target_value: 0,
-        unit: "kg",
-      });
+      await workoutApi.goals.create(goalToCreate);
+      success(`Objectif créé ! 🎯 ${optimisticGoal.name}`);
       loadGoals();
     } catch (err) {
+      loadGoals(); // Rollback
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
   const handleUpdateProgress = async (goal: Goal, newValue: number) => {
+    // Optimistic UI
+    setGoals((prev) => prev.map((g) => {
+      if (g.id === goal.id) {
+        return {
+          ...g,
+          current_value: newValue,
+          is_achieved: newValue >= g.target_value,
+          achieved_at: newValue >= g.target_value ? new Date().toISOString() : g.achieved_at
+        };
+      }
+      return g;
+    }));
+
     try {
       await workoutApi.goals.updateProgress(goal.id, newValue);
       success(`Progression mise à jour : ${goal.name}: ${newValue} ${goal.unit}`);
       loadGoals();
     } catch (err) {
+      loadGoals(); // Rollback
       showError(err instanceof Error ? err.message : "Erreur lors de la mise à jour");
     }
   };
 
   const handleDeleteGoal = async (goal: Goal) => {
-    if (!confirm(`Supprimer l'objectif "${goal.name}" ?`)) return;
-
+    // Optimistic UI
+    setGoals((prev) => prev.filter((g) => g.id !== goal.id));
+    
     try {
       await workoutApi.goals.delete(goal.id);
       success(`Objectif supprimé : ${goal.name}`);
       loadGoals();
     } catch (err) {
+      loadGoals(); // Rollback
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
     }
   };
@@ -309,8 +349,10 @@ export default function GoalsPage() {
         )}
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonGoalCard key={i} />
+            ))}
           </div>
         ) : goals.length === 0 ? (
           <Card>

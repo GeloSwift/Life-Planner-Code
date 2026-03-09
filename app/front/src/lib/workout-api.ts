@@ -399,6 +399,13 @@ export const sessionsApi = {
     );
   },
 
+  async deleteSet(setId: number): Promise<void> {
+    await workoutFetch<void>(
+      `/workout/sets/${setId}`,
+      { method: "DELETE" }
+    );
+  },
+
   // ==========================================================================
   // OCCURRENCE MANAGEMENT (for recurring sessions)
   // ==========================================================================

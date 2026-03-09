@@ -281,18 +281,21 @@ export default function ExercisesPage() {
   const handleDeleteConfirm = async () => {
     if (!exerciseToDelete) return;
 
-    setIsDeleting(true);
+    // Mise à jour optimiste
+    const exerciseId = exerciseToDelete.id;
+    const exerciseName = exerciseToDelete.name;
+    setAllExercises((prev) => prev.filter((e) => e.id !== exerciseId));
+    setDeleteDialogOpen(false);
+    setExerciseToDelete(null);
+
     try {
-      await workoutApi.exercises.delete(exerciseToDelete.id);
-      success(`Exercice "${exerciseToDelete.name}" supprimé`);
-      setDeleteDialogOpen(false);
-      setExerciseToDelete(null);
-      loadExercises();
+      await workoutApi.exercises.delete(exerciseId);
+      success(`Exercice "${exerciseName}" supprimé`);
+      loadExercises(); // Refresh silencieux
     } catch (err) {
+      loadExercises(); // Annuler
       showError("Erreur lors de la suppression");
       console.error(err);
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -393,25 +396,27 @@ export default function ExercisesPage() {
   const handleBatchDelete = async () => {
     if (selectedExerciseIds.size === 0) return;
     
-    setIsDeleting(true);
+    // Mise à jour optimiste
+    const idsToDelete = new Set(selectedExerciseIds);
+    setAllExercises((prev) => prev.filter((e) => !idsToDelete.has(e.id)));
+    
+    const count = idsToDelete.size;
+    success(`${count} exercice${count > 1 ? "s" : ""} supprimé${count > 1 ? "s" : ""}`);
+    setSelectionMode(false);
+    setSelectedExerciseIds(new Set());
+
     try {
-      const deletePromises = Array.from(selectedExerciseIds).map((id) =>
+      const deletePromises = Array.from(idsToDelete).map((id) =>
         workoutApi.exercises.delete(id).catch((err) => {
           console.error(`Erreur lors de la suppression de l'exercice ${id}:`, err);
           return null;
         })
       );
       await Promise.all(deletePromises);
-      
-      const count = selectedExerciseIds.size;
-      success(`${count} exercice${count > 1 ? "s" : ""} supprimé${count > 1 ? "s" : ""}`);
-      setSelectionMode(false);
-      setSelectedExerciseIds(new Set());
-      await loadExercises();
+      loadExercises(); // Refresh silencieux
     } catch (err) {
+      loadExercises(); // Annuler
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
-    } finally {
-      setIsDeleting(false);
     }
   };
 

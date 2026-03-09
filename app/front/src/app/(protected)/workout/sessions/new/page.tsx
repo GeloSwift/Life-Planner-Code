@@ -495,6 +495,84 @@ function NewSessionContent() {
     loadActivityTypes();
   }, [loadActivityTypes]);
 
+  // Gérer la duplication
+  const duplicateId = searchParams.get("duplicateId");
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  useEffect(() => {
+    if (duplicateId && activityTypes.length > 0) {
+      const loadSourceSession = async () => {
+        setIsDuplicating(true);
+        try {
+          const full = await workoutApi.sessions.get(Number(duplicateId));
+          
+          setName(`${full.name} (copie)`);
+          
+          // Activités
+          if (full.custom_activity_type_id) {
+            setSelectedActivityIds([full.custom_activity_type_id, ...(full.custom_activity_type_ids || [])]);
+          } else if (full.custom_activity_type_ids && full.custom_activity_type_ids.length > 0) {
+            setSelectedActivityIds(full.custom_activity_type_ids);
+          } else if (full.activity_type) {
+             // Fallback legacy logic if needed
+          }
+
+          // Date et Heure
+          if (full.scheduled_at) {
+            const date = new Date(full.scheduled_at);
+            const now = new Date();
+            
+            // Si la date est passée, mettre à demain
+            if (date < now) {
+                const tomorrow = new Date(now);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                setScheduledDate(tomorrow.toISOString().split("T")[0]);
+                setScheduledTime(date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+            } else {
+                setScheduledDate(date.toISOString().split("T")[0]);
+                setScheduledTime(date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+            }
+          }
+
+          setNotes(full.notes || "");
+          
+          // Récurrence
+          if (full.recurrence_type) {
+              setRecurrenceType(full.recurrence_type as any);
+          }
+
+          // Exercices
+          if (full.exercises) {
+            const exercises: SelectedExercise[] = full.exercises.map(ex => {
+              const fieldValues: Record<number, string> = {};
+              if (ex.exercise?.field_values) {
+                  ex.exercise.field_values.forEach(fv => {
+                      if (fv.field_id && fv.value) fieldValues[fv.field_id] = fv.value;
+                  });
+              }
+              // Overwrite with session-specific values if available
+              // (Note: the current API might not return custom field values per exercise in session, 
+              // but if it does, we should map them here)
+              
+              return {
+                exercise: ex.exercise!,
+                fieldValues
+              };
+            }).filter(ex => !!ex.exercise);
+            setSelectedExercises(exercises);
+          }
+
+        } catch (err) {
+          console.error("Erreur chargement source duplication", err);
+          showError("Erreur lors du chargement de la séance à dupliquer");
+        } finally {
+          setIsDuplicating(false);
+        }
+      };
+      loadSourceSession();
+    }
+  }, [duplicateId, activityTypes, showError]);
+
   // Mettre à jour l'activité legacy quand on change l'activité personnalisée
   useEffect(() => {
     if (selectedActivityIds.length > 0) {
@@ -804,6 +882,15 @@ function NewSessionContent() {
       <BackgroundDecorations />
       <Header variant="sticky" />
 
+      {isDuplicating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-lg font-medium">Préparation de la copie...</p>
+          </div>
+        </div>
+      )}
+
       <main className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
         {/* Header */}
         <section className="mb-6">
@@ -814,7 +901,7 @@ function NewSessionContent() {
             className="mb-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour
+            {duplicateId ? "Annuler" : "Retour"}
           </Button>
 
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -943,7 +1030,7 @@ function NewSessionContent() {
                 </div>
 
                 {/* Date et heure */}
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="date">Date</Label>
                     <Input

@@ -271,18 +271,22 @@ export default function SessionsPage() {
 
   const handleDeleteConfirm = async () => {
     if (!sessionToDelete) return;
-    setIsDeleting(true);
+    
+    // Mise à jour optimiste
+    const sessionName = sessionToDelete.name;
+    const sessionId = sessionToDelete.id;
+    setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setDeleteDialogOpen(false);
+    setSessionToDelete(null);
+    setRecurringDeleteMode("choose");
+    
     try {
-      await workoutApi.sessions.delete(sessionToDelete.id);
-      success(`Séance "${sessionToDelete.name}" supprimée`);
-      setDeleteDialogOpen(false);
-      setSessionToDelete(null);
-      setRecurringDeleteMode("choose");
-      await loadData();
+      await workoutApi.sessions.delete(sessionId);
+      success(`Séance "${sessionName}" supprimée`);
+      loadData(); // Refresh silencieux
     } catch (err) {
+      loadData(); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -387,48 +391,85 @@ export default function SessionsPage() {
     );
   };
 
-  const handleDuplicateClick = async (session: WorkoutSession, e: MouseEvent) => {
+  const handleDuplicateClick = (session: WorkoutSession, e: MouseEvent) => {
     e.stopPropagation();
+    // Au lieu de créer immédiatement, on redirige vers la page "New" avec l'ID à dupliquer
+    // Cela permettra à l'utilisateur d'annuler s'il le souhaite.
+    router.push(`/workout/sessions/new?duplicateId=${session.id}`);
+  };
+
+  const handleReplanClick = async (session: WorkoutSession, e: MouseEvent) => {
+    e.stopPropagation();
+
+    const now = new Date();
+    let nextDate: Date | null = null;
+    const scheduledTime = session.scheduled_at ? new Date(session.scheduled_at) : now;
+
+    // Calcul de la date (même logique qu'avant mais déplacée au début pour l'optimisme)
+    if (session.recurrence_type && session.scheduled_at) {
+        if (session.recurrence_type === "daily") {
+          nextDate = new Date(now);
+          nextDate.setDate(nextDate.getDate() + 1);
+          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+        } else if (session.recurrence_type === "weekly" && session.recurrence_data && session.recurrence_data.length > 0) {
+          const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+          const targetDay = dayNames.indexOf(String(session.recurrence_data[0]).toLowerCase());
+          if (targetDay !== -1) {
+            const originalDayOfWeek = scheduledTime.getDay();
+            nextDate = new Date(scheduledTime);
+            if (targetDay === originalDayOfWeek) {
+              nextDate.setDate(nextDate.getDate() + 7);
+            } else {
+              const daysUntilTarget = (targetDay - originalDayOfWeek + 7) % 7 || 7;
+              nextDate.setDate(nextDate.getDate() + daysUntilTarget);
+            }
+            nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+          }
+        } else if (session.recurrence_type === "monthly" && session.recurrence_data && session.recurrence_data.length > 0) {
+          const dayOfMonth = Number(session.recurrence_data[0]);
+          nextDate = new Date(scheduledTime);
+          nextDate.setMonth(nextDate.getMonth() + 1);
+          const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+          nextDate.setDate(Math.min(dayOfMonth, lastDayOfMonth));
+          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+        }
+    }
+
+    if (!nextDate) {
+        nextDate = new Date(now);
+        nextDate.setDate(nextDate.getDate() + 1);
+        nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
+    }
+
+    // Mise à jour optimiste
+    const optimisticSession: WorkoutSession = {
+        ...session,
+        id: -Date.now(),
+        status: "planifiee",
+        scheduled_at: nextDate.toISOString(),
+        notes: null,
+        created_at: new Date().toISOString()
+    };
+    
+    setSessions(prev => [optimisticSession, ...prev]);
+    success("Séance replanifiée (en cours...)");
+
     try {
+      // Récupérer la session complète avec ses exercices
       const full = await workoutApi.sessions.get(session.id);
 
-      // Si la date originale est dans le passé, on la met à demain à la même heure
-      // pour éviter que le système automatique change le statut à "annulée"
-      let newScheduledAt = full.scheduled_at ?? undefined;
-      if (full.scheduled_at) {
-        const originalDate = new Date(full.scheduled_at);
-        const now = new Date();
-
-        // Si la date est dans le passé, la mettre à demain à la même heure
-        if (originalDate < now) {
-          const tomorrow = new Date(now);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          tomorrow.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
-          newScheduledAt = tomorrow.toISOString();
-        }
-      }
-
-      const duplicated = await workoutApi.sessions.create({
-        name: `${full.name} (copie)`,
+      // CRÉER UNE NOUVELLE SÉANCE
+      await workoutApi.sessions.create({
+        name: full.name,
         activity_type: full.activity_type,
         custom_activity_type_id: full.custom_activity_type_id ?? undefined,
         custom_activity_type_ids: full.custom_activity_type_ids ?? [],
-        scheduled_at: newScheduledAt,
-        notes: full.notes ?? undefined,
+        scheduled_at: nextDate!.toISOString(),
+        notes: undefined,
         recurrence_type: full.recurrence_type ?? undefined,
         recurrence_data: full.recurrence_data ?? undefined,
         exercises: full.exercises?.map((ex) => {
-          const exerciseData: {
-            exercise_id: number;
-            order: number;
-            target_sets: number;
-            rest_seconds: number;
-            target_reps?: number;
-            target_weight?: number;
-            target_duration?: number;
-            target_distance?: number;
-            notes?: string;
-          } = {
+          const exerciseData: any = {
             exercise_id: ex.exercise_id,
             order: ex.order,
             target_sets: ex.target_sets,
@@ -438,35 +479,16 @@ export default function SessionsPage() {
           if (ex.target_weight) exerciseData.target_weight = ex.target_weight;
           if (ex.target_duration) exerciseData.target_duration = ex.target_duration;
           if (ex.target_distance) exerciseData.target_distance = ex.target_distance;
-          if (ex.notes) exerciseData.notes = ex.notes;
           return exerciseData;
         }),
       });
 
-      // Le backend crée toujours les séances avec le statut "planifiee" par défaut.
-      // Si on a mis à jour la date pour qu'elle soit dans le futur, le système automatique
-      // ne changera pas le statut. On vérifie quand même pour être sûr.
-      let finalSession = duplicated;
-
-      // Vérifier le statut après création
-      finalSession = await workoutApi.sessions.get(duplicated.id);
-
-      // Si le statut n'est pas "planifiee", le forcer explicitement
-      if (finalSession.status !== "planifiee") {
-        await workoutApi.sessions.update(duplicated.id, {
-          status: "planifiee",
-        });
-        finalSession = await workoutApi.sessions.get(duplicated.id);
-      }
-
-      success(`Séance "${full.name}" dupliquée`);
-      // Rediriger directement vers la page d'édition sans recharger la liste
-      // Utiliser replace au lieu de push pour éviter d'ajouter une entrée dans l'historique
-      // et rendre la transition plus fluide (évite les flashs)
-      router.replace(`/workout/sessions/${finalSession.id}/edit?new_duplicate=true`);
+      success("Séance replanifiée avec succès");
+      loadData();
     } catch (err) {
-      console.error("Erreur lors de la duplication:", err);
-      showError(err instanceof Error ? err.message : "Erreur lors de la duplication");
+      console.error("Erreur lors de la replanification:", err);
+      showError(err instanceof Error ? err.message : "Erreur lors de la replanification");
+      loadData(); // Rollback
     }
   };
 
@@ -571,128 +593,27 @@ export default function SessionsPage() {
   const handleBatchDelete = async () => {
     if (selectedSessionIds.size === 0) return;
 
-    setIsDeleting(true);
+    // Mise à jour optimiste
+    const idsToDelete = new Set(selectedSessionIds);
+    setSessions((prev) => prev.filter((s) => !idsToDelete.has(s.id)));
+    const count = idsToDelete.size;
+    success(`${count} séance${count > 1 ? "s" : ""} supprimée${count > 1 ? "s" : ""}`);
+    
+    setSelectionMode(false);
+    setSelectedSessionIds(new Set());
+
     try {
-      const deletePromises = Array.from(selectedSessionIds).map((id) =>
+      const deletePromises = Array.from(idsToDelete).map((id) =>
         workoutApi.sessions.delete(id).catch((err) => {
           console.error(`Erreur lors de la suppression de la séance ${id}:`, err);
           return null;
         })
       );
       await Promise.all(deletePromises);
-
-      const count = selectedSessionIds.size;
-      success(`${count} séance${count > 1 ? "s" : ""} supprimée${count > 1 ? "s" : ""}`);
-      setSelectionMode(false);
-      setSelectedSessionIds(new Set());
-      await loadData();
+      loadData(); // Refresh silencieux
     } catch (err) {
+      loadData(); // Annuler si erreur
       showError(err instanceof Error ? err.message : "Erreur lors de la suppression");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleReplanClick = async (session: WorkoutSession, e: MouseEvent) => {
-    e.stopPropagation();
-
-    try {
-      // Récupérer la session complète avec ses exercices
-      const full = await workoutApi.sessions.get(session.id);
-
-      const now = new Date();
-      let nextDate: Date | null = null;
-
-      // Si la séance a une récurrence, calculer la prochaine date selon la récurrence
-      if (session.recurrence_type && session.scheduled_at) {
-        const scheduledTime = new Date(session.scheduled_at);
-
-        if (session.recurrence_type === "daily") {
-          // Demain à la même heure
-          nextDate = new Date(now);
-          nextDate.setDate(nextDate.getDate() + 1);
-          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
-        } else if (session.recurrence_type === "weekly" && session.recurrence_data && session.recurrence_data.length > 0) {
-          // Semaine suivante, même jour de la semaine à la même heure
-          const dayNames = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
-          const targetDay = dayNames.indexOf(String(session.recurrence_data[0]).toLowerCase());
-          if (targetDay === -1) {
-            showError("Jour de la semaine invalide");
-            return;
-          }
-
-          // Calculer le jour de la semaine de la date originale
-          const originalDayOfWeek = scheduledTime.getDay();
-
-          // Si le jour cible correspond au jour original, on prend la semaine suivante
-          nextDate = new Date(scheduledTime);
-          if (targetDay === originalDayOfWeek) {
-            nextDate.setDate(nextDate.getDate() + 7);
-          } else {
-            const daysUntilTarget = (targetDay - originalDayOfWeek + 7) % 7 || 7;
-            nextDate.setDate(nextDate.getDate() + daysUntilTarget);
-          }
-          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
-        } else if (session.recurrence_type === "monthly" && session.recurrence_data && session.recurrence_data.length > 0) {
-          // Mois suivant, même jour du mois à la même heure
-          const dayOfMonth = Number(session.recurrence_data[0]);
-          nextDate = new Date(scheduledTime);
-          nextDate.setMonth(nextDate.getMonth() + 1);
-
-          const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-          nextDate.setDate(Math.min(dayOfMonth, lastDayOfMonth));
-          nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
-        }
-      }
-
-      // Si pas de récurrence, replanifier pour demain à la même heure
-      if (!nextDate) {
-        const scheduledTime = session.scheduled_at ? new Date(session.scheduled_at) : now;
-        nextDate = new Date(now);
-        nextDate.setDate(nextDate.getDate() + 1);
-        nextDate.setHours(scheduledTime.getHours(), scheduledTime.getMinutes(), 0, 0);
-      }
-
-      // CRÉER UNE NOUVELLE SÉANCE (au lieu de modifier l'existante)
-      // Cela permet de garder l'historique de la séance originale
-      await workoutApi.sessions.create({
-        name: full.name, // Même nom (pas de "(copie)")
-        activity_type: full.activity_type,
-        custom_activity_type_id: full.custom_activity_type_id ?? undefined,
-        custom_activity_type_ids: full.custom_activity_type_ids ?? [],
-        scheduled_at: nextDate.toISOString(),
-        notes: undefined, // Notes vides pour la nouvelle séance
-        recurrence_type: full.recurrence_type ?? undefined,
-        recurrence_data: full.recurrence_data ?? undefined,
-        exercises: full.exercises?.map((ex) => {
-          const exerciseData: {
-            exercise_id: number;
-            order: number;
-            target_sets: number;
-            rest_seconds: number;
-            target_reps?: number;
-            target_weight?: number;
-            target_duration?: number;
-            target_distance?: number;
-          } = {
-            exercise_id: ex.exercise_id,
-            order: ex.order,
-            target_sets: ex.target_sets,
-            rest_seconds: ex.rest_seconds,
-          };
-          if (ex.target_reps) exerciseData.target_reps = ex.target_reps;
-          if (ex.target_weight) exerciseData.target_weight = ex.target_weight;
-          if (ex.target_duration) exerciseData.target_duration = ex.target_duration;
-          if (ex.target_distance) exerciseData.target_distance = ex.target_distance;
-          return exerciseData;
-        }),
-      });
-
-      success("Séance replanifiée (nouvelle séance créée)");
-      await loadData();
-    } catch (err) {
-      console.error("Erreur lors de la replanification:", err);
-      showError(err instanceof Error ? err.message : "Erreur lors de la replanification");
     }
   };
 

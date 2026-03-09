@@ -407,19 +407,22 @@ export default function EditSessionPage({ params }: PageProps) {
   const [recurrenceDuration, setRecurrenceDuration] = useState<string>("3"); // Durée en mois
   const [originalRecurrenceEndDate, setOriginalRecurrenceEndDate] = useState<string | null>(null);
 
-  // Vérifier s'il s'agit d'une nouvelle duplication
+  // Vérifier s'il s'agit d'une nouvelle duplication via sessionStorage
   const [isNewDuplicate, setIsNewDuplicate] = useState(false);
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const search = new URLSearchParams(window.location.search);
-      setIsNewDuplicate(search.get("new_duplicate") === "true");
+      const storedId = sessionStorage.getItem("newDuplicateId");
+      if (storedId === sessionId.toString()) {
+        setIsNewDuplicate(true);
+      }
     }
-  }, []);
+  }, [sessionId]);
 
   const handleCancelClick = async () => {
     if (isNewDuplicate) {
       try {
         await workoutApi.sessions.delete(sessionId);
+        sessionStorage.removeItem("newDuplicateId");
         success("Brouillon supprimé");
       } catch (err) {
         console.error("Erreur suppression brouillon:", err);
@@ -902,7 +905,7 @@ export default function EditSessionPage({ params }: PageProps) {
               />
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
                 <Input

@@ -22,6 +22,7 @@ import { workoutApi } from "@/lib/workout-api";
 import { useToast } from "@/components/ui/toast";
 import type { WorkoutSession, WorkoutSessionExercise } from "@/lib/workout-types";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/workout-types";
+import { SkeletonSessionCard } from "@/components/ui/skeleton";
 import {
     Loader2,
     ArrowLeft,
@@ -543,8 +544,10 @@ export default function HistoryPage() {
 
                 {/* Contenu */}
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <SkeletonSessionCard key={i} />
+                        ))}
                     </div>
                 ) : sortedSessions.length === 0 ? (
                     <Card>
