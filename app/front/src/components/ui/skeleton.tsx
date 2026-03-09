@@ -342,6 +342,53 @@ function SkeletonProfile() {
   )
 }
 
+// Skeleton pour la page d'accueil
+function SkeletonHomePage() {
+  return (
+    <div className="w-full">
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-12 sm:py-16 md:py-20 text-center lg:py-32">
+        <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8 flex flex-col items-center">
+          <Skeleton className="h-6 sm:h-8 w-64 rounded-full" />
+          <div className="space-y-3 w-full flex flex-col items-center">
+            <Skeleton className="h-10 sm:h-14 w-[80%] rounded-md" />
+            <Skeleton className="h-10 sm:h-14 w-[60%] rounded-md" />
+          </div>
+          <div className="space-y-2 w-full flex flex-col items-center">
+            <Skeleton className="h-5 sm:h-6 w-full max-w-2xl rounded-md" />
+            <Skeleton className="h-5 sm:h-6 w-3/4 max-w-2xl rounded-md" />
+          </div>
+          <div className="flex flex-col items-center justify-center gap-3 sm:gap-4 pt-4 sm:flex-row w-full">
+            <Skeleton className="h-11 sm:h-12 w-full sm:w-[220px] rounded-md" />
+            <Skeleton className="h-11 sm:h-12 w-full sm:w-[150px] rounded-md hidden sm:block" />
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="container mx-auto px-4 py-12 sm:py-16 lg:py-24">
+        <div className="mb-12 sm:mb-16 text-center flex flex-col items-center space-y-4">
+          <Skeleton className="h-8 sm:h-10 w-72 rounded-md" />
+          <Skeleton className="h-5 sm:h-6 w-56 rounded-md" />
+        </div>
+        <div className="mx-auto grid max-w-6xl gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border bg-card p-6 space-y-4">
+              <Skeleton className="h-12 w-12 rounded-xl" />
+              <Skeleton className="h-5 w-3/4" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export {
   Skeleton,
   SkeletonCard,
@@ -356,5 +403,6 @@ export {
   SkeletonSessionsList,
   SkeletonExercisesList,
   SkeletonProfile,
+  SkeletonHomePage,
 }
 
