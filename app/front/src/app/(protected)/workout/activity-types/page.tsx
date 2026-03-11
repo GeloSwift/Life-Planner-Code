@@ -350,7 +350,7 @@ export default function SportsPage() {
                                             <div className="flex items-center gap-2">
                                                 <p className="font-semibold truncate">{type.name}</p>
                                                 {type.is_favorite && (
-                                                    <Star className="h-4 w-4 text-yellow-500 flex-shrink-0" fill="currentColor" />
+                                                    <Star className="hidden sm:block h-4 w-4 text-yellow-500 flex-shrink-0" fill="currentColor" />
                                                 )}
                                             </div>
                                         </div>

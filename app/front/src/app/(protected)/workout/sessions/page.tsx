@@ -706,7 +706,7 @@ export default function SessionsPage() {
             className="mb-4 hover:bg-primary/10 hover:text-primary transition-all duration-300 group"
           >
             <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Retour au Dashboard
+            Retour
           </Button>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
