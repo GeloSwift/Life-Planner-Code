@@ -139,7 +139,8 @@ function SessionContent({ params }: PageProps) {
 
     const updateTime = () => {
       const now = Date.now();
-      setElapsedTime(Math.floor((now - startTime) / 1000));
+      // Protection contre les valeurs négatives (décalage horloge serveur/client)
+      setElapsedTime(Math.max(0, Math.floor((now - startTime) / 1000)));
     };
 
     updateTime();
@@ -171,9 +172,11 @@ function SessionContent({ params }: PageProps) {
   }, [isResting, restTimer, info]);
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    // Protection contre les valeurs négatives
+    const safeSeconds = Math.max(0, Math.abs(seconds));
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const secs = safeSeconds % 60;
 
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, "0")}:${secs

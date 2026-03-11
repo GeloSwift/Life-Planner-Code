@@ -59,9 +59,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const currentUser = await authApi.getMe();
         setUser(currentUser);
       } catch {
-        // Token invalide ou expiré - on le supprime
-        clearStoredTokens();
-        setUser(null);
+        // Token invalide ou expiré - on tente un refresh avant de déconnecter
+        console.log("[AUTH] Access token expiré, tentative de refresh...");
+        try {
+          await authApi.refresh();
+          // Refresh réussi, on retente getMe avec le nouveau token
+          const currentUser = await authApi.getMe();
+          setUser(currentUser);
+          console.log("[AUTH] Refresh réussi, utilisateur reconnecté");
+        } catch {
+          // Refresh token aussi expiré ou invalide - on déconnecte
+          console.log("[AUTH] Refresh échoué, déconnexion");
+          clearStoredTokens();
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

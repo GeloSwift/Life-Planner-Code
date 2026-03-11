@@ -257,16 +257,16 @@ export default function SportsPage() {
             <BackgroundDecorations />
             <Header variant="sticky" />
 
-            <main className="container mx-auto px-4 py-6 sm:py-8">
+            <main className="container mx-auto px-4 py-6 sm:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Header */}
                 <section className="mb-6">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => router.back()}
-                        className="mb-4"
+                        className="mb-4 hover:bg-primary/10 hover:text-primary transition-all duration-300 group"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
                         Retour
                     </Button>
 

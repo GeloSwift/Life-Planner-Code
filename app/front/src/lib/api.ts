@@ -44,6 +44,13 @@ export function getStoredToken(): string | null {
   return storage.getItem(TOKEN_KEY);
 }
 
+export function getStoredRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const storageType = localStorage.getItem(STORAGE_TYPE_KEY) || "local";
+  const storage = storageType === "session" ? sessionStorage : localStorage;
+  return storage.getItem(REFRESH_TOKEN_KEY);
+}
+
 export function setStoredTokens(accessToken: string, refreshToken: string, rememberMe?: boolean): void {
   if (typeof window === "undefined") return;
   
@@ -100,10 +107,38 @@ async function refreshTokenIfNeeded(): Promise<void> {
   }
 
   isRefreshing = true;
-  refreshPromise = authApi.refresh().then((response) => {
-    setStoredTokens(response.access_token, response.refresh_token);
-    return response;
-  }).catch((error) => {
+  
+  // Récupère le refresh token stocké localement pour l'envoyer dans le body  
+  // (les cookies httpOnly peuvent être bloqués en cross-origin)
+  const storedRefreshToken = getStoredRefreshToken();
+  
+  refreshPromise = (async () => {
+    // Envoie le refresh token dans le body en plus des cookies
+    const url = `${API_BASE_URL}/auth/refresh`;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    // On envoie aussi l'ancien access token au cas où
+    const currentToken = getStoredToken();
+    if (currentToken) {
+      headers["Authorization"] = `Bearer ${currentToken}`;
+    }
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: storedRefreshToken ? JSON.stringify({ refresh_token: storedRefreshToken }) : undefined,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Refresh failed: ${response.status}`);
+    }
+
+    const data = await response.json() as TokenResponse;
+    setStoredTokens(data.access_token, data.refresh_token);
+    return data;
+  })().catch((error) => {
     // Si le refresh échoue, on supprime les tokens
     clearStoredTokens();
     throw error;
@@ -272,8 +307,11 @@ export const authApi = {
    * Utilise le refresh token stocké dans les cookies.
    */
   async refresh(): Promise<TokenResponse> {
+    // Envoie le refresh_token dans le body (fallback si les cookies cross-origin sont bloqués)
+    const storedRefreshToken = getStoredRefreshToken();
     const response = await apiFetch<TokenResponse>("/auth/refresh", {
       method: "POST",
+      body: storedRefreshToken ? JSON.stringify({ refresh_token: storedRefreshToken }) : undefined,
     });
     // Met à jour les tokens stockés en conservant le type d'espace de stockage (session ou local)
     setStoredTokens(response.access_token, response.refresh_token);

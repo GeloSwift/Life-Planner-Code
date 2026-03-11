@@ -459,17 +459,17 @@ export default function HistoryPage() {
             <BackgroundDecorations />
             <Header variant="sticky" />
 
-            <main className="container mx-auto px-4 py-6 sm:py-8 flex-1">
+            <main className="container mx-auto px-4 py-6 sm:py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Header */}
                 <section className="mb-6">
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => router.push("/workout")}
-                        className="mb-4"
+                        className="mb-4 hover:bg-primary/10 hover:text-primary transition-all duration-300 group"
                     >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Retour
+                        <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                        Retour au Dashboard
                     </Button>
 
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -583,7 +583,7 @@ export default function HistoryPage() {
                                         return (
                                             <Card
                                                 key={session.id}
-                                                className="transition-all hover:shadow-lg"
+                                                className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-primary/5"
                                             >
                                                 <CardContent className="p-4">
                                                     <div

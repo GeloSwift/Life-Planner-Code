@@ -129,6 +129,8 @@ export default function ExercisesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   
   // Mode sélection multiple
   const [selectionMode, setSelectionMode] = useState(false);
@@ -302,6 +304,7 @@ export default function ExercisesPage() {
   // Éditer un exercice
   const handleEditClick = (exercise: Exercise, e: React.MouseEvent) => {
     e.stopPropagation();
+    setEditingId(exercise.id);
     router.push(`/workout/exercises/${exercise.id}/edit`);
   };
 
@@ -423,7 +426,9 @@ export default function ExercisesPage() {
   // Dupliquer un exercice
   const handleDuplicateClick = async (exercise: Exercise, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (duplicatingId) return;
     
+    setDuplicatingId(exercise.id);
     try {
       // Préparer les données pour la duplication
       const selectedActivityName = exercise.custom_activity_type?.name.toLowerCase() || "autre";
@@ -458,6 +463,7 @@ export default function ExercisesPage() {
     } catch (err) {
       showError("Erreur lors de la duplication");
       console.error(err);
+      setDuplicatingId(null);
     }
   };
 
@@ -466,16 +472,16 @@ export default function ExercisesPage() {
       <BackgroundDecorations />
       <Header variant="sticky" />
 
-      <main className={`container mx-auto px-4 py-6 sm:py-8 ${selectionMode ? "pb-24" : ""}`}>
+      <main className={`container mx-auto px-4 py-6 sm:py-8 ${selectionMode ? "pb-24" : ""} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
         {/* Header */}
         <section className="mb-6">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.back()}
-            className="mb-4"
+            className="mb-4 hover:bg-primary/10 hover:text-primary transition-all duration-300 group"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
             Retour
           </Button>
 
@@ -854,20 +860,30 @@ export default function ExercisesPage() {
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            className="h-10 w-10 sm:h-8 sm:w-8 relative"
                             onClick={(e) => handleDuplicateClick(exercise, e)}
                             title="Dupliquer"
+                            disabled={!!duplicatingId || !!editingId}
                           >
-                            <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                            {duplicatingId === exercise.id ? (
+                                <Loader2 className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                                <Copy className="h-5 w-5 sm:h-4 sm:w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="secondary"
                             size="icon"
-                            className="h-10 w-10 sm:h-8 sm:w-8"
+                            className="h-10 w-10 sm:h-8 sm:w-8 relative"
                             onClick={(e) => handleEditClick(exercise, e)}
                             title="Modifier"
+                            disabled={!!duplicatingId || !!editingId}
                           >
-                            <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+                            {editingId === exercise.id ? (
+                                <Loader2 className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" />
+                            ) : (
+                                <Edit className="h-5 w-5 sm:h-4 sm:w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="destructive"
@@ -875,6 +891,7 @@ export default function ExercisesPage() {
                             className="h-10 w-10 sm:h-8 sm:w-8"
                             onClick={(e) => handleDeleteClick(exercise, e)}
                             title="Supprimer"
+                            disabled={!!duplicatingId || !!editingId}
                           >
                             <Trash2 className="h-5 w-5 sm:h-4 sm:w-4" />
                           </Button>

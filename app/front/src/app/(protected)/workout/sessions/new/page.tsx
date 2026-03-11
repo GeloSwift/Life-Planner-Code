@@ -156,9 +156,13 @@ interface ExerciseParams {
 }
 
 function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
-  const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
+  // Par défaut : 1 seule série (pour les exercices sans paramètre "séries" comme la marche, cardio, etc.)
+  const params: ExerciseParams = { sets: 1 };
 
   if (!exercise.field_values) return params;
+
+  // Vérifier si l'exercice a un champ "séries" explicite
+  let hasSeriesField = false;
 
   exercise.field_values.forEach((fieldValue) => {
     const field = fieldValue.field;
@@ -172,6 +176,7 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
 
     switch (paramType) {
       case "series":
+        hasSeriesField = true;
         params.sets = parseInt(value) || 3;
         break;
       case "reps":
@@ -191,6 +196,12 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
         break;
     }
   });
+
+  // Si l'exercice a un champ séries mais sans valeur, mettre 3 par défaut
+  // Si pas de champ séries du tout, garder 1
+  if (!hasSeriesField) {
+    params.sets = 1;
+  }
 
   return params;
 }
@@ -441,7 +452,9 @@ function NewSessionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { success, error: showError } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStartingNow, setIsStartingNow] = useState(false);
+  const isLoading = isSubmitting || isStartingNow;
 
   // Lire la date depuis l'URL si présente
   const dateFromUrl = searchParams.get("date");
@@ -718,7 +731,7 @@ function NewSessionContent() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       // Créer la date/heure planifiée
       const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString();
@@ -801,7 +814,7 @@ function NewSessionContent() {
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -811,7 +824,7 @@ function NewSessionContent() {
       return;
     }
 
-    setIsLoading(true);
+    setIsStartingNow(true);
     try {
       // "Lancer maintenant" : la date de la séance est maintenant
       const now = new Date();
@@ -873,7 +886,7 @@ function NewSessionContent() {
     } catch (err) {
       showError(err instanceof Error ? err.message : "Erreur lors de la création");
     } finally {
-      setIsLoading(false);
+      setIsStartingNow(false);
     }
   };
 
@@ -1210,7 +1223,7 @@ function NewSessionContent() {
                 onClick={handleSubmit}
                 disabled={isLoading}
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Calendar className="mr-2 h-4 w-4" />
                 Planifier
               </Button>
@@ -1219,7 +1232,7 @@ function NewSessionContent() {
                 onClick={handleStartNow}
                 disabled={isLoading}
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isStartingNow && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Lancer maintenant
               </Button>
             </div>

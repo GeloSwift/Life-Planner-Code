@@ -95,9 +95,13 @@ interface ExerciseParams {
 }
 
 function extractExerciseParams(exercise: Exercise, overrideValues?: Record<number, string>): ExerciseParams {
-  const params: ExerciseParams = { sets: 3 }; // Valeur par défaut
+  // Par défaut : 1 seule série (pour les exercices sans paramètre "séries" comme la marche, cardio, etc.)
+  const params: ExerciseParams = { sets: 1 };
 
   if (!exercise.field_values) return params;
+
+  // Vérifier si l'exercice a un champ "séries" explicite
+  let hasSeriesField = false;
 
   exercise.field_values.forEach((fieldValue) => {
     const field = fieldValue.field;
@@ -111,6 +115,7 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
 
     switch (paramType) {
       case "series":
+        hasSeriesField = true;
         params.sets = parseInt(value) || 3;
         break;
       case "reps":
@@ -130,6 +135,11 @@ function extractExerciseParams(exercise: Exercise, overrideValues?: Record<numbe
         break;
     }
   });
+
+  // Si pas de champ séries du tout, garder 1
+  if (!hasSeriesField) {
+    params.sets = 1;
+  }
 
   return params;
 }
