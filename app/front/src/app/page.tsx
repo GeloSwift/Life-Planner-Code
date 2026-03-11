@@ -162,7 +162,7 @@ export default function HomePage() {
                 <Link
                   key={feature.title}
                   href={isAuthenticated ? feature.href : "/login"}
-                  className="group flex flex-col rounded-2xl border bg-card p-6 transition-all hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+                  className="group flex flex-col rounded-2xl border bg-card p-6 transition-all duration-200 hover:shadow-lg hover:-translate-y-1 active:scale-[0.98] sm:active:scale-100 touch-manipulation cursor-pointer"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <div className="mb-4 inline-flex w-fit rounded-xl bg-primary/10 p-3">

@@ -288,6 +288,8 @@ pnpm dlx shadcn@latest add X   # Ajouter un composant
 | Suppression des latences clic mobile (touch-manipulation) | ✅ |
 | Optimisation Fluidité Menus Déroulants | ✅ |
 | Actions dynamiques adaptées au tactile | ✅ |
+| Clic indépendant et tactile sur les vignettes d'accueil | ✅ |
+| Retrait du bounce effect sur parent cliqué via enfants | ✅ |
 
 ---
 
