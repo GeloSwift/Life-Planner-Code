@@ -36,6 +36,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export default function WeightPage() {
   const router = useRouter();
@@ -140,7 +141,8 @@ export default function WeightPage() {
       <BackgroundDecorations />
       <Header variant="sticky" />
 
-      <main className="container mx-auto px-4 py-6 sm:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <PageTransition>
+        <main className="container mx-auto px-4 py-6 sm:py-8">
         {/* Header */}
         <section className="mb-6">
           <Button
@@ -314,7 +316,8 @@ export default function WeightPage() {
             </div>
           )}
         </section>
-      </main>
+        </main>
+      </PageTransition>
 
       <Footer />
     </div>

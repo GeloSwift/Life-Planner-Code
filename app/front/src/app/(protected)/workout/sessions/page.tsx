@@ -58,8 +58,8 @@ import {
   Copy,
   Edit,
   Trash2,
-  Play,
   CheckCircle,
+  Play,
   Clock,
   XCircle,
   RotateCcw,
@@ -85,6 +85,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // Map des icônes disponibles pour les activités
 const ACTIVITY_ICONS: Record<string, LucideIcon> = {
@@ -679,9 +680,11 @@ export default function SessionsPage() {
       <div className="min-h-screen overflow-hidden">
         <BackgroundDecorations />
         <Header variant="sticky" />
-        <main className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl pb-32">
-          <SkeletonSessionsList />
-        </main>
+        <PageTransition>
+          <main className="container mx-auto px-4 py-6 sm:py-8 max-w-6xl pb-32">
+            <SkeletonSessionsList />
+          </main>
+        </PageTransition>
         <Footer />
       </div>
     );
@@ -692,7 +695,8 @@ export default function SessionsPage() {
       <BackgroundDecorations />
       <Header variant="sticky" />
 
-      <main className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl ${selectionMode ? "pb-24" : "pb-32"} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+      <PageTransition>
+        <main className={`container mx-auto px-4 py-6 sm:py-8 max-w-6xl ${selectionMode ? "pb-24" : "pb-32"}`}>
         {/* Header */}
         <section className="mb-6">
           <Button
@@ -1088,6 +1092,7 @@ export default function SessionsPage() {
           </div>
         )}
       </main>
+    </PageTransition>
 
       {/* Barre d'actions sticky en bas pour mobile (mode sélection) */}
       {selectionMode && (

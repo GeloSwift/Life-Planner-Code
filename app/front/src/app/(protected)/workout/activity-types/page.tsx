@@ -54,6 +54,7 @@ import {
     Volleyball,
     type LucideIcon,
 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // Map des icônes disponibles pour les activités
 const ACTIVITY_ICONS: Record<string, LucideIcon> = {
@@ -257,7 +258,8 @@ export default function SportsPage() {
             <BackgroundDecorations />
             <Header variant="sticky" />
 
-            <main className="container mx-auto px-4 py-6 sm:py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <PageTransition>
+                <main className="container mx-auto px-4 py-6 sm:py-8">
                 {/* Header */}
                 <section className="mb-6">
                     <Button
@@ -389,7 +391,8 @@ export default function SportsPage() {
                         ))}
                     </div>
                 )}
-            </main>
+                </main>
+            </PageTransition>
 
             <Footer />
 

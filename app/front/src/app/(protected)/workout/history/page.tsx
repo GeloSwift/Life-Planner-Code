@@ -38,6 +38,7 @@ import {
     Check,
     Minus,
 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // Fonction pour obtenir la couleur de progression
 const getProgressColor = (percentage: number): string => {
@@ -459,7 +460,8 @@ export default function HistoryPage() {
             <BackgroundDecorations />
             <Header variant="sticky" />
 
-            <main className="container mx-auto px-4 py-6 sm:py-8 flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <PageTransition>
+                <main className="container mx-auto px-4 py-6 sm:py-8 flex-1">
                 {/* Header */}
                 <section className="mb-6">
                     <Button
@@ -744,7 +746,8 @@ export default function HistoryPage() {
                         ))}
                     </div>
                 )}
-            </main>
+                </main>
+            </PageTransition>
 
             <Footer />
         </div>
