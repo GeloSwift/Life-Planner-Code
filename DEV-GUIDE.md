@@ -279,6 +279,16 @@ pnpm dlx shadcn@latest add X   # Ajouter un composant
 | Poids | `/workout/weight` |
 | Objectifs | `/workout/goals` |
 
+### ✨ Améliorations UI/UX
+
+| Fonctionnalité | Statut |
+|----------------|--------|
+| Transitions fluides (Framer Motion) | ✅ |
+| Feedback tactile sur mobile (Hover/Active states) | ✅ |
+| Suppression des latences clic mobile (touch-manipulation) | ✅ |
+| Optimisation Fluidité Menus Déroulants | ✅ |
+| Actions dynamiques adaptées au tactile | ✅ |
+
 ---
 
 ## 🧭 Phase 3 : Navigation
@@ -510,4 +520,4 @@ Life-Planner-Code/
 
 ---
 
-*Dernière mise à jour : Janvier 2026*
+*Dernière mise à jour : Mars 2026*
