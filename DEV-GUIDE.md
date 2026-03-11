@@ -287,9 +287,8 @@ pnpm dlx shadcn@latest add X   # Ajouter un composant
 | Feedback tactile sur mobile (Hover/Active states) | ✅ |
 | Suppression des latences clic mobile (touch-manipulation) | ✅ |
 | Optimisation Fluidité Menus Déroulants | ✅ |
-| Actions dynamiques adaptées au tactile | ✅ |
-| Clic indépendant et tactile sur les vignettes d'accueil | ✅ |
-| Retrait du bounce effect sur parent cliqué via enfants | ✅ |
+| Effet Bouncy différencié : fort sur Mobile (95%), subtil sur PC (98%) | ✅ |
+| Bounce effect ré-appliqué sur les vignettes interactives | ✅ |
 
 ---
 

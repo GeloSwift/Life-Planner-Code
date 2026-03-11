@@ -585,7 +585,7 @@ export default function HistoryPage() {
                                         return (
                                             <Card
                                                 key={session.id}
-                                                className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-primary/5"
+                                                className="transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation border-primary/5"
                                             >
                                                 <CardContent className="p-4">
                                                     <div

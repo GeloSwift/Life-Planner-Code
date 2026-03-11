@@ -460,7 +460,7 @@ export default function WorkoutPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Sports */}
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-orange-500/10 hover:border-orange-500/30"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation border-orange-500/10 hover:border-orange-500/30"
               onClick={() => router.push("/workout/activity-types")}
             >
               <CardHeader>
@@ -476,7 +476,7 @@ export default function WorkoutPage() {
 
             {/* Séances */}
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-purple-500/10 hover:border-purple-500/30"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation border-purple-500/10 hover:border-purple-500/30"
               onClick={() => router.push("/workout/sessions")}
             >
               <CardHeader>
@@ -492,7 +492,7 @@ export default function WorkoutPage() {
 
             {/* Exercices */}
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-red-500/10 hover:border-red-500/30"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation border-red-500/10 hover:border-red-500/30"
               onClick={() => router.push("/workout/exercises")}
             >
               <CardHeader>
@@ -508,7 +508,7 @@ export default function WorkoutPage() {
 
             {/* Historique */}
             <Card
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-blue-500/10 hover:border-blue-500/30"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation border-blue-500/10 hover:border-blue-500/30"
               onClick={() => router.push("/workout/history")}
             >
               <CardHeader>

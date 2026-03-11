@@ -326,7 +326,7 @@ export default function SportsPage() {
                         {filteredTypes.map(type => (
                             <Card
                                 key={type.id}
-                                className="group cursor-pointer hover:shadow-md transition-all duration-200"
+                                className="group cursor-pointer hover:shadow-md transition-all duration-200 active:scale-95 sm:active:scale-[0.98] touch-manipulation"
                                 onClick={(e) => handleOpenEdit(type, e)}
                             >
                                 <CardContent className="p-4">

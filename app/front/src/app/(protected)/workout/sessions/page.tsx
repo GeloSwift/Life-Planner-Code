@@ -874,8 +874,8 @@ export default function SessionsPage() {
                       ? "ring-2 ring-primary"
                       : ""
                     : session.status === "annulee" || session.status === "terminee"
-                      ? "opacity-50 cursor-pointer hover:shadow-lg hover:-translate-y-1"
-                      : "cursor-pointer hover:shadow-lg hover:-translate-y-1"
+                      ? "opacity-50 cursor-pointer hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation"
+                      : "cursor-pointer hover:shadow-lg hover:-translate-y-1 active:scale-95 sm:active:scale-[0.98] touch-manipulation"
                     }`}
                   onClick={() => {
                     if (selectionMode) {
